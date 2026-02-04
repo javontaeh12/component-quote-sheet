@@ -326,7 +326,10 @@
 
     <div class="section">
       <div class="section-header"><div class="section-icon">4</div><h2>Logistics</h2></div>
-      <div class="row"><div class="status-field" style="min-width:100%;"><label>Boom Truck Needed?</label><div class="pill-group"><input type="radio" name="boomTruck" id="boomYes" value="Yes"><label class="pill" for="boomYes">Yes</label><input type="radio" name="boomTruck" id="boomNo" value="No"><label class="pill" for="boomNo">No</label></div></div></div>
+      <div class="row">
+        <div class="status-field"><label>Boom Truck Needed?</label><div class="pill-group"><input type="radio" name="boomTruck" id="boomYes" value="Yes"><label class="pill" for="boomYes">Yes</label><input type="radio" name="boomTruck" id="boomNo" value="No"><label class="pill" for="boomNo">No</label></div></div>
+        <div class="status-field"><label>Trailer Needed?</label><div class="pill-group"><input type="radio" name="trailerNeeded" id="trailerYes" value="Yes"><label class="pill" for="trailerYes">Yes</label><input type="radio" name="trailerNeeded" id="trailerNo" value="No"><label class="pill" for="trailerNo">No</label></div></div>
+      </div>
       <div class="row">
         <div class="field third"><label>Up</label><input type="text" id="boomUp" placeholder="ft"></div>
         <div class="field third"><label>In</label><input type="text" id="boomIn" placeholder="ft"></div>
@@ -386,7 +389,7 @@ const fieldIds = [
   'voltage','phase','workPerformed','reasonForRepair','equipmentNeeded',
   'otherComments','boomUp','boomIn','boomSetBack','techHours','helperHours','travelHours'
 ];
-const radioNames = ['warranty','operational','boomTruck'];
+const radioNames = ['warranty','operational','boomTruck','trailerNeeded'];
 
 function val(id) { const el = document.getElementById(id); return el ? el.value : ''; }
 function radioVal(name) { const c = document.querySelector(`input[name="${name}"]:checked`); return c ? c.value : '—'; }
@@ -464,6 +467,7 @@ function buildOutput() {
         <div class="po-section-title">Logistics</div>
         <div class="po-grid three">
           <div class="po-field"><div class="po-label">Boom Truck</div><div class="po-value">${radioVal('boomTruck')}</div></div>
+          <div class="po-field"><div class="po-label">Trailer Needed</div><div class="po-value">${radioVal('trailerNeeded')}</div></div>
           <div class="po-field"><div class="po-label">Up</div><div class="po-value">${esc(val('boomUp'))||'—'}</div></div>
           <div class="po-field"><div class="po-label">In</div><div class="po-value">${esc(val('boomIn'))||'—'}</div></div>
           <div class="po-field"><div class="po-label">Set Back</div><div class="po-value">${esc(val('boomSetBack'))||'—'}</div></div>
