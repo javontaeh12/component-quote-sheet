@@ -254,65 +254,82 @@
     color: #fff;
   }
 
-  /* ── Mobile Parts Cards ── */
-  .parts-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+  /* ── Mobile Parts: One at a time ── */
+  .parts-carousel { margin-top: 8px; }
+  .parts-list { position: relative; }
   .part-card {
     background: var(--input-bg);
     border: 1.5px solid var(--border);
-    border-radius: 10px;
-    padding: 14px;
-    position: relative;
+    border-radius: 12px;
+    padding: 16px;
+    display: none;
   }
+  .part-card.active { display: block; }
   .part-card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 14px;
+  }
+  .part-card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   .part-card-num {
     background: var(--primary);
     color: #fff;
-    width: 24px; height: 24px;
-    border-radius: 6px;
+    width: 28px; height: 28px;
+    border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700;
+    font-size: 13px; font-weight: 700;
+  }
+  .part-card-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .part-card-counter {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
   }
   .part-card .remove-btn {
-    background: none;
-    color: #ccc;
-    border: none;
-    font-size: 22px;
+    background: #fef2f2;
+    color: var(--accent);
+    border: 1.5px solid #fecaca;
+    font-size: 13px;
     line-height: 1;
-    padding: 4px 8px;
+    padding: 6px 12px;
     cursor: pointer;
     border-radius: 6px;
+    font-weight: 600;
+    font-family: inherit;
     -webkit-tap-highlight-color: transparent;
   }
-  .part-card .remove-btn:active { color: var(--accent); background: #fef2f2; }
+  .part-card .remove-btn:active { background: #fee2e2; }
   .part-card-fields {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-direction: column;
+    gap: 10px;
   }
   .part-card-fields .pf {
     display: flex;
     flex-direction: column;
-    min-width: 100%;
   }
-  .part-card-fields .pf.half { min-width: calc(50% - 4px); }
   .part-card-fields .pf label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.5px;
     color: var(--text-muted);
-    margin-bottom: 3px;
+    margin-bottom: 4px;
   }
   .part-card-fields .pf input {
-    padding: 10px 12px;
+    padding: 12px 14px;
     border: 1.5px solid var(--border);
-    border-radius: 6px;
-    font-size: 15px;
+    border-radius: 8px;
+    font-size: 16px;
     font-family: inherit;
     background: #fff;
     color: var(--text);
@@ -325,6 +342,46 @@
     box-shadow: 0 0 0 3px rgba(42,90,140,0.12);
   }
   .part-card-fields .pf input::placeholder { color: #c5cad2; }
+
+  /* Part navigation */
+  .part-nav {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    align-items: center;
+  }
+  .part-nav-btn {
+    flex: 1;
+    padding: 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--primary);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .part-nav-btn:active { background: var(--section-bg); }
+  .part-nav-btn:disabled { opacity: 0.35; }
+  .part-nav-dots {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    padding: 0 8px;
+    flex-wrap: wrap;
+    max-width: 50%;
+  }
+  .part-nav-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .part-nav-dot.active { background: var(--primary); }
 
   /* Desktop table (hidden on mobile) */
   .parts-wrapper { display: none; }
@@ -447,7 +504,7 @@
     .pill-group label.pill { padding: 9px 16px; font-size: 13px; }
     .status-field { min-width: 170px; }
     .part-card-fields .pf input { font-size: 13px; padding: 8px 10px; }
-    .parts-list { display: none; }
+    .parts-carousel { display: none; }
     .parts-wrapper {
       display: block;
       border: 1.5px solid var(--border);
@@ -478,8 +535,9 @@
       border: none; border-bottom: 1.5px solid #333; border-radius: 0;
       background: transparent !important; padding: 6px 2px; box-shadow: none; font-size: 12px;
     }
-    .parts-list { display: flex !important; }
-    .part-card { break-inside: avoid; }
+    .parts-carousel { display: block !important; }
+    .part-nav { display: none !important; }
+    .part-card { display: block !important; break-inside: avoid; margin-bottom: 8px; }
     .part-card .remove-btn { display: none; }
     .part-card-fields .pf input { border: none; border-bottom: 1px solid #ccc; border-radius: 0; font-size: 11px; padding: 4px 2px; }
     .pill-group { border: none; }
@@ -714,8 +772,15 @@
         <h2>Parts & Materials</h2>
       </div>
 
-      <!-- Mobile: Card layout -->
-      <div class="parts-list" id="partsList"></div>
+      <!-- Mobile: One-at-a-time card layout -->
+      <div class="parts-carousel" id="partsCarousel">
+        <div class="parts-list" id="partsList"></div>
+        <div class="part-nav" id="partNav">
+          <button class="part-nav-btn" id="partPrev" onclick="navigatePart(-1)">&larr; Prev</button>
+          <div class="part-nav-dots" id="partDots"></div>
+          <button class="part-nav-btn" id="partNext" onclick="navigatePart(1)">Next &rarr;</button>
+        </div>
+      </div>
 
       <!-- Desktop: Table layout -->
       <div class="parts-wrapper">
@@ -737,6 +802,7 @@
 
       <div class="table-actions">
         <button class="add-row-btn" type="button" onclick="addPartRow()">+ Add Part</button>
+        <div class="part-count" id="partCount" style="text-align:center;margin-top:8px;font-size:12px;color:#667085;font-weight:500;"></div>
       </div>
     </div>
 
@@ -811,7 +877,7 @@
   function restoreForm() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      for (let i = 0; i < 6; i++) addPartRow();
+      updatePartView();
       return;
     }
     isRestoring = true;
@@ -840,15 +906,18 @@
         rowData.forEach((val, i) => { if (trInputs[i]) trInputs[i].value = val; });
       });
     } else {
-      for (let i = 0; i < 6; i++) addPartRow();
+      updatePartView();
     }
     isRestoring = false;
   }
+
+  let currentPartIndex = 0;
 
   // ── Add Part Row (both card + table) ──
   function addPartRow() {
     rowCount++;
     const n = rowCount;
+    const totalParts = document.querySelectorAll('#partsList .part-card').length + 1;
 
     // Card (mobile)
     const list = document.getElementById('partsList');
@@ -857,15 +926,18 @@
     card.dataset.row = n;
     card.innerHTML = `
       <div class="part-card-header">
-        <div class="part-card-num">${n}</div>
-        <button class="remove-btn" onclick="removeRow(${n})" title="Remove">&times;</button>
+        <div class="part-card-header-left">
+          <div class="part-card-num">${totalParts}</div>
+          <span class="part-card-label">Part ${totalParts}</span>
+        </div>
+        <button class="remove-btn" onclick="removeRow(${n})">Remove</button>
       </div>
       <div class="part-card-fields">
-        <div class="pf"><label>Description</label><input type="text" placeholder="Part description" data-col="0"></div>
-        <div class="pf half"><label>Part #</label><input type="text" placeholder="Part #" data-col="1"></div>
-        <div class="pf half"><label>Qty</label><input type="text" placeholder="Qty" data-col="2"></div>
-        <div class="pf half"><label>Cost</label><input type="text" placeholder="$0.00" data-col="3"></div>
-        <div class="pf half"><label>Vendor</label><input type="text" placeholder="Vendor" data-col="4"></div>
+        <div class="pf"><label>Description</label><input type="text" placeholder="Enter part description" data-col="0"></div>
+        <div class="pf"><label>Part #</label><input type="text" placeholder="Enter part number" data-col="1"></div>
+        <div class="pf"><label>Quantity</label><input type="text" inputmode="numeric" placeholder="Enter quantity" data-col="2"></div>
+        <div class="pf"><label>Cost</label><input type="text" inputmode="decimal" placeholder="$0.00" data-col="3"></div>
+        <div class="pf"><label>Vendor</label><input type="text" placeholder="Enter vendor name" data-col="4"></div>
       </div>
     `;
     list.appendChild(card);
@@ -875,7 +947,7 @@
     const tr = document.createElement('tr');
     tr.dataset.row = n;
     tr.innerHTML = `
-      <td class="row-num">${n}</td>
+      <td class="row-num">${totalParts}</td>
       <td><input type="text" placeholder="Part description" data-col="0"></td>
       <td><input type="text" placeholder="Part #" data-col="1"></td>
       <td><input type="text" placeholder="Qty" data-col="2"></td>
@@ -901,7 +973,12 @@
       });
     });
 
-    if (!isRestoring) saveForm();
+    // Show the newly added card
+    if (!isRestoring) {
+      currentPartIndex = document.querySelectorAll('#partsList .part-card').length - 1;
+      saveForm();
+    }
+    updatePartView();
   }
 
   function removeRow(n) {
@@ -910,6 +987,9 @@
     if (card) card.remove();
     if (tr) tr.remove();
     renumberRows();
+    const total = document.querySelectorAll('#partsList .part-card').length;
+    if (currentPartIndex >= total) currentPartIndex = Math.max(0, total - 1);
+    updatePartView();
     saveForm();
   }
 
@@ -918,10 +998,46 @@
     document.querySelectorAll('#partsList .part-card').forEach((card, i) => {
       rowCount = i + 1;
       card.querySelector('.part-card-num').textContent = rowCount;
+      card.querySelector('.part-card-label').textContent = 'Part ' + rowCount;
     });
     document.querySelectorAll('#partsBody tr').forEach((tr, i) => {
       tr.querySelector('.row-num').textContent = i + 1;
     });
+  }
+
+  // ── Part carousel navigation ──
+  function navigatePart(dir) {
+    const cards = document.querySelectorAll('#partsList .part-card');
+    const total = cards.length;
+    if (total === 0) return;
+    currentPartIndex = Math.max(0, Math.min(total - 1, currentPartIndex + dir));
+    updatePartView();
+  }
+
+  function updatePartView() {
+    const cards = document.querySelectorAll('#partsList .part-card');
+    const total = cards.length;
+    cards.forEach((card, i) => {
+      card.classList.toggle('active', i === currentPartIndex);
+    });
+    // Hide nav if no parts or only one
+    const navEl = document.getElementById('partNav');
+    navEl.style.display = total <= 1 ? 'none' : 'flex';
+    // Update dots
+    const dotsContainer = document.getElementById('partDots');
+    dotsContainer.innerHTML = '';
+    for (let i = 0; i < total; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'part-nav-dot' + (i === currentPartIndex ? ' active' : '');
+      dot.onclick = () => { currentPartIndex = i; updatePartView(); };
+      dotsContainer.appendChild(dot);
+    }
+    // Update prev/next buttons
+    document.getElementById('partPrev').disabled = currentPartIndex === 0;
+    document.getElementById('partNext').disabled = currentPartIndex >= total - 1;
+    // Update part count text
+    const partCountEl = document.getElementById('partCount');
+    if (partCountEl) partCountEl.textContent = total > 0 ? `${total} part${total !== 1 ? 's' : ''} added` : '';
   }
 
   // ── Attach save listeners ──
