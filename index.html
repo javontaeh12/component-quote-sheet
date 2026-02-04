@@ -22,737 +22,311 @@
     --success: #27ae60;
     --shadow: 0 4px 24px rgba(0,0,0,0.08);
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  html, body {
-    overflow-x: hidden;
-    max-width: 100vw;
-  }
-
+  html, body { overflow-x: hidden; max-width: 100vw; }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg);
-    padding: 0;
-    color: var(--text);
-    -webkit-font-smoothing: antialiased;
-    -webkit-tap-highlight-color: transparent;
+    background: var(--bg); padding: 0; color: var(--text);
+    -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
   }
-
-  .form-container {
-    max-width: 940px;
-    margin: 0 auto;
-    background: var(--card);
-    min-height: 100vh;
-  }
-
-  /* Header */
+  .form-container { max-width: 940px; margin: 0 auto; background: var(--card); min-height: 100vh; }
   .form-header {
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-    color: #fff;
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    color: #fff; padding: 20px; display: flex; align-items: center;
+    justify-content: space-between; position: sticky; top: 0; z-index: 100;
     box-shadow: 0 2px 12px rgba(0,0,0,0.15);
   }
-  .form-header h1 {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-  }
-  .form-header .subtitle {
-    font-size: 11px;
-    opacity: 0.75;
-    font-weight: 400;
-    margin-top: 2px;
-  }
+  .form-header h1 { font-size: 18px; font-weight: 700; }
+  .form-header .subtitle { font-size: 11px; opacity: 0.75; margin-top: 2px; }
   .header-badge {
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.25);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    white-space: nowrap;
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+    padding: 6px 12px; border-radius: 6px; font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;
   }
-
   .form-body { padding: 16px; }
-
-  /* Section */
-  .section {
-    margin-bottom: 20px;
-  }
+  .section { margin-bottom: 20px; }
   .section-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid var(--primary);
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    padding-bottom: 8px; border-bottom: 2px solid var(--primary);
   }
   .section-header .section-icon {
-    width: 26px; height: 26px;
-    background: var(--primary);
-    color: #fff;
-    border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700;
-    flex-shrink: 0;
+    width: 26px; height: 26px; background: var(--primary); color: #fff;
+    border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
   }
-  .section-header h2 {
-    font-size: 13px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--primary);
-  }
-
-  /* Rows & Fields */
-  .row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-  }
-  .field {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-width: 100%;
-  }
+  .section-header h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--primary); }
+  .row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .field { display: flex; flex-direction: column; flex: 1; min-width: 100%; }
   .field.half { min-width: calc(50% - 5px); }
   .field.third { min-width: calc(33.33% - 7px); }
-  .field label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-    color: var(--text-muted);
+  .field label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; color: var(--text-muted); }
+  .field label .hint { font-weight: 400; text-transform: none; letter-spacing: 0; color: #98a2b3; font-size: 10px; }
+  .field input, .field select, .field textarea {
+    padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 16px; font-family: inherit; background: var(--input-bg); color: var(--text);
+    transition: border-color 0.2s, box-shadow 0.2s; -webkit-appearance: none; appearance: none;
   }
-  .field label .hint {
-    font-weight: 400;
-    text-transform: none;
-    letter-spacing: 0;
-    color: #98a2b3;
-    font-size: 10px;
-  }
-  .field input,
-  .field select,
-  .field textarea {
-    padding: 12px 14px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    font-size: 16px;
-    font-family: inherit;
-    background: var(--input-bg);
-    color: var(--text);
-    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-    -webkit-appearance: none;
-    appearance: none;
-  }
-  .field input:focus,
-  .field select:focus,
-  .field textarea:focus {
-    outline: none;
-    border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px rgba(42,90,140,0.12);
-    background: #fff;
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(42,90,140,0.12); background: #fff;
   }
   .field input::placeholder, .field textarea::placeholder { color: #b0b8c4; }
-  .field textarea {
-    resize: vertical;
-    min-height: 70px;
-    line-height: 1.5;
-  }
+  .field textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
   .field select {
     cursor: pointer;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667085' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    padding-right: 36px;
+    background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px;
   }
-
-  /* Inline page fields */
-  .page-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+  .page-group { display: flex; align-items: center; gap: 8px; }
   .page-group input {
-    width: 60px;
-    text-align: center;
-    padding: 12px 8px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    font-size: 16px;
-    font-family: inherit;
-    background: var(--input-bg);
-    color: var(--text);
-    transition: border-color 0.2s, box-shadow 0.2s;
-    -webkit-appearance: none;
+    width: 60px; text-align: center; padding: 12px 8px; border: 1.5px solid var(--border);
+    border-radius: 8px; font-size: 16px; font-family: inherit; background: var(--input-bg);
+    color: var(--text); -webkit-appearance: none;
   }
-  .page-group input:focus {
-    outline: none;
-    border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px rgba(42,90,140,0.12);
-    background: #fff;
-  }
-  .page-group span {
-    font-weight: 600;
-    color: var(--text-muted);
-    font-size: 14px;
-  }
-
-  /* Status pills */
-  .status-field {
-    flex: 1;
-    min-width: calc(50% - 5px);
-  }
-  .status-field label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-    color: var(--text-muted);
-    display: block;
-  }
-  .pill-group {
-    display: flex;
-    gap: 0;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1.5px solid var(--border);
-  }
+  .page-group input:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(42,90,140,0.12); background: #fff; }
+  .page-group span { font-weight: 600; color: var(--text-muted); font-size: 14px; }
+  .status-field { flex: 1; min-width: calc(50% - 5px); }
+  .status-field label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; color: var(--text-muted); display: block; }
+  .pill-group { display: flex; border-radius: 8px; overflow: hidden; border: 1.5px solid var(--border); }
   .pill-group input[type="radio"] { display: none; }
   .pill-group label.pill {
-    flex: 1;
-    text-align: center;
-    padding: 12px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    background: var(--input-bg);
-    color: var(--text-muted);
-    transition: all 0.2s;
-    text-transform: none;
-    letter-spacing: 0;
-    margin: 0;
-    border-right: 1px solid var(--border);
+    flex: 1; text-align: center; padding: 12px 16px; font-size: 14px; font-weight: 600;
+    cursor: pointer; background: var(--input-bg); color: var(--text-muted);
+    transition: all 0.2s; margin: 0; border-right: 1px solid var(--border);
     -webkit-tap-highlight-color: transparent;
   }
   .pill-group label.pill:last-of-type { border-right: none; }
-  .pill-group input[type="radio"]:checked + label.pill {
-    background: var(--primary);
-    color: #fff;
-  }
+  .pill-group input[type="radio"]:checked + label.pill { background: var(--primary); color: #fff; }
 
   /* ── Mobile Parts: One at a time ── */
   .parts-carousel { margin-top: 8px; }
-  .parts-list { position: relative; }
   .part-card {
-    background: var(--input-bg);
-    border: 1.5px solid var(--border);
-    border-radius: 12px;
-    padding: 16px;
-    display: none;
+    background: var(--input-bg); border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 16px; display: none;
   }
   .part-card.active { display: block; }
-  .part-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-  }
-  .part-card-header-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+  .part-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .part-card-header-left { display: flex; align-items: center; gap: 8px; }
   .part-card-num {
-    background: var(--primary);
-    color: #fff;
-    width: 28px; height: 28px;
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 700;
+    background: var(--primary); color: #fff; width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
   }
-  .part-card-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .part-card-counter {
-    font-size: 12px;
-    color: var(--text-muted);
-    font-weight: 500;
-  }
+  .part-card-label { font-size: 13px; font-weight: 600; color: var(--text); }
   .part-card .remove-btn {
-    background: #fef2f2;
-    color: var(--accent);
-    border: 1.5px solid #fecaca;
-    font-size: 13px;
-    line-height: 1;
-    padding: 6px 12px;
-    cursor: pointer;
-    border-radius: 6px;
-    font-weight: 600;
-    font-family: inherit;
-    -webkit-tap-highlight-color: transparent;
+    background: #fef2f2; color: var(--accent); border: 1.5px solid #fecaca;
+    font-size: 13px; padding: 6px 12px; cursor: pointer; border-radius: 6px;
+    font-weight: 600; font-family: inherit; -webkit-tap-highlight-color: transparent;
   }
-  .part-card .remove-btn:active { background: #fee2e2; }
-  .part-card-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .part-card-fields .pf {
-    display: flex;
-    flex-direction: column;
-  }
-  .part-card-fields .pf label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-  }
+  .part-card-fields { display: flex; flex-direction: column; gap: 10px; }
+  .part-card-fields .pf { display: flex; flex-direction: column; }
+  .part-card-fields .pf label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 4px; }
   .part-card-fields .pf input {
-    padding: 12px 14px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    font-size: 16px;
-    font-family: inherit;
-    background: #fff;
-    color: var(--text);
+    padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 16px; font-family: inherit; background: #fff; color: var(--text);
     -webkit-appearance: none;
-    transition: border-color 0.2s;
   }
-  .part-card-fields .pf input:focus {
-    outline: none;
-    border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px rgba(42,90,140,0.12);
-  }
+  .part-card-fields .pf input:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(42,90,140,0.12); }
   .part-card-fields .pf input::placeholder { color: #c5cad2; }
-
-  /* Part navigation */
-  .part-nav {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    align-items: center;
-  }
+  .part-nav { display: flex; gap: 8px; margin-top: 12px; align-items: center; }
   .part-nav-btn {
-    flex: 1;
-    padding: 12px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    background: #fff;
-    color: var(--primary);
-    font-size: 14px;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    text-align: center;
-    -webkit-tap-highlight-color: transparent;
+    flex: 1; padding: 12px; border: 1.5px solid var(--border); border-radius: 8px;
+    background: #fff; color: var(--primary); font-size: 14px; font-weight: 600;
+    font-family: inherit; cursor: pointer; text-align: center; -webkit-tap-highlight-color: transparent;
   }
-  .part-nav-btn:active { background: var(--section-bg); }
   .part-nav-btn:disabled { opacity: 0.35; }
-  .part-nav-dots {
-    display: flex;
-    gap: 6px;
-    justify-content: center;
-    padding: 0 8px;
-    flex-wrap: wrap;
-    max-width: 50%;
-  }
-  .part-nav-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--border);
-    transition: background 0.2s;
-    flex-shrink: 0;
-  }
+  .part-nav-dots { display: flex; gap: 6px; justify-content: center; padding: 0 8px; flex-wrap: wrap; max-width: 50%; }
+  .part-nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
   .part-nav-dot.active { background: var(--primary); }
 
   /* Desktop table (hidden on mobile) */
   .parts-wrapper { display: none; }
   .parts-table { width: 100%; border-collapse: collapse; }
-  .parts-table thead th {
-    background: var(--primary); color: #fff;
-    padding: 10px 12px; font-size: 11px; font-weight: 600;
-    text-align: left; text-transform: uppercase; letter-spacing: 0.8px;
-  }
+  .parts-table thead th { background: var(--primary); color: #fff; padding: 10px 12px; font-size: 11px; font-weight: 600; text-align: left; text-transform: uppercase; }
   .parts-table td { padding: 3px 4px; }
   .parts-table tbody tr { border-bottom: 1px solid #eef0f3; }
-  .parts-table tbody tr:last-child { border-bottom: none; }
-  .parts-table input {
-    width: 100%; padding: 8px 10px;
-    border: 1.5px solid transparent; border-radius: 4px;
-    font-size: 13px; font-family: inherit;
-    background: transparent; color: var(--text);
-  }
+  .parts-table input { width: 100%; padding: 8px 10px; border: 1.5px solid transparent; border-radius: 4px; font-size: 13px; font-family: inherit; background: transparent; color: var(--text); }
   .parts-table input:focus { outline: none; border-color: var(--border-focus); background: #fff; }
   .parts-table .row-num { width: 30px; text-align: center; color: var(--text-muted); font-size: 11px; font-weight: 600; }
-  .parts-table .remove-btn {
-    background: none; color: #d0d5dd; border: none; border-radius: 4px;
-    cursor: pointer; padding: 4px 8px; font-size: 16px; line-height: 1;
-  }
+  .parts-table .remove-btn { background: none; color: #d0d5dd; border: none; cursor: pointer; padding: 4px 8px; font-size: 16px; }
 
-  .table-actions {
-    margin-top: 12px;
-  }
+  .table-actions { margin-top: 12px; }
   .add-row-btn {
-    padding: 14px 20px;
-    background: var(--section-bg);
-    color: var(--primary);
-    border: 1.5px dashed var(--border);
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    font-family: inherit;
-    width: 100%;
-    text-align: center;
+    padding: 14px 20px; background: var(--section-bg); color: var(--primary);
+    border: 1.5px dashed var(--border); border-radius: 8px; cursor: pointer;
+    font-size: 14px; font-weight: 600; font-family: inherit; width: 100%; text-align: center;
     -webkit-tap-highlight-color: transparent;
   }
-  .add-row-btn:active { background: #e4e9f0; border-color: var(--primary); }
 
   /* Action Buttons */
   .actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1.5px solid #eef0f3;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-top: 24px; padding-top: 20px; border-top: 1.5px solid #eef0f3;
   }
   .actions button {
-    padding: 14px 12px;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: inherit;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
+    padding: 14px 12px; font-size: 13px; font-weight: 600; font-family: inherit;
+    border: none; border-radius: 10px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; gap: 6px;
     -webkit-tap-highlight-color: transparent;
-    transition: opacity 0.15s;
   }
   .actions button:active { opacity: 0.8; }
-  .btn-download {
-    background: var(--primary);
-    color: #fff;
-  }
-  .btn-photo {
-    background: #8e44ad;
-    color: #fff;
-  }
-  .btn-print {
-    background: var(--success);
-    color: #fff;
-  }
-  .btn-reset {
-    background: #fff;
-    color: var(--text-muted);
-    border: 1.5px solid var(--border) !important;
-  }
+  .btn-download { background: var(--primary); color: #fff; }
+  .btn-photo { background: #8e44ad; color: #fff; }
+  .btn-print { background: var(--success); color: #fff; }
+  .btn-reset { background: #fff; color: var(--text-muted); border: 1.5px solid var(--border) !important; }
 
-  /* Footer */
-  .form-footer {
-    background: var(--section-bg);
-    padding: 14px 16px;
-    text-align: center;
-    font-size: 10px;
-    color: var(--text-muted);
+  .form-footer { background: var(--section-bg); padding: 14px 16px; text-align: center; font-size: 10px; color: var(--text-muted); border-top: 1px solid #e4e7ec; }
+
+  /* ── Print output (hidden offscreen until export) ── */
+  #printOutput {
+    position: absolute; left: -9999px; top: 0;
+    width: 816px; /* letter width at 96dpi */
+    font-family: 'Inter', sans-serif; color: #1a1a2e; background: #fff;
+  }
+  #printOutput .po-header {
+    background: #1a3a5c; color: #fff; padding: 24px 32px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  #printOutput .po-header h1 { font-size: 22px; font-weight: 700; }
+  #printOutput .po-header .po-badge {
+    background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+    padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  #printOutput .po-body { padding: 24px 32px; }
+  #printOutput .po-section { margin-bottom: 20px; }
+  #printOutput .po-section-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+    color: #1a3a5c; border-bottom: 2px solid #1a3a5c; padding-bottom: 6px; margin-bottom: 12px;
+  }
+  #printOutput .po-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px;
+  }
+  #printOutput .po-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  #printOutput .po-field { margin-bottom: 6px; }
+  #printOutput .po-field .po-label {
+    font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    color: #667085; margin-bottom: 2px;
+  }
+  #printOutput .po-field .po-value {
+    font-size: 13px; font-weight: 500; color: #1a1a2e; padding: 4px 0;
+    border-bottom: 1px solid #e4e7ec; min-height: 22px;
+  }
+  #printOutput .po-field.full { grid-column: 1 / -1; }
+  #printOutput .po-field .po-value.multiline { white-space: pre-wrap; line-height: 1.5; }
+  #printOutput .po-parts-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  #printOutput .po-parts-table th {
+    background: #1a3a5c; color: #fff; padding: 8px 10px; font-size: 10px;
+    font-weight: 600; text-transform: uppercase; text-align: left;
+  }
+  #printOutput .po-parts-table td {
+    padding: 7px 10px; font-size: 12px; border-bottom: 1px solid #e4e7ec;
+  }
+  #printOutput .po-parts-table tr:nth-child(even) { background: #f8f9fb; }
+  #printOutput .po-footer {
+    text-align: center; padding: 12px; font-size: 9px; color: #98a2b3;
     border-top: 1px solid #e4e7ec;
   }
 
   /* ── Desktop overrides ── */
   @media (min-width: 768px) {
     body { padding: 30px 20px; }
-    .form-container {
-      border-radius: 12px;
-      box-shadow: var(--shadow);
-      min-height: auto;
-    }
-    .form-header {
-      padding: 28px 40px;
-      position: static;
-      box-shadow: none;
-    }
+    .form-container { border-radius: 12px; box-shadow: var(--shadow); min-height: auto; }
+    .form-header { padding: 28px 40px; position: static; box-shadow: none; }
     .form-header h1 { font-size: 24px; }
-    .form-header .subtitle { font-size: 13px; }
     .header-badge { padding: 8px 16px; font-size: 12px; }
     .form-body { padding: 32px 40px 40px; }
     .field { min-width: 170px; }
-    .field.half { min-width: 170px; }
-    .field.third { min-width: 170px; }
+    .field.half, .field.third { min-width: 170px; }
     .field input, .field select, .field textarea { font-size: 14px; padding: 9px 12px; }
     .page-group input { font-size: 14px; padding: 9px 6px; width: 52px; }
     .pill-group label.pill { padding: 9px 16px; font-size: 13px; }
     .status-field { min-width: 170px; }
-    .part-card-fields .pf input { font-size: 13px; padding: 8px 10px; }
     .parts-carousel { display: none; }
-    .parts-wrapper {
-      display: block;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-      margin-top: 8px;
-    }
+    .parts-wrapper { display: block; border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 8px; }
     .add-row-btn { width: auto; padding: 8px 20px; font-size: 13px; }
-    .actions {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-    }
+    .actions { display: flex; gap: 12px; justify-content: center; }
     .actions button { padding: 12px 32px; font-size: 14px; }
     .form-footer { padding: 16px 40px; font-size: 11px; }
   }
-
-  /* Print styles */
   @media print {
     body { background: #fff; padding: 0; }
-    .form-container { box-shadow: none; border-radius: 0; }
-    .form-header { position: static; box-shadow: none; padding: 20px 30px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .form-body { padding: 20px 30px; }
-    .actions, .add-row-btn, .remove-btn, .table-actions, .form-footer { display: none !important; }
-    .parts-table thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .section-header .section-icon { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .field input, .field select, .field textarea {
-      border: none; border-bottom: 1.5px solid #333; border-radius: 0;
-      background: transparent !important; padding: 6px 2px; box-shadow: none; font-size: 12px;
-    }
-    .parts-carousel { display: block !important; }
-    .part-nav { display: none !important; }
-    .part-card { display: block !important; break-inside: avoid; margin-bottom: 8px; }
-    .part-card .remove-btn { display: none; }
-    .part-card-fields .pf input { border: none; border-bottom: 1px solid #ccc; border-radius: 0; font-size: 11px; padding: 4px 2px; }
-    .pill-group { border: none; }
-    .pill-group label.pill { border: 1px solid #ccc; }
-    .pill-group input[type="radio"]:checked + label.pill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .form-container { display: none; }
+    #printOutput { position: static !important; left: auto !important; display: block !important; }
   }
 </style>
 </head>
 <body>
 
 <div class="form-container" id="quoteForm">
-
-  <!-- Header -->
   <div class="form-header">
-    <div>
-      <h1>Component Quote Sheet</h1>
-      <div class="subtitle">HVAC / Refrigeration Service</div>
-    </div>
+    <div><h1>Component Quote Sheet</h1><div class="subtitle">HVAC / Refrigeration Service</div></div>
     <div class="header-badge">Service Quote</div>
   </div>
-
   <div class="form-body">
 
-    <!-- SECTION 1: Job Information -->
     <div class="section">
-      <div class="section-header">
-        <div class="section-icon">1</div>
-        <h2>Job Information</h2>
-      </div>
-      <div class="row">
-        <div class="field"><label>Customer Name</label><input type="text" id="customerName" placeholder="Enter customer name"></div>
-      </div>
+      <div class="section-header"><div class="section-icon">1</div><h2>Job Information</h2></div>
+      <div class="row"><div class="field"><label>Customer Name</label><input type="text" id="customerName" placeholder="Enter customer name"></div></div>
       <div class="row">
         <div class="field half"><label>Store #</label><input type="text" id="storeNumber" placeholder="Store #"></div>
         <div class="field half"><label>WO Number</label><input type="text" id="woNumber" placeholder="Work order #"></div>
       </div>
       <div class="row">
         <div class="field half"><label>Tech</label><input type="text" id="tech" placeholder="Technician name"></div>
-        <div class="field half">
-          <label>Page</label>
-          <div class="page-group">
-            <input type="text" id="pageNum" placeholder="#"> <span>of</span>
-            <input type="text" id="pageOf" placeholder="#">
-          </div>
-        </div>
+        <div class="field half"><label>Page</label><div class="page-group"><input type="text" id="pageNum" placeholder="#"><span>of</span><input type="text" id="pageOf" placeholder="#"></div></div>
       </div>
     </div>
 
-    <!-- SECTION 2: Equipment Details -->
     <div class="section">
-      <div class="section-header">
-        <div class="section-icon">2</div>
-        <h2>Equipment Details</h2>
-      </div>
-      <div class="row">
-        <div class="field"><label>Equipment Type</label><input type="text" id="equipmentType" placeholder="e.g. RTU, Condenser, Walk-in Cooler"></div>
-      </div>
-      <div class="row">
-        <div class="field">
-          <label>Location</label>
-          <select id="location">
-            <option value="">-- Select Location --</option>
-            <option value="Roof">Roof</option>
-            <option value="Ground">Ground</option>
-            <option value="Self-Contained">Self-Contained</option>
-          </select>
-        </div>
-      </div>
-      <div class="row">
-        <div class="field">
-          <label>Manufacturer <span class="hint">- type to search or enter custom</span></label>
-          <input type="text" id="manufacturer" list="mfgList" placeholder="Select or type manufacturer" autocomplete="off">
-          <datalist id="mfgList">
-            <option value="AAON">
-            <option value="ADP (Advanced Distributor Products)">
-            <option value="Aire-Flo">
-            <option value="Amana">
-            <option value="American Standard">
-            <option value="Armstrong Air">
-            <option value="Bard Manufacturing">
-            <option value="Bosch">
-            <option value="Bryant">
-            <option value="Carrier">
-            <option value="Comfortmaker">
-            <option value="Daikin">
-            <option value="Dunham-Bush">
-            <option value="Friedrich">
-            <option value="Fujitsu">
-            <option value="Goodman">
-            <option value="Heil">
-            <option value="Honeywell">
-            <option value="ICP (International Comfort Products)">
-            <option value="Johnson Controls">
-            <option value="Lennox">
-            <option value="LG">
-            <option value="Luxaire">
-            <option value="Mammoth">
-            <option value="McQuay International">
-            <option value="Mitsubishi Electric">
-            <option value="Modine">
-            <option value="Nortek">
-            <option value="Payne">
-            <option value="Reznor">
-            <option value="Rheem">
-            <option value="Ruud">
-            <option value="Samsung">
-            <option value="Trane">
-            <option value="York">
-            <option value="Bally Refrigerated Boxes">
-            <option value="Beacon/Morris">
-            <option value="Bohn (Heatcraft)">
-            <option value="Bristol Compressors">
-            <option value="Climate Master">
-            <option value="Copeland (Emerson)">
-            <option value="Danfoss">
-            <option value="Embraco">
-            <option value="Heatcraft">
-            <option value="Hill Phoenix">
-            <option value="Hussmann">
-            <option value="KeepRite Refrigeration">
-            <option value="Kelvinator Commercial">
-            <option value="Kolpak">
-            <option value="Kramer Trenton">
-            <option value="Kysor/Warren">
-            <option value="Larkin (Heatcraft)">
-            <option value="Master-Bilt">
-            <option value="McCall">
-            <option value="Nor-Lake">
-            <option value="Randell">
-            <option value="Russell">
-            <option value="Sporlan">
-            <option value="Sub-Zero Commercial">
-            <option value="Tecumseh">
-            <option value="Traulsen">
-            <option value="True Manufacturing">
-            <option value="Turbo Air">
-            <option value="Tyler Refrigeration">
-            <option value="Victory Refrigeration">
-            <option value="Walk-In Cooler Warehouse">
-            <option value="Zero Zone">
-          </datalist>
-        </div>
-      </div>
-      <div class="row">
-        <div class="field"><label>Unit</label><input type="text" id="unit" placeholder="Unit ID"></div>
-      </div>
-      <div class="row">
-        <div class="field"><label>Model #</label><input type="text" id="modelNumber" placeholder="Model number"></div>
-      </div>
-      <div class="row">
-        <div class="field"><label>Serial #</label><input type="text" id="serialNumber" placeholder="Serial number"></div>
-      </div>
+      <div class="section-header"><div class="section-icon">2</div><h2>Equipment Details</h2></div>
+      <div class="row"><div class="field"><label>Equipment Type</label><input type="text" id="equipmentType" placeholder="e.g. RTU, Condenser, Walk-in Cooler"></div></div>
+      <div class="row"><div class="field">
+        <label>Location</label>
+        <select id="location"><option value="">-- Select Location --</option><option value="Roof">Roof</option><option value="Ground">Ground</option><option value="Self-Contained">Self-Contained</option></select>
+      </div></div>
+      <div class="row"><div class="field">
+        <label>Manufacturer <span class="hint">- type to search or enter custom</span></label>
+        <input type="text" id="manufacturer" list="mfgList" placeholder="Select or type manufacturer" autocomplete="off">
+        <datalist id="mfgList">
+          <option value="AAON"><option value="ADP (Advanced Distributor Products)"><option value="Aire-Flo"><option value="Amana"><option value="American Standard">
+          <option value="Armstrong Air"><option value="Bard Manufacturing"><option value="Bosch"><option value="Bryant"><option value="Carrier">
+          <option value="Comfortmaker"><option value="Daikin"><option value="Dunham-Bush"><option value="Friedrich"><option value="Fujitsu">
+          <option value="Goodman"><option value="Heil"><option value="Honeywell"><option value="ICP (International Comfort Products)"><option value="Johnson Controls">
+          <option value="Lennox"><option value="LG"><option value="Luxaire"><option value="Mammoth"><option value="McQuay International">
+          <option value="Mitsubishi Electric"><option value="Modine"><option value="Nortek"><option value="Payne"><option value="Reznor">
+          <option value="Rheem"><option value="Ruud"><option value="Samsung"><option value="Trane"><option value="York">
+          <option value="Bally Refrigerated Boxes"><option value="Beacon/Morris"><option value="Bohn (Heatcraft)"><option value="Bristol Compressors">
+          <option value="Climate Master"><option value="Copeland (Emerson)"><option value="Danfoss"><option value="Embraco"><option value="Heatcraft">
+          <option value="Hill Phoenix"><option value="Hussmann"><option value="KeepRite Refrigeration"><option value="Kelvinator Commercial">
+          <option value="Kolpak"><option value="Kramer Trenton"><option value="Kysor/Warren"><option value="Larkin (Heatcraft)"><option value="Master-Bilt">
+          <option value="McCall"><option value="Nor-Lake"><option value="Randell"><option value="Russell"><option value="Sporlan">
+          <option value="Sub-Zero Commercial"><option value="Tecumseh"><option value="Traulsen"><option value="True Manufacturing"><option value="Turbo Air">
+          <option value="Tyler Refrigeration"><option value="Victory Refrigeration"><option value="Walk-In Cooler Warehouse"><option value="Zero Zone">
+        </datalist>
+      </div></div>
+      <div class="row"><div class="field"><label>Unit</label><input type="text" id="unit" placeholder="Unit ID"></div></div>
+      <div class="row"><div class="field"><label>Model #</label><input type="text" id="modelNumber" placeholder="Model number"></div></div>
+      <div class="row"><div class="field"><label>Serial #</label><input type="text" id="serialNumber" placeholder="Serial number"></div></div>
       <div class="row">
         <div class="field half"><label>Voltage</label><input type="text" id="voltage" placeholder="e.g. 208/230"></div>
         <div class="field half"><label>Phase</label><input type="text" id="phase" placeholder="e.g. 1, 3"></div>
       </div>
       <div class="row">
-        <div class="status-field">
-          <label>Warranty</label>
-          <div class="pill-group">
-            <input type="radio" name="warranty" id="warrantyYes" value="Yes">
-            <label class="pill" for="warrantyYes">Yes</label>
-            <input type="radio" name="warranty" id="warrantyNo" value="No">
-            <label class="pill" for="warrantyNo">No</label>
-          </div>
-        </div>
-        <div class="status-field">
-          <label>Operational</label>
-          <div class="pill-group">
-            <input type="radio" name="operational" id="operationalYes" value="Yes">
-            <label class="pill" for="operationalYes">Yes</label>
-            <input type="radio" name="operational" id="operationalNo" value="No">
-            <label class="pill" for="operationalNo">No</label>
-          </div>
-        </div>
+        <div class="status-field"><label>Warranty</label><div class="pill-group"><input type="radio" name="warranty" id="warrantyYes" value="Yes"><label class="pill" for="warrantyYes">Yes</label><input type="radio" name="warranty" id="warrantyNo" value="No"><label class="pill" for="warrantyNo">No</label></div></div>
+        <div class="status-field"><label>Operational</label><div class="pill-group"><input type="radio" name="operational" id="operationalYes" value="Yes"><label class="pill" for="operationalYes">Yes</label><input type="radio" name="operational" id="operationalNo" value="No"><label class="pill" for="operationalNo">No</label></div></div>
       </div>
     </div>
 
-    <!-- SECTION 3: Service Details -->
     <div class="section">
-      <div class="section-header">
-        <div class="section-icon">3</div>
-        <h2>Service Details</h2>
-      </div>
-      <div class="row">
-        <div class="field"><label>Work Performed</label><textarea id="workPerformed" rows="3" placeholder="Describe work performed..."></textarea></div>
-      </div>
-      <div class="row">
-        <div class="field"><label>Reason for Repair</label><textarea id="reasonForRepair" rows="3" placeholder="Describe reason for repair..."></textarea></div>
-      </div>
-      <div class="row">
-        <div class="field"><label>Equipment Needed <span class="hint">- scissor lift, duct jack, 40' ladder, etc.</span></label><textarea id="equipmentNeeded" rows="2" placeholder="List any special equipment needed..."></textarea></div>
-      </div>
-      <div class="row">
-        <div class="field"><label>Other Comments</label><textarea id="otherComments" rows="2" placeholder="Additional notes or comments..."></textarea></div>
-      </div>
+      <div class="section-header"><div class="section-icon">3</div><h2>Service Details</h2></div>
+      <div class="row"><div class="field"><label>Work Performed</label><textarea id="workPerformed" rows="3" placeholder="Describe work performed..."></textarea></div></div>
+      <div class="row"><div class="field"><label>Reason for Repair</label><textarea id="reasonForRepair" rows="3" placeholder="Describe reason for repair..."></textarea></div></div>
+      <div class="row"><div class="field"><label>Equipment Needed <span class="hint">- scissor lift, duct jack, 40' ladder, etc.</span></label><textarea id="equipmentNeeded" rows="2" placeholder="List any special equipment needed..."></textarea></div></div>
+      <div class="row"><div class="field"><label>Other Comments</label><textarea id="otherComments" rows="2" placeholder="Additional notes or comments..."></textarea></div></div>
     </div>
 
-    <!-- SECTION 4: Logistics -->
     <div class="section">
-      <div class="section-header">
-        <div class="section-icon">4</div>
-        <h2>Logistics</h2>
-      </div>
-      <div class="row">
-        <div class="status-field" style="min-width:100%;">
-          <label>Boom Truck Needed?</label>
-          <div class="pill-group">
-            <input type="radio" name="boomTruck" id="boomYes" value="Yes">
-            <label class="pill" for="boomYes">Yes</label>
-            <input type="radio" name="boomTruck" id="boomNo" value="No">
-            <label class="pill" for="boomNo">No</label>
-          </div>
-        </div>
-      </div>
+      <div class="section-header"><div class="section-icon">4</div><h2>Logistics</h2></div>
+      <div class="row"><div class="status-field" style="min-width:100%;"><label>Boom Truck Needed?</label><div class="pill-group"><input type="radio" name="boomTruck" id="boomYes" value="Yes"><label class="pill" for="boomYes">Yes</label><input type="radio" name="boomTruck" id="boomNo" value="No"><label class="pill" for="boomNo">No</label></div></div></div>
       <div class="row">
         <div class="field third"><label>Up</label><input type="text" id="boomUp" placeholder="ft"></div>
         <div class="field third"><label>In</label><input type="text" id="boomIn" placeholder="ft"></div>
@@ -765,383 +339,337 @@
       </div>
     </div>
 
-    <!-- SECTION 5: Parts -->
     <div class="section">
-      <div class="section-header">
-        <div class="section-icon">5</div>
-        <h2>Parts & Materials</h2>
-      </div>
-
-      <!-- Mobile: One-at-a-time card layout -->
+      <div class="section-header"><div class="section-icon">5</div><h2>Parts & Materials</h2></div>
       <div class="parts-carousel" id="partsCarousel">
         <div class="parts-list" id="partsList"></div>
-        <div class="part-nav" id="partNav">
+        <div class="part-nav" id="partNav" style="display:none;">
           <button class="part-nav-btn" id="partPrev" onclick="navigatePart(-1)">&larr; Prev</button>
           <div class="part-nav-dots" id="partDots"></div>
           <button class="part-nav-btn" id="partNext" onclick="navigatePart(1)">Next &rarr;</button>
         </div>
       </div>
-
-      <!-- Desktop: Table layout -->
       <div class="parts-wrapper">
-        <table class="parts-table" id="partsTable">
-          <thead>
-            <tr>
-              <th style="width:30px;">#</th>
-              <th>Description</th>
-              <th style="width:140px;">Part #</th>
-              <th style="width:80px;">Qty</th>
-              <th style="width:110px;">Cost</th>
-              <th style="width:130px;">Vendor</th>
-              <th style="width:36px;"></th>
-            </tr>
-          </thead>
-          <tbody id="partsBody"></tbody>
-        </table>
+        <table class="parts-table" id="partsTable"><thead><tr>
+          <th style="width:30px;">#</th><th>Description</th><th style="width:140px;">Part #</th>
+          <th style="width:80px;">Qty</th><th style="width:110px;">Cost</th><th style="width:130px;">Vendor</th><th style="width:36px;"></th>
+        </tr></thead><tbody id="partsBody"></tbody></table>
       </div>
-
       <div class="table-actions">
         <button class="add-row-btn" type="button" onclick="addPartRow()">+ Add Part</button>
-        <div class="part-count" id="partCount" style="text-align:center;margin-top:8px;font-size:12px;color:#667085;font-weight:500;"></div>
+        <div id="partCount" style="text-align:center;margin-top:8px;font-size:12px;color:#667085;font-weight:500;"></div>
       </div>
     </div>
 
-    <!-- Action Buttons -->
     <div class="actions">
-      <button class="btn-download" onclick="downloadPDF()">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        PDF
-      </button>
-      <button class="btn-photo" onclick="saveAsPhoto()">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4.5A1.5 1.5 0 013.5 3h1.172a1.5 1.5 0 011.06.44L6.94 4.646A.5.5 0 007.293 4.5H12.5A1.5 1.5 0 0114 6v6.5a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="9" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>
-        Photo
-      </button>
-      <button class="btn-print" onclick="window.print()">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6V1h8v5M4 12H2.5A1.5 1.5 0 011 10.5v-4A1.5 1.5 0 012.5 5h11A1.5 1.5 0 0115 6.5v4a1.5 1.5 0 01-1.5 1.5H12M4 9h8v6H4V9z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Print
-      </button>
-      <button class="btn-reset" onclick="resetForm()">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 2v4.5h4.5M14 14v-4.5H9.5M1.5 10a6.5 6.5 0 0111.48-3M14.5 6a6.5 6.5 0 01-11.48 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Reset
-      </button>
+      <button class="btn-download" onclick="downloadPDF()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> PDF</button>
+      <button class="btn-photo" onclick="saveAsPhoto()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4.5A1.5 1.5 0 013.5 3h1.172a1.5 1.5 0 011.06.44L6.94 4.646A.5.5 0 007.293 4.5H12.5A1.5 1.5 0 0114 6v6.5a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="9" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg> Photo</button>
+      <button class="btn-print" onclick="printQuote()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6V1h8v5M4 12H2.5A1.5 1.5 0 011 10.5v-4A1.5 1.5 0 012.5 5h11A1.5 1.5 0 0115 6.5v4a1.5 1.5 0 01-1.5 1.5H12M4 9h8v6H4V9z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Print</button>
+      <button class="btn-reset" onclick="resetForm()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 2v4.5h4.5M14 14v-4.5H9.5M1.5 10a6.5 6.5 0 0111.48-3M14.5 6a6.5 6.5 0 01-11.48 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Reset</button>
     </div>
-
   </div>
-
-  <div class="form-footer">
-    Component Quote Sheet &mdash; All fields auto-save. Your data will be here when you come back.
-  </div>
-
+  <div class="form-footer">All fields auto-save. Your data will be here when you come back.</div>
 </div>
+
+<!-- Hidden professional output for PDF/Photo/Print -->
+<div id="printOutput"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
-  const STORAGE_KEY = 'componentQuoteSheet';
-  let rowCount = 0;
-  let isRestoring = false;
+const STORAGE_KEY = 'componentQuoteSheet';
+let rowCount = 0, isRestoring = false, currentPartIndex = 0;
 
-  const fieldIds = [
-    'customerName','storeNumber','woNumber','tech','pageNum','pageOf',
-    'equipmentType','location','manufacturer','unit','modelNumber','serialNumber',
-    'voltage','phase','workPerformed','reasonForRepair','equipmentNeeded',
-    'otherComments','boomUp','boomIn','boomSetBack','techHours','helperHours','travelHours'
-  ];
-  const radioNames = ['warranty','operational','boomTruck'];
+const fieldIds = [
+  'customerName','storeNumber','woNumber','tech','pageNum','pageOf',
+  'equipmentType','location','manufacturer','unit','modelNumber','serialNumber',
+  'voltage','phase','workPerformed','reasonForRepair','equipmentNeeded',
+  'otherComments','boomUp','boomIn','boomSetBack','techHours','helperHours','travelHours'
+];
+const radioNames = ['warranty','operational','boomTruck'];
 
-  // ── Save ──
-  function saveForm() {
-    if (isRestoring) return;
-    const data = {};
-    fieldIds.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) data[id] = el.value;
+function val(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+function radioVal(name) { const c = document.querySelector(`input[name="${name}"]:checked`); return c ? c.value : '—'; }
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ── Build professional output HTML ──
+function buildOutput() {
+  const parts = [];
+  document.querySelectorAll('#partsList .part-card').forEach(card => {
+    const inputs = card.querySelectorAll('input');
+    const r = { desc: inputs[0]?.value||'', part: inputs[1]?.value||'', qty: inputs[2]?.value||'', cost: inputs[3]?.value||'', vendor: inputs[4]?.value||'' };
+    if (r.desc || r.part || r.qty || r.cost || r.vendor) parts.push(r);
+  });
+
+  const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  const pageStr = val('pageNum') && val('pageOf') ? `Page ${esc(val('pageNum'))} of ${esc(val('pageOf'))}` : '';
+
+  let partsHTML = '';
+  if (parts.length > 0) {
+    partsHTML = `<table class="po-parts-table"><thead><tr>
+      <th>#</th><th>Description</th><th>Part #</th><th>Qty</th><th>Cost</th><th>Vendor</th>
+    </tr></thead><tbody>`;
+    parts.forEach((p, i) => {
+      partsHTML += `<tr><td>${i+1}</td><td>${esc(p.desc)}</td><td>${esc(p.part)}</td><td>${esc(p.qty)}</td><td>${esc(p.cost)}</td><td>${esc(p.vendor)}</td></tr>`;
     });
-    radioNames.forEach(name => {
-      const checked = document.querySelector(`input[name="${name}"]:checked`);
-      data['radio_' + name] = checked ? checked.value : '';
-    });
-    // Parts from cards (mobile source of truth, synced to table)
-    const parts = [];
-    document.querySelectorAll('#partsList .part-card').forEach(card => {
-      const inputs = card.querySelectorAll('input');
-      const row = [];
-      inputs.forEach(inp => row.push(inp.value));
-      parts.push(row);
-    });
-    data.parts = parts;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    partsHTML += '</tbody></table>';
+  } else {
+    partsHTML = '<p style="color:#98a2b3;font-size:12px;font-style:italic;">No parts listed</p>';
   }
 
-  // ── Restore ──
-  function restoreForm() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      updatePartView();
-      return;
-    }
-    isRestoring = true;
-    const data = JSON.parse(raw);
-    fieldIds.forEach(id => {
-      const el = document.getElementById(id);
-      if (el && data[id] !== undefined) el.value = data[id];
-    });
-    radioNames.forEach(name => {
-      const val = data['radio_' + name];
-      if (val) {
-        const radio = document.querySelector(`input[name="${name}"][value="${val}"]`);
-        if (radio) radio.checked = true;
-      }
-    });
-    if (data.parts && data.parts.length > 0) {
-      data.parts.forEach(rowData => {
-        addPartRow();
-        // Fill card
-        const card = document.querySelector('#partsList .part-card:last-child');
-        const cardInputs = card.querySelectorAll('input');
-        rowData.forEach((val, i) => { if (cardInputs[i]) cardInputs[i].value = val; });
-        // Fill table row
-        const tr = document.querySelector('#partsBody tr:last-child');
-        const trInputs = tr.querySelectorAll('input');
-        rowData.forEach((val, i) => { if (trInputs[i]) trInputs[i].value = val; });
-      });
-    } else {
-      updatePartView();
-    }
-    isRestoring = false;
-  }
-
-  let currentPartIndex = 0;
-
-  // ── Add Part Row (both card + table) ──
-  function addPartRow() {
-    rowCount++;
-    const n = rowCount;
-    const totalParts = document.querySelectorAll('#partsList .part-card').length + 1;
-
-    // Card (mobile)
-    const list = document.getElementById('partsList');
-    const card = document.createElement('div');
-    card.className = 'part-card';
-    card.dataset.row = n;
-    card.innerHTML = `
-      <div class="part-card-header">
-        <div class="part-card-header-left">
-          <div class="part-card-num">${totalParts}</div>
-          <span class="part-card-label">Part ${totalParts}</span>
+  return `
+    <div class="po-header">
+      <div><h1>Component Quote Sheet</h1><div style="font-size:11px;opacity:0.7;margin-top:3px;">HVAC / Refrigeration Service Documentation</div></div>
+      <div style="text-align:right;"><div class="po-badge">Service Quote</div><div style="font-size:10px;opacity:0.7;margin-top:6px;">${today}</div></div>
+    </div>
+    <div class="po-body">
+      <div class="po-section">
+        <div class="po-section-title">Job Information</div>
+        <div class="po-grid">
+          <div class="po-field"><div class="po-label">Customer Name</div><div class="po-value">${esc(val('customerName'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Store #</div><div class="po-value">${esc(val('storeNumber'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">WO Number</div><div class="po-value">${esc(val('woNumber'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Technician</div><div class="po-value">${esc(val('tech'))||'—'}</div></div>
         </div>
-        <button class="remove-btn" onclick="removeRow(${n})">Remove</button>
+        ${pageStr ? `<div style="text-align:right;font-size:11px;color:#667085;margin-top:4px;">${pageStr}</div>` : ''}
       </div>
-      <div class="part-card-fields">
-        <div class="pf"><label>Description</label><input type="text" placeholder="Enter part description" data-col="0"></div>
-        <div class="pf"><label>Part #</label><input type="text" placeholder="Enter part number" data-col="1"></div>
-        <div class="pf"><label>Quantity</label><input type="text" inputmode="numeric" placeholder="Enter quantity" data-col="2"></div>
-        <div class="pf"><label>Cost</label><input type="text" inputmode="decimal" placeholder="$0.00" data-col="3"></div>
-        <div class="pf"><label>Vendor</label><input type="text" placeholder="Enter vendor name" data-col="4"></div>
+
+      <div class="po-section">
+        <div class="po-section-title">Equipment Details</div>
+        <div class="po-grid">
+          <div class="po-field"><div class="po-label">Equipment Type</div><div class="po-value">${esc(val('equipmentType'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Location</div><div class="po-value">${esc(val('location'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Manufacturer</div><div class="po-value">${esc(val('manufacturer'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Unit</div><div class="po-value">${esc(val('unit'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Model #</div><div class="po-value">${esc(val('modelNumber'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Serial #</div><div class="po-value">${esc(val('serialNumber'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Voltage</div><div class="po-value">${esc(val('voltage'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Phase</div><div class="po-value">${esc(val('phase'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Warranty</div><div class="po-value">${radioVal('warranty')}</div></div>
+          <div class="po-field"><div class="po-label">Operational</div><div class="po-value">${radioVal('operational')}</div></div>
+        </div>
       </div>
-    `;
-    list.appendChild(card);
 
-    // Table row (desktop)
-    const tbody = document.getElementById('partsBody');
-    const tr = document.createElement('tr');
-    tr.dataset.row = n;
-    tr.innerHTML = `
-      <td class="row-num">${totalParts}</td>
-      <td><input type="text" placeholder="Part description" data-col="0"></td>
-      <td><input type="text" placeholder="Part #" data-col="1"></td>
-      <td><input type="text" placeholder="Qty" data-col="2"></td>
-      <td><input type="text" placeholder="$0.00" data-col="3"></td>
-      <td><input type="text" placeholder="Vendor" data-col="4"></td>
-      <td style="text-align:center;"><button class="remove-btn" onclick="removeRow(${n})" title="Remove">&times;</button></td>
-    `;
-    tbody.appendChild(tr);
+      <div class="po-section">
+        <div class="po-section-title">Service Details</div>
+        <div class="po-grid">
+          <div class="po-field full"><div class="po-label">Work Performed</div><div class="po-value multiline">${esc(val('workPerformed'))||'—'}</div></div>
+          <div class="po-field full"><div class="po-label">Reason for Repair</div><div class="po-value multiline">${esc(val('reasonForRepair'))||'—'}</div></div>
+          <div class="po-field full"><div class="po-label">Equipment Needed</div><div class="po-value multiline">${esc(val('equipmentNeeded'))||'—'}</div></div>
+          <div class="po-field full"><div class="po-label">Other Comments</div><div class="po-value multiline">${esc(val('otherComments'))||'—'}</div></div>
+        </div>
+      </div>
 
-    // Sync card inputs <-> table inputs
-    const cardInputs = card.querySelectorAll('input');
-    const trInputs = tr.querySelectorAll('input');
-    cardInputs.forEach((inp, i) => {
-      inp.addEventListener('input', () => {
-        if (trInputs[i]) trInputs[i].value = inp.value;
-        saveForm();
-      });
-    });
-    trInputs.forEach((inp, i) => {
-      inp.addEventListener('input', () => {
-        if (cardInputs[i]) cardInputs[i].value = inp.value;
-        saveForm();
-      });
-    });
+      <div class="po-section">
+        <div class="po-section-title">Logistics</div>
+        <div class="po-grid three">
+          <div class="po-field"><div class="po-label">Boom Truck</div><div class="po-value">${radioVal('boomTruck')}</div></div>
+          <div class="po-field"><div class="po-label">Up</div><div class="po-value">${esc(val('boomUp'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">In</div><div class="po-value">${esc(val('boomIn'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Set Back</div><div class="po-value">${esc(val('boomSetBack'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Tech Hours</div><div class="po-value">${esc(val('techHours'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Helper</div><div class="po-value">${esc(val('helperHours'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Travel</div><div class="po-value">${esc(val('travelHours'))||'—'}</div></div>
+        </div>
+      </div>
 
-    // Show the newly added card
-    if (!isRestoring) {
-      currentPartIndex = document.querySelectorAll('#partsList .part-card').length - 1;
-      saveForm();
-    }
-    updatePartView();
+      <div class="po-section">
+        <div class="po-section-title">Parts & Materials</div>
+        ${partsHTML}
+      </div>
+    </div>
+    <div class="po-footer">Component Quote Sheet &mdash; Generated ${today}</div>
+  `;
+}
+
+// ── Export functions ──
+function getFilename(ext) {
+  const c = val('customerName') || 'Quote';
+  const w = val('woNumber');
+  return `Component_Quote_${c.replace(/\s+/g,'_')}${w ? '_WO'+w : ''}.${ext}`;
+}
+
+function triggerDownload(blob, filename, mimeType) {
+  const url = URL.createObjectURL(blob);
+  if (navigator.share && navigator.canShare) {
+    try {
+      const file = new File([blob], filename, { type: mimeType });
+      if (navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: filename }).catch(() => window.open(url, '_blank'));
+        return;
+      }
+    } catch(e) {}
   }
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
 
-  function removeRow(n) {
-    const card = document.querySelector(`#partsList .part-card[data-row="${n}"]`);
-    const tr = document.querySelector(`#partsBody tr[data-row="${n}"]`);
-    if (card) card.remove();
-    if (tr) tr.remove();
-    renumberRows();
-    const total = document.querySelectorAll('#partsList .part-card').length;
-    if (currentPartIndex >= total) currentPartIndex = Math.max(0, total - 1);
-    updatePartView();
-    saveForm();
-  }
+function downloadPDF() {
+  const output = document.getElementById('printOutput');
+  output.innerHTML = buildOutput();
+  output.style.left = '0'; output.style.position = 'fixed'; output.style.top = '0'; output.style.zIndex = '9999';
+  const filename = getFilename('pdf');
+  html2pdf().set({
+    margin: [0,0,0,0], filename: filename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+    jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+  }).from(output).outputPdf('blob').then(blob => {
+    triggerDownload(blob, filename, 'application/pdf');
+    output.style.left = '-9999px'; output.style.position = 'absolute'; output.style.zIndex = '';
+  }).catch(() => { output.style.left = '-9999px'; output.style.position = 'absolute'; });
+}
 
-  function renumberRows() {
-    rowCount = 0;
-    document.querySelectorAll('#partsList .part-card').forEach((card, i) => {
-      rowCount = i + 1;
-      card.querySelector('.part-card-num').textContent = rowCount;
-      card.querySelector('.part-card-label').textContent = 'Part ' + rowCount;
-    });
-    document.querySelectorAll('#partsBody tr').forEach((tr, i) => {
-      tr.querySelector('.row-num').textContent = i + 1;
-    });
-  }
-
-  // ── Part carousel navigation ──
-  function navigatePart(dir) {
-    const cards = document.querySelectorAll('#partsList .part-card');
-    const total = cards.length;
-    if (total === 0) return;
-    currentPartIndex = Math.max(0, Math.min(total - 1, currentPartIndex + dir));
-    updatePartView();
-  }
-
-  function updatePartView() {
-    const cards = document.querySelectorAll('#partsList .part-card');
-    const total = cards.length;
-    cards.forEach((card, i) => {
-      card.classList.toggle('active', i === currentPartIndex);
-    });
-    // Hide nav if no parts or only one
-    const navEl = document.getElementById('partNav');
-    navEl.style.display = total <= 1 ? 'none' : 'flex';
-    // Update dots
-    const dotsContainer = document.getElementById('partDots');
-    dotsContainer.innerHTML = '';
-    for (let i = 0; i < total; i++) {
-      const dot = document.createElement('div');
-      dot.className = 'part-nav-dot' + (i === currentPartIndex ? ' active' : '');
-      dot.onclick = () => { currentPartIndex = i; updatePartView(); };
-      dotsContainer.appendChild(dot);
-    }
-    // Update prev/next buttons
-    document.getElementById('partPrev').disabled = currentPartIndex === 0;
-    document.getElementById('partNext').disabled = currentPartIndex >= total - 1;
-    // Update part count text
-    const partCountEl = document.getElementById('partCount');
-    if (partCountEl) partCountEl.textContent = total > 0 ? `${total} part${total !== 1 ? 's' : ''} added` : '';
-  }
-
-  // ── Attach save listeners ──
-  fieldIds.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.addEventListener('input', saveForm);
-      el.addEventListener('change', saveForm);
-    }
-  });
-  radioNames.forEach(name => {
-    document.querySelectorAll(`input[name="${name}"]`).forEach(radio => {
-      radio.addEventListener('change', saveForm);
-    });
-  });
-
-  // ── Restore on load ──
-  restoreForm();
-
-  // ── Export helpers ──
-  function hideUI() {
-    const els = {
-      actions: document.querySelector('.actions'),
-      tableActions: document.querySelector('.table-actions'),
-      footer: document.querySelector('.form-footer'),
-      removeBtns: document.querySelectorAll('.remove-btn'),
-    };
-    els.actions.style.display = 'none';
-    els.tableActions.style.display = 'none';
-    els.footer.style.display = 'none';
-    els.removeBtns.forEach(b => b.style.display = 'none');
-    return els;
-  }
-  function showUI(els) {
-    els.actions.style.display = '';
-    els.tableActions.style.display = '';
-    els.footer.style.display = '';
-    els.removeBtns.forEach(b => b.style.display = '');
-  }
-  function getFilename(ext) {
-    const c = document.getElementById('customerName').value || 'Quote';
-    const w = document.getElementById('woNumber').value || '';
-    return `Component_Quote_${c.replace(/\s+/g, '_')}${w ? '_WO' + w : ''}.${ext}`;
-  }
-
-  function downloadPDF() {
-    const ui = hideUI();
-    const el = document.getElementById('quoteForm');
-    const filename = getFilename('pdf');
-    html2pdf().set({
-      margin: [6, 6, 6, 6],
-      filename: filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
-      jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    }).from(el).outputPdf('blob').then(blob => {
-      triggerDownload(blob, filename, 'application/pdf');
-      showUI(ui);
-    }).catch(() => showUI(ui));
-  }
-
-  function saveAsPhoto() {
-    const ui = hideUI();
-    const el = document.getElementById('quoteForm');
-    const filename = getFilename('png');
-    html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: -window.scrollY }).then(canvas => {
+function saveAsPhoto() {
+  const output = document.getElementById('printOutput');
+  output.innerHTML = buildOutput();
+  output.style.left = '0'; output.style.position = 'fixed'; output.style.top = '0'; output.style.zIndex = '9999';
+  const filename = getFilename('png');
+  setTimeout(() => {
+    html2canvas(output, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 }).then(canvas => {
       canvas.toBlob(blob => {
         triggerDownload(blob, filename, 'image/png');
-        showUI(ui);
+        output.style.left = '-9999px'; output.style.position = 'absolute'; output.style.zIndex = '';
       }, 'image/png');
-    }).catch(() => showUI(ui));
-  }
+    }).catch(() => { output.style.left = '-9999px'; output.style.position = 'absolute'; });
+  }, 100);
+}
 
-  // Mobile-friendly download helper
-  function triggerDownload(blob, filename, mimeType) {
-    const url = URL.createObjectURL(blob);
-    // Try native share on mobile if available
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: mimeType })] })) {
-      const file = new File([blob], filename, { type: mimeType });
-      navigator.share({ files: [file], title: filename }).catch(() => {
-        // Fallback to opening in new tab
-        window.open(url, '_blank');
-      });
-    } else {
-      // Desktop or fallback: use download link
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-    }
-  }
+function printQuote() {
+  const output = document.getElementById('printOutput');
+  output.innerHTML = buildOutput();
+  window.print();
+}
 
-  function resetForm() {
-    if (confirm('Clear all fields? This cannot be undone.')) {
-      document.querySelectorAll('.form-body input[type="text"], .form-body textarea').forEach(el => el.value = '');
-      document.querySelectorAll('.form-body select').forEach(el => el.selectedIndex = 0);
-      document.querySelectorAll('.form-body input[type="radio"]').forEach(el => el.checked = false);
-      localStorage.removeItem(STORAGE_KEY);
-    }
+// ── Save / Restore ──
+function saveForm() {
+  if (isRestoring) return;
+  const data = {};
+  fieldIds.forEach(id => { data[id] = val(id); });
+  radioNames.forEach(name => { const c = document.querySelector(`input[name="${name}"]:checked`); data['radio_'+name] = c ? c.value : ''; });
+  const parts = [];
+  document.querySelectorAll('#partsList .part-card').forEach(card => {
+    const inputs = card.querySelectorAll('input');
+    const row = []; inputs.forEach(inp => row.push(inp.value)); parts.push(row);
+  });
+  data.parts = parts;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function restoreForm() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) { addPartRow(); return; }
+  isRestoring = true;
+  const data = JSON.parse(raw);
+  fieldIds.forEach(id => { const el = document.getElementById(id); if (el && data[id] !== undefined) el.value = data[id]; });
+  radioNames.forEach(name => { const v = data['radio_'+name]; if (v) { const r = document.querySelector(`input[name="${name}"][value="${v}"]`); if (r) r.checked = true; } });
+  if (data.parts && data.parts.length > 0) {
+    data.parts.forEach(rowData => {
+      addPartRow();
+      const card = document.querySelector('#partsList .part-card:last-child');
+      const ci = card.querySelectorAll('input');
+      const tr = document.querySelector('#partsBody tr:last-child');
+      const ti = tr.querySelectorAll('input');
+      rowData.forEach((v,i) => { if(ci[i]) ci[i].value=v; if(ti[i]) ti[i].value=v; });
+    });
+  } else { addPartRow(); }
+  isRestoring = false;
+  updatePartView();
+}
+
+// ── Parts ──
+function addPartRow() {
+  rowCount++;
+  const n = rowCount;
+  const total = document.querySelectorAll('#partsList .part-card').length + 1;
+
+  const list = document.getElementById('partsList');
+  const card = document.createElement('div');
+  card.className = 'part-card'; card.dataset.row = n;
+  card.innerHTML = `
+    <div class="part-card-header">
+      <div class="part-card-header-left"><div class="part-card-num">${total}</div><span class="part-card-label">Part ${total}</span></div>
+      <button class="remove-btn" onclick="removeRow(${n})">Remove</button>
+    </div>
+    <div class="part-card-fields">
+      <div class="pf"><label>Description</label><input type="text" placeholder="Enter part description" data-col="0"></div>
+      <div class="pf"><label>Part #</label><input type="text" placeholder="Enter part number" data-col="1"></div>
+      <div class="pf"><label>Quantity</label><input type="text" inputmode="numeric" placeholder="Enter quantity" data-col="2"></div>
+      <div class="pf"><label>Cost</label><input type="text" inputmode="decimal" placeholder="$0.00" data-col="3"></div>
+      <div class="pf"><label>Vendor</label><input type="text" placeholder="Enter vendor name" data-col="4"></div>
+    </div>`;
+  list.appendChild(card);
+
+  const tbody = document.getElementById('partsBody');
+  const tr = document.createElement('tr'); tr.dataset.row = n;
+  tr.innerHTML = `<td class="row-num">${total}</td><td><input type="text" placeholder="Description" data-col="0"></td><td><input type="text" placeholder="Part #" data-col="1"></td><td><input type="text" placeholder="Qty" data-col="2"></td><td><input type="text" placeholder="$0.00" data-col="3"></td><td><input type="text" placeholder="Vendor" data-col="4"></td><td style="text-align:center"><button class="remove-btn" onclick="removeRow(${n})">&times;</button></td>`;
+  tbody.appendChild(tr);
+
+  const ci = card.querySelectorAll('input'), ti = tr.querySelectorAll('input');
+  ci.forEach((inp,i) => inp.addEventListener('input', () => { if(ti[i]) ti[i].value=inp.value; saveForm(); }));
+  ti.forEach((inp,i) => inp.addEventListener('input', () => { if(ci[i]) ci[i].value=inp.value; saveForm(); }));
+
+  if (!isRestoring) { currentPartIndex = document.querySelectorAll('#partsList .part-card').length - 1; saveForm(); }
+  updatePartView();
+}
+
+function removeRow(n) {
+  document.querySelector(`#partsList .part-card[data-row="${n}"]`)?.remove();
+  document.querySelector(`#partsBody tr[data-row="${n}"]`)?.remove();
+  renumberRows();
+  const total = document.querySelectorAll('#partsList .part-card').length;
+  if (total === 0) { addPartRow(); return; }
+  if (currentPartIndex >= total) currentPartIndex = total - 1;
+  updatePartView(); saveForm();
+}
+
+function renumberRows() {
+  rowCount = 0;
+  document.querySelectorAll('#partsList .part-card').forEach((card,i) => { rowCount=i+1; card.querySelector('.part-card-num').textContent=rowCount; card.querySelector('.part-card-label').textContent='Part '+rowCount; });
+  document.querySelectorAll('#partsBody tr').forEach((tr,i) => { tr.querySelector('.row-num').textContent=i+1; });
+}
+
+function navigatePart(dir) {
+  const total = document.querySelectorAll('#partsList .part-card').length;
+  if (!total) return;
+  currentPartIndex = Math.max(0, Math.min(total-1, currentPartIndex+dir));
+  updatePartView();
+}
+
+function updatePartView() {
+  const cards = document.querySelectorAll('#partsList .part-card');
+  const total = cards.length;
+  cards.forEach((c,i) => c.classList.toggle('active', i===currentPartIndex));
+  const nav = document.getElementById('partNav');
+  nav.style.display = total <= 1 ? 'none' : 'flex';
+  const dots = document.getElementById('partDots'); dots.innerHTML = '';
+  for (let i=0; i<total; i++) { const d=document.createElement('div'); d.className='part-nav-dot'+(i===currentPartIndex?' active':''); d.onclick=()=>{currentPartIndex=i;updatePartView();}; dots.appendChild(d); }
+  document.getElementById('partPrev').disabled = currentPartIndex===0;
+  document.getElementById('partNext').disabled = currentPartIndex>=total-1;
+  const pc = document.getElementById('partCount');
+  if (pc) pc.textContent = total > 0 ? total+' part'+(total!==1?'s':'')+' added' : '';
+}
+
+// ── Attach listeners ──
+fieldIds.forEach(id => { const el=document.getElementById(id); if(el){el.addEventListener('input',saveForm);el.addEventListener('change',saveForm);} });
+radioNames.forEach(name => document.querySelectorAll(`input[name="${name}"]`).forEach(r => r.addEventListener('change', saveForm)));
+
+restoreForm();
+
+function resetForm() {
+  if (confirm('Clear all fields? This cannot be undone.')) {
+    document.querySelectorAll('.form-body input[type="text"], .form-body textarea').forEach(el => el.value='');
+    document.querySelectorAll('.form-body select').forEach(el => el.selectedIndex=0);
+    document.querySelectorAll('.form-body input[type="radio"]').forEach(el => el.checked=false);
+    document.getElementById('partsList').innerHTML = '';
+    document.getElementById('partsBody').innerHTML = '';
+    rowCount = 0; currentPartIndex = 0;
+    addPartRow();
+    localStorage.removeItem(STORAGE_KEY);
   }
+}
 </script>
 </body>
 </html>
