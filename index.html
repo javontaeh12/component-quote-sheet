@@ -970,26 +970,52 @@
   function downloadPDF() {
     const ui = hideUI();
     const el = document.getElementById('quoteForm');
+    const filename = getFilename('pdf');
     html2pdf().set({
       margin: [6, 6, 6, 6],
-      filename: getFilename('pdf'),
+      filename: filename,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
       jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    }).from(el).save().then(() => showUI(ui));
+    }).from(el).outputPdf('blob').then(blob => {
+      triggerDownload(blob, filename, 'application/pdf');
+      showUI(ui);
+    }).catch(() => showUI(ui));
   }
 
   function saveAsPhoto() {
     const ui = hideUI();
     const el = document.getElementById('quoteForm');
-    html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' }).then(canvas => {
-      const link = document.createElement('a');
-      link.download = getFilename('png');
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      showUI(ui);
-    });
+    const filename = getFilename('png');
+    html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: -window.scrollY }).then(canvas => {
+      canvas.toBlob(blob => {
+        triggerDownload(blob, filename, 'image/png');
+        showUI(ui);
+      }, 'image/png');
+    }).catch(() => showUI(ui));
+  }
+
+  // Mobile-friendly download helper
+  function triggerDownload(blob, filename, mimeType) {
+    const url = URL.createObjectURL(blob);
+    // Try native share on mobile if available
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: mimeType })] })) {
+      const file = new File([blob], filename, { type: mimeType });
+      navigator.share({ files: [file], title: filename }).catch(() => {
+        // Fallback to opening in new tab
+        window.open(url, '_blank');
+      });
+    } else {
+      // Desktop or fallback: use download link
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
   }
 
   function resetForm() {
