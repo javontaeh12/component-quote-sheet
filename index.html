@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Component Quote Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1a3a5c;
+    --primary-light: #2a5a8c;
+    --accent: #c0392b;
+    --bg: #eef1f5;
+    --card: #ffffff;
+    --border: #d0d5dd;
+    --border-focus: #2a5a8c;
+    --text: #1a1a2e;
+    --text-muted: #667085;
+    --input-bg: #f8f9fb;
+    --section-bg: #f1f4f8;
+    --success: #27ae60;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    padding: 30px 20px;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .form-container {
+    max-width: 940px;
+    margin: 0 auto;
+    background: var(--card);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  /* Header */
+  .form-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: #fff;
+    padding: 28px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .form-header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .form-header .subtitle {
+    font-size: 13px;
+    opacity: 0.75;
+    font-weight: 400;
+    margin-top: 4px;
+  }
+  .header-badge {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .form-body { padding: 32px 40px 40px; }
+
+  /* Section */
+  .section {
+    margin-bottom: 28px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--primary);
+  }
+  .section-header .section-icon {
+    width: 28px; height: 28px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+  }
+  .section-header h2 {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--primary);
+  }
+
+  /* Rows & Fields */
+  .row {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 170px;
+  }
+  .field label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 5px;
+    color: var(--text-muted);
+  }
+  .field label .hint {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #98a2b3;
+    font-size: 10px;
+  }
+  .field input,
+  .field select,
+  .field textarea {
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--input-bg);
+    color: var(--text);
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  }
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(42,90,140,0.12);
+    background: #fff;
+  }
+  .field input::placeholder { color: #b0b8c4; }
+  .field textarea {
+    resize: vertical;
+    min-height: 64px;
+    line-height: 1.5;
+  }
+  .field select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667085' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+
+  /* Inline page fields */
+  .page-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .page-group input {
+    width: 52px;
+    text-align: center;
+    padding: 9px 6px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--input-bg);
+    color: var(--text);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .page-group input:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(42,90,140,0.12);
+    background: #fff;
+  }
+  .page-group span {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  /* Status pills */
+  .status-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .status-field {
+    flex: 1;
+    min-width: 170px;
+  }
+  .status-field label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 5px;
+    color: var(--text-muted);
+    display: block;
+  }
+  .pill-group {
+    display: flex;
+    gap: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1.5px solid var(--border);
+  }
+  .pill-group input[type="radio"] { display: none; }
+  .pill-group label.pill {
+    flex: 1;
+    text-align: center;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--input-bg);
+    color: var(--text-muted);
+    transition: all 0.2s;
+    text-transform: none;
+    letter-spacing: 0;
+    margin: 0;
+    border-right: 1px solid var(--border);
+  }
+  .pill-group label.pill:last-of-type { border-right: none; }
+  .pill-group input[type="radio"]:checked + label.pill {
+    background: var(--primary);
+    color: #fff;
+  }
+
+  /* Parts Table */
+  .parts-wrapper {
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .parts-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .parts-table thead th {
+    background: var(--primary);
+    color: #fff;
+    padding: 10px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .parts-table thead th:first-child { border-radius: 0; }
+  .parts-table thead th:last-child { border-radius: 0; text-align: center; }
+  .parts-table td { padding: 3px 4px; }
+  .parts-table tbody tr { border-bottom: 1px solid #eef0f3; transition: background 0.15s; }
+  .parts-table tbody tr:hover { background: #f5f7fa; }
+  .parts-table tbody tr:last-child { border-bottom: none; }
+  .parts-table input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid transparent;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    background: transparent;
+    color: var(--text);
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .parts-table input:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    background: #fff;
+  }
+  .parts-table input::placeholder { color: #c5cad2; }
+  .parts-table .row-num {
+    width: 30px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .remove-btn {
+    background: none;
+    color: #d0d5dd;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 16px;
+    line-height: 1;
+    transition: color 0.2s, background 0.2s;
+  }
+  .remove-btn:hover { color: var(--accent); background: #fef2f2; }
+
+  .table-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+  .add-row-btn {
+    padding: 8px 20px;
+    background: var(--section-bg);
+    color: var(--primary);
+    border: 1.5px dashed var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+  .add-row-btn:hover { background: #e4e9f0; border-color: var(--primary); }
+
+  /* Action Buttons */
+  .actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 36px;
+    padding-top: 24px;
+    border-top: 1.5px solid #eef0f3;
+    flex-wrap: wrap;
+  }
+  .actions button {
+    padding: 12px 32px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-download {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(26,58,92,0.25);
+  }
+  .btn-download:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,58,92,0.3); }
+  .btn-photo {
+    background: #8e44ad;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(142,68,173,0.25);
+  }
+  .btn-photo:hover { background: #7d3c98; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(142,68,173,0.3); }
+  .btn-print {
+    background: var(--success);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(39,174,96,0.25);
+  }
+  .btn-print:hover { background: #219a52; transform: translateY(-1px); }
+  .btn-reset {
+    background: #fff;
+    color: var(--text-muted);
+    border: 1.5px solid var(--border) !important;
+  }
+  .btn-reset:hover { background: #f9fafb; color: var(--accent); border-color: var(--accent) !important; }
+
+  /* Footer */
+  .form-footer {
+    background: var(--section-bg);
+    padding: 16px 40px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    border-top: 1px solid #e4e7ec;
+  }
+
+  /* Print styles */
+  @media print {
+    body { background: #fff; padding: 0; }
+    .form-container { box-shadow: none; border-radius: 0; }
+    .form-header { padding: 20px 30px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .form-body { padding: 20px 30px; }
+    .actions, .add-row-btn, .remove-btn, .table-actions, .form-footer { display: none !important; }
+    .parts-table thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .section-header .section-icon { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .field input, .field select, .field textarea {
+      border: none; border-bottom: 1.5px solid #333; border-radius: 0;
+      background: transparent !important; padding: 6px 2px; box-shadow: none;
+    }
+    .parts-table input { border-bottom: 1px solid #ccc; border-radius: 0; }
+    .pill-group { border: none; }
+    .pill-group label.pill { border: 1px solid #ccc; }
+    .pill-group input[type="radio"]:checked + label.pill {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .form-header { flex-direction: column; gap: 12px; padding: 20px; }
+    .form-body { padding: 20px; }
+    .field { min-width: 100%; }
+    .row { gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="form-container" id="quoteForm">
+
+  <!-- Header -->
+  <div class="form-header">
+    <div>
+      <h1>Component Quote Sheet</h1>
+      <div class="subtitle">HVAC / Refrigeration Service Documentation</div>
+    </div>
+    <div class="header-badge">Service Quote</div>
+  </div>
+
+  <div class="form-body">
+
+    <!-- SECTION: Job Information -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">1</div>
+        <h2>Job Information</h2>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:2"><label>Customer Name</label><input type="text" id="customerName" placeholder="Enter customer name"></div>
+        <div class="field"><label>Store #</label><input type="text" id="storeNumber" placeholder="Store number"></div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:2"><label>WO Number</label><input type="text" id="woNumber" placeholder="Work order number"></div>
+        <div class="field"><label>Tech</label><input type="text" id="tech" placeholder="Technician name"></div>
+        <div class="field" style="min-width:140px">
+          <label>Page</label>
+          <div class="page-group">
+            <input type="text" id="pageNum" placeholder="#"> <span>of</span>
+            <input type="text" id="pageOf" placeholder="#">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION: Equipment Details -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">2</div>
+        <h2>Equipment Details</h2>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:2"><label>Equipment Type</label><input type="text" id="equipmentType" placeholder="e.g. RTU, Condenser, Walk-in Cooler"></div>
+        <div class="field">
+          <label>Location</label>
+          <select id="location">
+            <option value="">-- Select --</option>
+            <option value="Roof">Roof</option>
+            <option value="Ground">Ground</option>
+            <option value="Self-Contained">Self-Contained</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:2">
+          <label>Manufacturer <span class="hint">- type to search or enter custom</span></label>
+          <input type="text" id="manufacturer" list="mfgList" placeholder="Select or type manufacturer name" autocomplete="off">
+          <datalist id="mfgList">
+            <!-- HVAC - Major Commercial -->
+            <option value="AAON">
+            <option value="ADP (Advanced Distributor Products)">
+            <option value="Aire-Flo">
+            <option value="Amana">
+            <option value="American Standard">
+            <option value="Armstrong Air">
+            <option value="Bard Manufacturing">
+            <option value="Bosch">
+            <option value="Bryant">
+            <option value="Carrier">
+            <option value="Comfortmaker">
+            <option value="Daikin">
+            <option value="Dunham-Bush">
+            <option value="Friedrich">
+            <option value="Fujitsu">
+            <option value="Goodman">
+            <option value="Heil">
+            <option value="Honeywell">
+            <option value="ICP (International Comfort Products)">
+            <option value="Johnson Controls">
+            <option value="Lennox">
+            <option value="LG">
+            <option value="Luxaire">
+            <option value="Mammoth">
+            <option value="McQuay International">
+            <option value="Mitsubishi Electric">
+            <option value="Modine">
+            <option value="Nortek">
+            <option value="Payne">
+            <option value="Reznor">
+            <option value="Rheem">
+            <option value="Ruud">
+            <option value="Samsung">
+            <option value="Trane">
+            <option value="York">
+            <!-- Refrigeration - Commercial -->
+            <option value="Bally Refrigerated Boxes">
+            <option value="Beacon/Morris">
+            <option value="Bohn (Heatcraft)">
+            <option value="Bristol Compressors">
+            <option value="Climate Master">
+            <option value="Copeland (Emerson)">
+            <option value="Danfoss">
+            <option value="Embraco">
+            <option value="Heatcraft">
+            <option value="Hill Phoenix">
+            <option value="Hussmann">
+            <option value="KeepRite Refrigeration">
+            <option value="Kelvinator Commercial">
+            <option value="Kolpak">
+            <option value="Kramer Trenton">
+            <option value="Kysor/Warren">
+            <option value="Larkin (Heatcraft)">
+            <option value="Master-Bilt">
+            <option value="McCall">
+            <option value="Nor-Lake">
+            <option value="Randell">
+            <option value="Russell">
+            <option value="Sporlan">
+            <option value="Sub-Zero Commercial">
+            <option value="Tecumseh">
+            <option value="Traulsen">
+            <option value="True Manufacturing">
+            <option value="Turbo Air">
+            <option value="Tyler Refrigeration">
+            <option value="Victory Refrigeration">
+            <option value="Walk-In Cooler Warehouse">
+            <option value="Zero Zone">
+          </datalist>
+        </div>
+        <div class="field"><label>Unit</label><input type="text" id="unit" placeholder="Unit ID"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Model #</label><input type="text" id="modelNumber" placeholder="Model number"></div>
+        <div class="field"><label>Serial #</label><input type="text" id="serialNumber" placeholder="Serial number"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Voltage</label><input type="text" id="voltage" placeholder="e.g. 208/230"></div>
+        <div class="field"><label>Phase</label><input type="text" id="phase" placeholder="e.g. 1, 3"></div>
+      </div>
+
+      <!-- Status toggles -->
+      <div class="row" style="margin-top: 8px;">
+        <div class="status-field">
+          <label>Warranty</label>
+          <div class="pill-group">
+            <input type="radio" name="warranty" id="warrantyYes" value="Yes">
+            <label class="pill" for="warrantyYes">Yes</label>
+            <input type="radio" name="warranty" id="warrantyNo" value="No">
+            <label class="pill" for="warrantyNo">No</label>
+          </div>
+        </div>
+        <div class="status-field">
+          <label>Operational</label>
+          <div class="pill-group">
+            <input type="radio" name="operational" id="operationalYes" value="Yes">
+            <label class="pill" for="operationalYes">Yes</label>
+            <input type="radio" name="operational" id="operationalNo" value="No">
+            <label class="pill" for="operationalNo">No</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION: Service Details -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">3</div>
+        <h2>Service Details</h2>
+      </div>
+      <div class="row">
+        <div class="field"><label>Work Performed</label><textarea id="workPerformed" rows="3" placeholder="Describe work performed..."></textarea></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Reason for Repair</label><textarea id="reasonForRepair" rows="3" placeholder="Describe reason for repair..."></textarea></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Equipment Needed <span class="hint">- scissor lift, duct jack, 40' ladder, etc.</span></label><textarea id="equipmentNeeded" rows="2" placeholder="List any special equipment needed..."></textarea></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Other Comments</label><textarea id="otherComments" rows="2" placeholder="Additional notes or comments..."></textarea></div>
+      </div>
+    </div>
+
+    <!-- SECTION: Boom Truck & Hours -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">4</div>
+        <h2>Logistics</h2>
+      </div>
+      <div class="row">
+        <div class="status-field" style="flex:1;min-width:170px;">
+          <label>Boom Truck Needed?</label>
+          <div class="pill-group">
+            <input type="radio" name="boomTruck" id="boomYes" value="Yes">
+            <label class="pill" for="boomYes">Yes</label>
+            <input type="radio" name="boomTruck" id="boomNo" value="No">
+            <label class="pill" for="boomNo">No</label>
+          </div>
+        </div>
+        <div class="field"><label>Up</label><input type="text" id="boomUp" placeholder="ft"></div>
+        <div class="field"><label>In</label><input type="text" id="boomIn" placeholder="ft"></div>
+        <div class="field"><label>Set Back</label><input type="text" id="boomSetBack" placeholder="ft"></div>
+      </div>
+      <div class="row" style="margin-top: 14px;">
+        <div class="field"><label>Tech Hours Needed</label><input type="text" id="techHours" placeholder="Hours"></div>
+        <div class="field"><label>Helper Hours</label><input type="text" id="helperHours" placeholder="Hours"></div>
+        <div class="field"><label>Travel</label><input type="text" id="travelHours" placeholder="Hours"></div>
+      </div>
+    </div>
+
+    <!-- SECTION: Parts -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">5</div>
+        <h2>Parts & Materials</h2>
+      </div>
+      <div class="parts-wrapper">
+        <table class="parts-table" id="partsTable">
+          <thead>
+            <tr>
+              <th style="width:30px;">#</th>
+              <th>Description</th>
+              <th style="width:140px;">Part #</th>
+              <th style="width:80px;">Qty</th>
+              <th style="width:110px;">Cost</th>
+              <th style="width:130px;">Vendor</th>
+              <th style="width:36px;"></th>
+            </tr>
+          </thead>
+          <tbody id="partsBody"></tbody>
+        </table>
+      </div>
+      <div class="table-actions">
+        <button class="add-row-btn" type="button" onclick="addPartRow()">+ Add Row</button>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="actions">
+      <button class="btn-download" onclick="downloadPDF()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v9m0 0L5 7m3 3l3-3M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Download PDF
+      </button>
+      <button class="btn-photo" onclick="saveAsPhoto()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4.5A1.5 1.5 0 013.5 3h1.172a1.5 1.5 0 011.06.44L6.94 4.646A.5.5 0 007.293 4.5H12.5A1.5 1.5 0 0114 6v6.5a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="9" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>
+        Save as Photo
+      </button>
+      <button class="btn-print" onclick="window.print()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6V1h8v5M4 12H2.5A1.5 1.5 0 011 10.5v-4A1.5 1.5 0 012.5 5h11A1.5 1.5 0 0115 6.5v4a1.5 1.5 0 01-1.5 1.5H12M4 9h8v6H4V9z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Print
+      </button>
+      <button class="btn-reset" onclick="resetForm()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 2v4.5h4.5M14 14v-4.5H9.5M1.5 10a6.5 6.5 0 0111.48-3M14.5 6a6.5 6.5 0 01-11.48 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Reset
+      </button>
+    </div>
+
+  </div>
+
+  <div class="form-footer">
+    Component Quote Sheet &mdash; All fields auto-save to your browser. Your data will be here when you come back.
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+  const STORAGE_KEY = 'componentQuoteSheet';
+  let rowCount = 0;
+  let isRestoring = false;
+
+  // ── Field IDs to persist ──
+  const fieldIds = [
+    'customerName','storeNumber','woNumber','tech','pageNum','pageOf',
+    'equipmentType','location','manufacturer','unit','modelNumber','serialNumber',
+    'voltage','phase','workPerformed','reasonForRepair','equipmentNeeded',
+    'otherComments','boomUp','boomIn','boomSetBack','techHours','helperHours','travelHours'
+  ];
+  const radioNames = ['warranty','operational','boomTruck'];
+
+  // ── Save all form data to localStorage ──
+  function saveForm() {
+    if (isRestoring) return;
+    const data = {};
+
+    // Text inputs, textareas, selects
+    fieldIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) data[id] = el.value;
+    });
+
+    // Radio buttons
+    radioNames.forEach(name => {
+      const checked = document.querySelector(`input[name="${name}"]:checked`);
+      data['radio_' + name] = checked ? checked.value : '';
+    });
+
+    // Parts table rows
+    const parts = [];
+    document.querySelectorAll('#partsBody tr').forEach(tr => {
+      const inputs = tr.querySelectorAll('input');
+      const row = [];
+      inputs.forEach(inp => row.push(inp.value));
+      parts.push(row);
+    });
+    data.parts = parts;
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  // ── Restore form data from localStorage ──
+  function restoreForm() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      // No saved data, just create default rows
+      for (let i = 0; i < 12; i++) addPartRow();
+      return;
+    }
+    isRestoring = true;
+    const data = JSON.parse(raw);
+
+    // Text inputs, textareas, selects
+    fieldIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && data[id] !== undefined) el.value = data[id];
+    });
+
+    // Radio buttons
+    radioNames.forEach(name => {
+      const val = data['radio_' + name];
+      if (val) {
+        const radio = document.querySelector(`input[name="${name}"][value="${val}"]`);
+        if (radio) radio.checked = true;
+      }
+    });
+
+    // Parts table rows
+    if (data.parts && data.parts.length > 0) {
+      data.parts.forEach(rowData => {
+        addPartRow();
+        const tr = document.querySelector('#partsBody tr:last-child');
+        const inputs = tr.querySelectorAll('input');
+        rowData.forEach((val, i) => {
+          if (inputs[i]) inputs[i].value = val;
+        });
+      });
+    } else {
+      for (let i = 0; i < 12; i++) addPartRow();
+    }
+    isRestoring = false;
+  }
+
+  // ── Parts table functions ──
+  function addPartRow() {
+    rowCount++;
+    const tbody = document.getElementById('partsBody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="row-num">${rowCount}</td>
+      <td><input type="text" placeholder="Part description"></td>
+      <td><input type="text" placeholder="Part #"></td>
+      <td><input type="text" placeholder="Qty"></td>
+      <td><input type="text" placeholder="$0.00"></td>
+      <td><input type="text" placeholder="Vendor"></td>
+      <td style="text-align:center;"><button class="remove-btn" onclick="removeRow(this)" title="Remove row">&times;</button></td>
+    `;
+    tbody.appendChild(tr);
+    // Attach save listeners to new row inputs
+    tr.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('input', saveForm);
+    });
+    if (!isRestoring) saveForm();
+  }
+
+  function removeRow(btn) {
+    btn.closest('tr').remove();
+    renumberRows();
+    saveForm();
+  }
+
+  function renumberRows() {
+    const rows = document.querySelectorAll('#partsBody tr');
+    rowCount = 0;
+    rows.forEach((row, i) => {
+      rowCount = i + 1;
+      row.querySelector('.row-num').textContent = rowCount;
+    });
+  }
+
+  // ── Attach auto-save listeners to all static fields ──
+  fieldIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', saveForm);
+  });
+  // Selects use 'change'
+  ['location'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', saveForm);
+  });
+  // Radio buttons
+  radioNames.forEach(name => {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(radio => {
+      radio.addEventListener('change', saveForm);
+    });
+  });
+
+  // ── Restore on page load ──
+  restoreForm();
+
+  // ── Hide UI helper for exports ──
+  function hideUI() {
+    const actions = document.querySelector('.actions');
+    const tableActions = document.querySelector('.table-actions');
+    const removeBtns = document.querySelectorAll('.remove-btn');
+    const footer = document.querySelector('.form-footer');
+    actions.style.display = 'none';
+    tableActions.style.display = 'none';
+    removeBtns.forEach(b => b.style.display = 'none');
+    footer.style.display = 'none';
+    return { actions, tableActions, removeBtns, footer };
+  }
+
+  function showUI({ actions, tableActions, removeBtns, footer }) {
+    actions.style.display = 'flex';
+    tableActions.style.display = 'flex';
+    removeBtns.forEach(b => b.style.display = 'block');
+    footer.style.display = 'block';
+  }
+
+  function getFilename(ext) {
+    const customerName = document.getElementById('customerName').value || 'Quote';
+    const woNumber = document.getElementById('woNumber').value || '';
+    return `Component_Quote_${customerName.replace(/\s+/g, '_')}${woNumber ? '_WO' + woNumber : ''}.${ext}`;
+  }
+
+  // ── Download PDF ──
+  function downloadPDF() {
+    const ui = hideUI();
+    const element = document.getElementById('quoteForm');
+    const opt = {
+      margin: [6, 6, 6, 6],
+      filename: getFilename('pdf'),
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+    html2pdf().set(opt).from(element).save().then(() => showUI(ui));
+  }
+
+  // ── Save as Photo ──
+  function saveAsPhoto() {
+    const ui = hideUI();
+    const element = document.getElementById('quoteForm');
+    html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' }).then(canvas => {
+      const link = document.createElement('a');
+      link.download = getFilename('png');
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showUI(ui);
+    });
+  }
+
+  // ── Reset Form ──
+  function resetForm() {
+    if (confirm('Are you sure you want to clear all fields? This cannot be undone.')) {
+      document.querySelectorAll('.form-body input[type="text"], .form-body textarea').forEach(el => {
+        el.value = '';
+      });
+      document.querySelectorAll('.form-body select').forEach(el => {
+        el.selectedIndex = 0;
+      });
+      document.querySelectorAll('.form-body input[type="radio"]').forEach(el => {
+        el.checked = false;
+      });
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }
+</script>
+</body>
+</html>
