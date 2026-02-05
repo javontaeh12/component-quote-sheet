@@ -232,8 +232,32 @@
   .scanner-preview img, .scanner-preview video {
     width: 100%; height: auto; object-fit: contain; max-height: 60vh;
   }
-  .scanner-preview .scan-guide {
-    display: none;
+  /* Crop box overlay */
+  .crop-overlay {
+    position: absolute; inset: 0; pointer-events: none;
+  }
+  .crop-box {
+    position: absolute; border: 2px dashed #fff;
+    background: transparent; pointer-events: auto;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+    min-width: 50px; min-height: 50px;
+  }
+  .crop-handle {
+    position: absolute; width: 24px; height: 24px;
+    background: #e67e22; border: 2px solid #fff; border-radius: 50%;
+    pointer-events: auto; touch-action: none;
+  }
+  .crop-handle.tl { top: -12px; left: -12px; cursor: nwse-resize; }
+  .crop-handle.tr { top: -12px; right: -12px; cursor: nesw-resize; }
+  .crop-handle.bl { bottom: -12px; left: -12px; cursor: nesw-resize; }
+  .crop-handle.br { bottom: -12px; right: -12px; cursor: nwse-resize; }
+  .crop-handle.t { top: -12px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+  .crop-handle.b { bottom: -12px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+  .crop-handle.l { left: -12px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+  .crop-handle.r { right: -12px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+  .crop-hint {
+    position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,0.7); font-size: 11px; white-space: nowrap;
   }
   .scanner-status {
     margin-top: 20px; color: #fff; font-size: 14px; text-align: center;
@@ -486,7 +510,19 @@
   <div class="scanner-body">
     <div class="scanner-preview" id="scannerPreview">
       <img id="capturedImage" style="display:none;">
-      <div class="scan-guide"></div>
+      <div class="crop-overlay" id="cropOverlay" style="display:none;">
+        <div class="crop-box" id="cropBox">
+          <div class="crop-handle tl" data-handle="tl"></div>
+          <div class="crop-handle tr" data-handle="tr"></div>
+          <div class="crop-handle bl" data-handle="bl"></div>
+          <div class="crop-handle br" data-handle="br"></div>
+          <div class="crop-handle t" data-handle="t"></div>
+          <div class="crop-handle b" data-handle="b"></div>
+          <div class="crop-handle l" data-handle="l"></div>
+          <div class="crop-handle r" data-handle="r"></div>
+          <div class="crop-hint">Drag corners to adjust</div>
+        </div>
+      </div>
     </div>
     <div class="scanner-status" id="scannerStatus">Tap capture to take a photo of the dataplate</div>
     <div class="scanner-actions" id="scannerActions">
@@ -799,6 +835,7 @@ function resetForm() {
 
 // ── Dataplate Scanner ──
 let capturedImageData = null;
+let cropBox = { top: 10, left: 10, width: 80, height: 80 }; // percentages
 
 function openCamera() {
   document.getElementById('cameraInput').click();
@@ -812,6 +849,7 @@ function closeScanner() {
   document.getElementById('scannerModal').classList.remove('active');
   capturedImageData = null;
   document.getElementById('capturedImage').style.display = 'none';
+  document.getElementById('cropOverlay').style.display = 'none';
   document.getElementById('scannerStatus').textContent = 'Tap capture to take a photo of the dataplate';
   document.getElementById('scannerStatus').className = 'scanner-status';
   document.getElementById('scannerActions').innerHTML = '<button class="btn-capture" onclick="capturePhoto()">Capture Photo</button>';
@@ -823,6 +861,111 @@ function capturePhoto() {
 
 function selectFromGallery() {
   document.getElementById('galleryInput').click();
+}
+
+function initCropBox() {
+  const overlay = document.getElementById('cropOverlay');
+  const box = document.getElementById('cropBox');
+  overlay.style.display = 'block';
+
+  // Reset crop box to cover most of the image
+  cropBox = { top: 5, left: 5, width: 90, height: 90 };
+  updateCropBoxPosition();
+
+  // Set up drag handlers
+  let activeHandle = null;
+  let startX, startY, startBox;
+
+  const handles = box.querySelectorAll('.crop-handle');
+  handles.forEach(handle => {
+    handle.addEventListener('touchstart', startDrag, { passive: false });
+    handle.addEventListener('mousedown', startDrag);
+  });
+
+  // Allow dragging the entire box
+  box.addEventListener('touchstart', startBoxDrag, { passive: false });
+  box.addEventListener('mousedown', startBoxDrag);
+
+  function startDrag(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    activeHandle = e.target.dataset.handle;
+    const touch = e.touches ? e.touches[0] : e;
+    startX = touch.clientX;
+    startY = touch.clientY;
+    startBox = { ...cropBox };
+
+    document.addEventListener('touchmove', onDrag, { passive: false });
+    document.addEventListener('touchend', endDrag);
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', endDrag);
+  }
+
+  function startBoxDrag(e) {
+    if (e.target.classList.contains('crop-handle')) return;
+    e.preventDefault();
+    activeHandle = 'move';
+    const touch = e.touches ? e.touches[0] : e;
+    startX = touch.clientX;
+    startY = touch.clientY;
+    startBox = { ...cropBox };
+
+    document.addEventListener('touchmove', onDrag, { passive: false });
+    document.addEventListener('touchend', endDrag);
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', endDrag);
+  }
+
+  function onDrag(e) {
+    if (!activeHandle) return;
+    e.preventDefault();
+
+    const touch = e.touches ? e.touches[0] : e;
+    const rect = overlay.getBoundingClientRect();
+    const dx = ((touch.clientX - startX) / rect.width) * 100;
+    const dy = ((touch.clientY - startY) / rect.height) * 100;
+
+    if (activeHandle === 'move') {
+      cropBox.left = Math.max(0, Math.min(100 - startBox.width, startBox.left + dx));
+      cropBox.top = Math.max(0, Math.min(100 - startBox.height, startBox.top + dy));
+    } else {
+      // Handle resizing
+      if (activeHandle.includes('l')) {
+        const newLeft = Math.max(0, Math.min(startBox.left + startBox.width - 10, startBox.left + dx));
+        cropBox.width = startBox.width - (newLeft - startBox.left);
+        cropBox.left = newLeft;
+      }
+      if (activeHandle.includes('r')) {
+        cropBox.width = Math.max(10, Math.min(100 - startBox.left, startBox.width + dx));
+      }
+      if (activeHandle.includes('t')) {
+        const newTop = Math.max(0, Math.min(startBox.top + startBox.height - 10, startBox.top + dy));
+        cropBox.height = startBox.height - (newTop - startBox.top);
+        cropBox.top = newTop;
+      }
+      if (activeHandle.includes('b')) {
+        cropBox.height = Math.max(10, Math.min(100 - startBox.top, startBox.height + dy));
+      }
+    }
+
+    updateCropBoxPosition();
+  }
+
+  function endDrag() {
+    activeHandle = null;
+    document.removeEventListener('touchmove', onDrag);
+    document.removeEventListener('touchend', endDrag);
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('mouseup', endDrag);
+  }
+}
+
+function updateCropBoxPosition() {
+  const box = document.getElementById('cropBox');
+  box.style.top = cropBox.top + '%';
+  box.style.left = cropBox.left + '%';
+  box.style.width = cropBox.width + '%';
+  box.style.height = cropBox.height + '%';
 }
 
 function handleCameraCapture(event) {
@@ -838,7 +981,13 @@ function handleCameraCapture(event) {
 
     // Show modal with captured image
     document.getElementById('scannerModal').classList.add('active');
-    document.getElementById('scannerStatus').textContent = 'Photo captured. Tap "Extract Data" to scan.';
+
+    // Initialize crop box after image loads
+    img.onload = function() {
+      initCropBox();
+    };
+
+    document.getElementById('scannerStatus').textContent = 'Adjust the box to focus on the dataplate, then tap "Extract"';
     document.getElementById('scannerStatus').className = 'scanner-status';
     document.getElementById('scannerActions').innerHTML = `
       <button class="btn-retake" onclick="capturePhoto()">Retake</button>
@@ -848,6 +997,26 @@ function handleCameraCapture(event) {
   };
   reader.readAsDataURL(file);
   event.target.value = ''; // Reset input
+}
+
+function getCroppedImage() {
+  return new Promise((resolve) => {
+    const img = document.getElementById('capturedImage');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Calculate crop dimensions based on actual image size
+    const x = (cropBox.left / 100) * img.naturalWidth;
+    const y = (cropBox.top / 100) * img.naturalHeight;
+    const w = (cropBox.width / 100) * img.naturalWidth;
+    const h = (cropBox.height / 100) * img.naturalHeight;
+
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
+
+    resolve(canvas.toDataURL('image/jpeg', 0.9));
+  });
 }
 
 async function processDataplate() {
@@ -861,7 +1030,10 @@ async function processDataplate() {
   actions.innerHTML = '<button class="btn-capture" disabled>Processing...</button>';
 
   try {
-    const result = await Tesseract.recognize(capturedImageData, 'eng', {
+    // Get cropped image based on selection box
+    const croppedImage = await getCroppedImage();
+
+    const result = await Tesseract.recognize(croppedImage, 'eng', {
       logger: m => {
         if (m.status === 'recognizing text') {
           const pct = Math.round(m.progress * 100);
