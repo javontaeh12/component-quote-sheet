@@ -224,21 +224,16 @@
   }
   .scanner-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
   .scanner-preview {
-    width: 100%; max-width: 400px; aspect-ratio: 4/3; background: #1a1a1a;
+    width: 100%; max-width: 400px; background: #1a1a1a;
     border-radius: 12px; overflow: hidden; position: relative;
     border: 2px solid rgba(255,255,255,0.1);
+    min-height: 200px; display: flex; align-items: center; justify-content: center;
   }
   .scanner-preview img, .scanner-preview video {
-    width: 100%; height: 100%; object-fit: cover;
+    width: 100%; height: auto; object-fit: contain; max-height: 60vh;
   }
   .scanner-preview .scan-guide {
-    position: absolute; inset: 20px; border: 2px dashed rgba(255,255,255,0.4);
-    border-radius: 8px; pointer-events: none;
-  }
-  .scanner-preview .scan-guide::before {
-    content: 'Position dataplate within frame';
-    position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%);
-    color: rgba(255,255,255,0.6); font-size: 12px; white-space: nowrap;
+    display: none;
   }
   .scanner-status {
     margin-top: 20px; color: #fff; font-size: 14px; text-align: center;
