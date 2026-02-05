@@ -186,6 +186,75 @@
   .btn-print { background: var(--success); color: #fff; }
   .btn-reset { background: #fff; color: var(--text-muted); border: 1.5px solid var(--border) !important; }
 
+  /* Scan Dataplate Button */
+  .scan-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 14px 16px; margin-bottom: 16px;
+    background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 600; font-family: inherit;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 8px rgba(230,126,34,0.3);
+  }
+  .scan-btn:active { opacity: 0.9; transform: scale(0.98); }
+  .scan-btn svg { flex-shrink: 0; }
+
+  /* Scanner Modal */
+  .scanner-modal {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.95); flex-direction: column;
+  }
+  .scanner-modal.active { display: flex; }
+  .scanner-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; background: rgba(255,255,255,0.05);
+  }
+  .scanner-header h3 { color: #fff; font-size: 16px; font-weight: 600; }
+  .scanner-close {
+    background: rgba(255,255,255,0.1); border: none; color: #fff;
+    width: 36px; height: 36px; border-radius: 50%; font-size: 20px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .scanner-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+  .scanner-preview {
+    width: 100%; max-width: 400px; aspect-ratio: 4/3; background: #1a1a1a;
+    border-radius: 12px; overflow: hidden; position: relative;
+    border: 2px solid rgba(255,255,255,0.1);
+  }
+  .scanner-preview img, .scanner-preview video {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .scanner-preview .scan-guide {
+    position: absolute; inset: 20px; border: 2px dashed rgba(255,255,255,0.4);
+    border-radius: 8px; pointer-events: none;
+  }
+  .scanner-preview .scan-guide::before {
+    content: 'Position dataplate within frame';
+    position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,0.6); font-size: 12px; white-space: nowrap;
+  }
+  .scanner-status {
+    margin-top: 20px; color: #fff; font-size: 14px; text-align: center;
+    min-height: 24px;
+  }
+  .scanner-status.processing { color: #f39c12; }
+  .scanner-status.success { color: #27ae60; }
+  .scanner-status.error { color: #e74c3c; }
+  .scanner-actions { display: flex; gap: 12px; margin-top: 20px; width: 100%; max-width: 400px; }
+  .scanner-actions button {
+    flex: 1; padding: 14px 16px; border-radius: 10px; font-size: 14px;
+    font-weight: 600; font-family: inherit; cursor: pointer; border: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .scanner-actions .btn-capture { background: #27ae60; color: #fff; }
+  .scanner-actions .btn-capture:disabled { background: #555; color: #999; }
+  .scanner-actions .btn-retake { background: rgba(255,255,255,0.1); color: #fff; }
+  .scanner-actions .btn-use { background: #3498db; color: #fff; }
+  .scanner-actions .btn-use:disabled { background: #555; color: #999; }
+
+  /* File input for camera */
+  #cameraInput { display: none; }
+
   .form-footer { background: var(--section-bg); padding: 14px 16px; text-align: center; font-size: 10px; color: var(--text-muted); border-top: 1px solid #e4e7ec; }
 
   /* ── Print output (hidden offscreen until export) ── */
@@ -291,6 +360,13 @@
 
     <div class="section">
       <div class="section-header"><div class="section-icon">2</div><h2>Equipment Details</h2></div>
+      <button class="scan-btn" onclick="openScanner()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        Scan Dataplate
+      </button>
       <div class="row"><div class="field"><label>Equipment Type</label><input type="text" id="equipmentType" placeholder="e.g. RTU, Condenser, Walk-in Cooler"></div></div>
       <div class="row"><div class="field">
         <label>Location</label>
@@ -323,6 +399,7 @@
         <div class="field half"><label>Voltage</label><input type="text" id="voltage" placeholder="e.g. 208/230"></div>
         <div class="field half"><label>Phase</label><input type="text" id="phase" placeholder="e.g. 1, 3"></div>
       </div>
+      <div class="row"><div class="field"><label>Refrigerant</label><input type="text" id="refrigerant" placeholder="e.g. R-410A, R-22"></div></div>
       <div class="row">
         <div class="status-field"><label>Warranty</label><div class="pill-group"><input type="radio" name="warranty" id="warrantyYes" value="Yes"><label class="pill" for="warrantyYes">Yes</label><input type="radio" name="warranty" id="warrantyNo" value="No"><label class="pill" for="warrantyNo">No</label></div></div>
         <div class="status-field"><label>Operational</label><div class="pill-group"><input type="radio" name="operational" id="operationalYes" value="Yes"><label class="pill" for="operationalYes">Yes</label><input type="radio" name="operational" id="operationalNo" value="No"><label class="pill" for="operationalNo">No</label></div></div>
@@ -388,8 +465,28 @@
 <!-- Hidden professional output for PDF/Photo/Print -->
 <div id="printOutput"></div>
 
+<!-- Scanner Modal -->
+<div class="scanner-modal" id="scannerModal">
+  <div class="scanner-header">
+    <h3>Scan Dataplate</h3>
+    <button class="scanner-close" onclick="closeScanner()">&times;</button>
+  </div>
+  <div class="scanner-body">
+    <div class="scanner-preview" id="scannerPreview">
+      <img id="capturedImage" style="display:none;">
+      <div class="scan-guide"></div>
+    </div>
+    <div class="scanner-status" id="scannerStatus">Tap capture to take a photo of the dataplate</div>
+    <div class="scanner-actions" id="scannerActions">
+      <button class="btn-capture" id="btnCapture" onclick="capturePhoto()">Capture Photo</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="handleCameraCapture(event)">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
 const STORAGE_KEY = 'componentQuoteSheet';
 let rowCount = 0, isRestoring = false, currentPartIndex = 0;
@@ -397,7 +494,7 @@ let rowCount = 0, isRestoring = false, currentPartIndex = 0;
 const fieldIds = [
   'customerName','storeNumber','woNumber','tech','pageNum','pageOf',
   'equipmentType','location','manufacturer','unit','modelNumber','serialNumber',
-  'voltage','phase','workPerformed','reasonForRepair','equipmentNeeded',
+  'voltage','phase','refrigerant','workPerformed','reasonForRepair','equipmentNeeded',
   'otherComments','boomUp','boomIn','boomSetBack','techHours','helperHours','travelHours'
 ];
 const radioNames = ['warranty','operational','boomTruck','trailerNeeded'];
@@ -459,6 +556,7 @@ function buildOutput() {
           <div class="po-field"><div class="po-label">Serial #</div><div class="po-value">${esc(val('serialNumber'))||'—'}</div></div>
           <div class="po-field"><div class="po-label">Voltage</div><div class="po-value">${esc(val('voltage'))||'—'}</div></div>
           <div class="po-field"><div class="po-label">Phase</div><div class="po-value">${esc(val('phase'))||'—'}</div></div>
+          <div class="po-field"><div class="po-label">Refrigerant</div><div class="po-value">${esc(val('refrigerant'))||'—'}</div></div>
           <div class="po-field"><div class="po-label">Warranty</div><div class="po-value">${radioVal('warranty')}</div></div>
           <div class="po-field"><div class="po-label">Operational</div><div class="po-value">${radioVal('operational')}</div></div>
         </div>
@@ -684,6 +782,186 @@ function resetForm() {
     addPartRow();
     localStorage.removeItem(STORAGE_KEY);
   }
+}
+
+// ── Dataplate Scanner ──
+let capturedImageData = null;
+
+function openScanner() {
+  document.getElementById('cameraInput').click();
+}
+
+function closeScanner() {
+  document.getElementById('scannerModal').classList.remove('active');
+  capturedImageData = null;
+  document.getElementById('capturedImage').style.display = 'none';
+  document.getElementById('scannerStatus').textContent = 'Tap capture to take a photo of the dataplate';
+  document.getElementById('scannerStatus').className = 'scanner-status';
+  document.getElementById('scannerActions').innerHTML = '<button class="btn-capture" onclick="capturePhoto()">Capture Photo</button>';
+}
+
+function capturePhoto() {
+  document.getElementById('cameraInput').click();
+}
+
+function handleCameraCapture(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    capturedImageData = e.target.result;
+    const img = document.getElementById('capturedImage');
+    img.src = capturedImageData;
+    img.style.display = 'block';
+
+    // Show modal with captured image
+    document.getElementById('scannerModal').classList.add('active');
+    document.getElementById('scannerStatus').textContent = 'Photo captured. Tap "Extract Data" to scan.';
+    document.getElementById('scannerStatus').className = 'scanner-status';
+    document.getElementById('scannerActions').innerHTML = `
+      <button class="btn-retake" onclick="capturePhoto()">Retake</button>
+      <button class="btn-use" onclick="processDataplate()">Extract Data</button>
+    `;
+  };
+  reader.readAsDataURL(file);
+  event.target.value = ''; // Reset input
+}
+
+async function processDataplate() {
+  if (!capturedImageData) return;
+
+  const status = document.getElementById('scannerStatus');
+  const actions = document.getElementById('scannerActions');
+
+  status.textContent = 'Processing image... This may take a moment.';
+  status.className = 'scanner-status processing';
+  actions.innerHTML = '<button class="btn-capture" disabled>Processing...</button>';
+
+  try {
+    const result = await Tesseract.recognize(capturedImageData, 'eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          const pct = Math.round(m.progress * 100);
+          status.textContent = `Scanning... ${pct}%`;
+        }
+      }
+    });
+
+    const text = result.data.text;
+    const extracted = extractDataplateInfo(text);
+
+    if (Object.keys(extracted).length > 0) {
+      applyExtractedData(extracted);
+      status.textContent = `Found ${Object.keys(extracted).length} field(s). Data applied to form.`;
+      status.className = 'scanner-status success';
+      actions.innerHTML = `
+        <button class="btn-retake" onclick="capturePhoto()">Scan Another</button>
+        <button class="btn-use" onclick="closeScanner()">Done</button>
+      `;
+    } else {
+      status.textContent = 'Could not extract data. Try a clearer photo.';
+      status.className = 'scanner-status error';
+      actions.innerHTML = `
+        <button class="btn-retake" onclick="capturePhoto()">Retake Photo</button>
+        <button class="btn-use" onclick="closeScanner()">Cancel</button>
+      `;
+    }
+  } catch (err) {
+    status.textContent = 'Error processing image. Please try again.';
+    status.className = 'scanner-status error';
+    actions.innerHTML = `
+      <button class="btn-retake" onclick="capturePhoto()">Retake Photo</button>
+      <button class="btn-use" onclick="closeScanner()">Cancel</button>
+    `;
+  }
+}
+
+function extractDataplateInfo(text) {
+  const data = {};
+  const lines = text.toUpperCase().replace(/[|]/g, 'I').replace(/[{}]/g, '');
+
+  // Model number patterns
+  const modelPatterns = [
+    /MODEL\s*[#:.\-]?\s*([A-Z0-9\-\/]+)/i,
+    /MOD(?:EL)?\s*[#:.\-]?\s*([A-Z0-9\-\/]+)/i,
+    /M\/N\s*[#:.\-]?\s*([A-Z0-9\-\/]+)/i,
+    /MN\s*[#:.\-]?\s*([A-Z0-9\-\/]+)/i,
+    /MODEL\s+NO\.?\s*([A-Z0-9\-\/]+)/i
+  ];
+  for (const p of modelPatterns) {
+    const m = lines.match(p);
+    if (m && m[1] && m[1].length >= 3) { data.model = m[1].trim(); break; }
+  }
+
+  // Serial number patterns
+  const serialPatterns = [
+    /SERIAL\s*[#:.\-]?\s*([A-Z0-9\-]+)/i,
+    /SER(?:IAL)?\s*[#:.\-]?\s*([A-Z0-9\-]+)/i,
+    /S\/N\s*[#:.\-]?\s*([A-Z0-9\-]+)/i,
+    /SN\s*[#:.\-]?\s*([A-Z0-9\-]+)/i
+  ];
+  for (const p of serialPatterns) {
+    const m = lines.match(p);
+    if (m && m[1] && m[1].length >= 4) { data.serial = m[1].trim(); break; }
+  }
+
+  // Voltage patterns
+  const voltagePatterns = [
+    /(\d{2,3}\s*[\/\-]\s*\d{2,3}\s*[\/\-]\s*\d{2,3})\s*V(?:OLT)?/i,
+    /(\d{2,3}\s*[\/\-]\s*\d{2,3})\s*V(?:OLT)?/i,
+    /VOLT(?:AGE|S)?\s*[#:.\-]?\s*(\d{2,3}(?:\s*[\/\-]\s*\d{2,3})*)/i,
+    /(\d{3})\s*V(?:AC|OLT)/i,
+    /VOLTS?\s*(\d{2,3})/i
+  ];
+  for (const p of voltagePatterns) {
+    const m = lines.match(p);
+    if (m && m[1]) { data.voltage = m[1].replace(/\s/g, '').trim(); break; }
+  }
+
+  // Phase patterns
+  const phasePatterns = [
+    /(\d)\s*(?:PH|PHASE)/i,
+    /PHASE\s*[#:.\-]?\s*(\d)/i,
+    /PH\s*[#:.\-]?\s*(\d)/i,
+    /(\d)\s*Ø/i
+  ];
+  for (const p of phasePatterns) {
+    const m = lines.match(p);
+    if (m && m[1]) { data.phase = m[1].trim(); break; }
+  }
+
+  // Refrigerant patterns - store for equipment type hint
+  const refrigerantPatterns = [
+    /(?:REFRIGERANT|REFRIG|REF)\s*[#:.\-]?\s*(R[\-]?\d{2,3}[A-Z]?)/i,
+    /(R[\-]?(?:22|134[Aa]?|404[Aa]?|410[Aa]?|407[Cc]?|290|600[Aa]?|32|454[Bb]?|1234[A-Za-z]{2}))/i,
+    /CHARGE.*(R[\-]?\d{2,3}[A-Z]?)/i
+  ];
+  for (const p of refrigerantPatterns) {
+    const m = lines.match(p);
+    if (m && m[1]) { data.refrigerant = m[1].replace('-','').toUpperCase().trim(); break; }
+  }
+
+  return data;
+}
+
+function applyExtractedData(data) {
+  if (data.model) {
+    document.getElementById('modelNumber').value = data.model;
+  }
+  if (data.serial) {
+    document.getElementById('serialNumber').value = data.serial;
+  }
+  if (data.voltage) {
+    document.getElementById('voltage').value = data.voltage;
+  }
+  if (data.phase) {
+    document.getElementById('phase').value = data.phase;
+  }
+  if (data.refrigerant) {
+    document.getElementById('refrigerant').value = data.refrigerant;
+  }
+  saveForm();
 }
 </script>
 </body>
