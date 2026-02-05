@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Component Quote Sheet</title>
+<title>Quote Sheet</title>
 <meta name="description" content="HVAC & Refrigeration Service Quote Form">
-<meta property="og:title" content="Component Quote Sheet">
+<meta property="og:title" content="Quote Sheet">
 <meta property="og:description" content="HVAC & Refrigeration Service Quote Form">
 <meta property="og:image" content="https://component-quote-sheet.vercel.app/og-image.png">
 <meta property="og:type" content="website">
@@ -231,6 +231,10 @@
   }
   .scanner-preview img, .scanner-preview video {
     width: 100%; height: auto; object-fit: contain; max-height: 60vh;
+    display: block;
+  }
+  .scanner-preview.has-image {
+    display: block;
   }
   /* Crop box overlay */
   .crop-overlay {
@@ -366,7 +370,7 @@
 
 <div class="form-container" id="quoteForm">
   <div class="form-header">
-    <div><h1>Component Quote Sheet</h1><div class="subtitle">HVAC / Refrigeration Service</div></div>
+    <div><h1>Quote Sheet</h1><div class="subtitle">HVAC / Refrigeration Service</div></div>
     <div class="header-badge">Service Quote</div>
   </div>
   <div class="form-body">
@@ -387,21 +391,23 @@
     <div class="section">
       <div class="section-header"><div class="section-icon">2</div><h2>Equipment Details</h2></div>
       <div class="scan-buttons">
-        <button class="scan-btn" onclick="openCamera()">
+        <label class="scan-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
             <circle cx="12" cy="13" r="4"/>
           </svg>
           Scan Dataplate
-        </button>
-        <button class="scan-btn gallery-btn" onclick="openGallery()">
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="handleCameraCapture(event)" style="display:none;">
+        </label>
+        <label class="scan-btn gallery-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
             <circle cx="8.5" cy="8.5" r="1.5"/>
             <polyline points="21 15 16 10 5 21"/>
           </svg>
           Upload Image
-        </button>
+          <input type="file" id="galleryInput" accept="image/*" onchange="handleCameraCapture(event)" style="display:none;">
+        </label>
       </div>
       <div class="row"><div class="field"><label>Equipment Type</label><input type="text" id="equipmentType" placeholder="e.g. RTU, Condenser, Walk-in Cooler"></div></div>
       <div class="row"><div class="field">
@@ -530,8 +536,6 @@
     </div>
   </div>
 </div>
-<input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="handleCameraCapture(event)">
-<input type="file" id="galleryInput" accept="image/*" onchange="handleCameraCapture(event)">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -579,7 +583,7 @@ function buildOutput() {
 
   return `
     <div class="po-header">
-      <div><h1>Component Quote Sheet</h1><div style="font-size:11px;opacity:0.7;margin-top:3px;">HVAC / Refrigeration Service Documentation</div></div>
+      <div><h1>Quote Sheet</h1><div style="font-size:11px;opacity:0.7;margin-top:3px;">HVAC / Refrigeration Service Documentation</div></div>
       <div style="text-align:right;"><div class="po-badge">Service Quote</div><div style="font-size:10px;opacity:0.7;margin-top:6px;">${today}</div></div>
     </div>
     <div class="po-body">
@@ -640,7 +644,7 @@ function buildOutput() {
         ${partsHTML}
       </div>
     </div>
-    <div class="po-footer">Component Quote Sheet &mdash; Generated ${today}</div>
+    <div class="po-footer">Quote Sheet &mdash; Generated ${today}</div>
   `;
 }
 
