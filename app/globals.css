@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Quote Form Input Styles */
+.form-input {
+  padding: 12px 14px;
+  border: 1.5px solid #d0d5dd;
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: inherit;
+  background: #f8f9fb;
+  color: #1a1a2e;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #2a5a8c;
+  box-shadow: 0 0 0 3px rgba(42, 90, 140, 0.12);
+  background: #fff;
+}
+
+.form-input::placeholder {
+  color: #b0b8c4;
+}
+
+@media (min-width: 768px) {
+  .form-input {
+    font-size: 14px;
+    padding: 9px 12px;
+  }
+}
