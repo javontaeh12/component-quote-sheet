@@ -901,33 +901,151 @@ async function processDataplate() {
 
 function extractDataplateInfo(text) {
   const data = {};
-  const lines = text.toUpperCase().replace(/[|]/g, 'I').replace(/[{}]/g, '');
+  // Clean up OCR text - fix common OCR mistakes
+  const lines = text.toUpperCase()
+    .replace(/[|]/g, 'I')
+    .replace(/[{}]/g, '')
+    .replace(/0/g, 'O')  // Sometimes O is read as 0
+    .replace(/1/g, 'I')  // Sometimes I is read as 1
+    .replace(/5/g, 'S')  // Sometimes S is read as 5
+    .replace(/8/g, 'B'); // Sometimes B is read as 8
 
-  // Known manufacturer names to look for
+  // Keep original for numbers
+  const originalText = text.toUpperCase().replace(/[|{}]/g, '');
+
+  // Known manufacturer names with common OCR variations
   const manufacturers = [
-    'CARRIER', 'TRANE', 'LENNOX', 'YORK', 'RHEEM', 'RUUD', 'GOODMAN', 'AMANA',
-    'DAIKIN', 'MITSUBISHI', 'FUJITSU', 'LG', 'SAMSUNG', 'BOSCH', 'BRYANT',
-    'PAYNE', 'HEIL', 'COMFORTMAKER', 'TEMPSTAR', 'KEEPRITE', 'ARCOAIRE',
-    'AMERICAN STANDARD', 'COLEMAN', 'LUXAIRE', 'JOHNSON CONTROLS', 'NORTEK',
-    'BARD', 'REZNOR', 'MODINE', 'AAON', 'MAMMOTH', 'BOHN', 'HEATCRAFT',
-    'COPELAND', 'EMERSON', 'DANFOSS', 'EMBRACO', 'TECUMSEH', 'BRISTOL',
-    'HUSSMANN', 'HILL PHOENIX', 'KYSOR', 'TYLER', 'ZERO ZONE', 'TRUE',
-    'TRAULSEN', 'TURBO AIR', 'MASTER-BILT', 'NOR-LAKE', 'KOLPAK', 'RANDELL',
-    'VICTORY', 'MCQUAY', 'DUNHAM-BUSH', 'CLIMATE MASTER', 'FRIEDRICH',
-    'HONEYWELL', 'ICP', 'ARMSTRONG', 'AIRE-FLO', 'BEACON', 'MORRIS',
-    'LARKIN', 'RUSSELL', 'KRAMER', 'TRENTON', 'KELVINATOR', 'MCCALL',
-    'SUB-ZERO', 'WALK-IN', 'BALLY', 'SPORLAN', 'ADP'
+    { name: 'Carrier', patterns: ['CARRIER', 'CARR1ER', 'CARRI3R', 'CARRLER'] },
+    { name: 'Trane', patterns: ['TRANE', 'TRAN3', 'IRAN E', 'TRAN'] },
+    { name: 'Lennox', patterns: ['LENNOX', 'LENN0X', 'LENNQX', 'L3NNOX'] },
+    { name: 'York', patterns: ['YORK', 'Y0RK'] },
+    { name: 'Rheem', patterns: ['RHEEM', 'RH33M', 'RHEIM'] },
+    { name: 'Ruud', patterns: ['RUUD', 'RU UD'] },
+    { name: 'Goodman', patterns: ['GOODMAN', 'G00DMAN', 'GODMAN'] },
+    { name: 'Amana', patterns: ['AMANA', 'AMAN A'] },
+    { name: 'Daikin', patterns: ['DAIKIN', 'DA1KIN', 'DAIK1N'] },
+    { name: 'Mitsubishi', patterns: ['MITSUBISHI', 'M1TSUBISH1', 'MITSUB1SHI', 'MITSU'] },
+    { name: 'Fujitsu', patterns: ['FUJITSU', 'FUJ1TSU', 'FUJITS'] },
+    { name: 'LG', patterns: ['LG ', ' LG', 'L.G', 'L G'] },
+    { name: 'Samsung', patterns: ['SAMSUNG', 'SAMSUN6', 'SAMS UNG'] },
+    { name: 'Bosch', patterns: ['BOSCH', 'B0SCH'] },
+    { name: 'Bryant', patterns: ['BRYANT', 'BRVANT', 'BRY ANT'] },
+    { name: 'Payne', patterns: ['PAYNE', 'PAVNE'] },
+    { name: 'Heil', patterns: ['HEIL', 'HE1L'] },
+    { name: 'Comfortmaker', patterns: ['COMFORTMAKER', 'COMFORT MAKER', 'C0MF0RTMAKER'] },
+    { name: 'Tempstar', patterns: ['TEMPSTAR', 'T3MPSTAR'] },
+    { name: 'KeepRite', patterns: ['KEEPRITE', 'KEEP RITE', 'KEEPR1TE'] },
+    { name: 'Arcoaire', patterns: ['ARCOAIRE', 'ARC0AIRE'] },
+    { name: 'American Standard', patterns: ['AMERICAN STANDARD', 'AMER1CAN STANDARD'] },
+    { name: 'Coleman', patterns: ['COLEMAN', 'C0LEMAN'] },
+    { name: 'Luxaire', patterns: ['LUXAIRE', 'LUXA1RE'] },
+    { name: 'Johnson Controls', patterns: ['JOHNSON CONTROLS', 'J0HNSON', 'JOHNSON'] },
+    { name: 'Nortek', patterns: ['NORTEK', 'N0RTEK'] },
+    { name: 'Bard', patterns: ['BARD', 'B ARD'] },
+    { name: 'Reznor', patterns: ['REZNOR', 'REZN0R'] },
+    { name: 'Modine', patterns: ['MODINE', 'M0DINE'] },
+    { name: 'AAON', patterns: ['AAON', 'AA0N', 'A AON'] },
+    { name: 'Mammoth', patterns: ['MAMMOTH', 'MAMM0TH'] },
+    { name: 'Bohn', patterns: ['BOHN', 'B0HN'] },
+    { name: 'Heatcraft', patterns: ['HEATCRAFT', 'HEAT CRAFT', 'H3ATCRAFT'] },
+    { name: 'Copeland', patterns: ['COPELAND', 'C0PELAND', 'COPE LAND'] },
+    { name: 'Emerson', patterns: ['EMERSON', 'EMERS0N', '3MERSON'] },
+    { name: 'Danfoss', patterns: ['DANFOSS', 'DANF0SS', 'DANFO55'] },
+    { name: 'Embraco', patterns: ['EMBRACO', 'EMBRAC0', '3MBRACO'] },
+    { name: 'Tecumseh', patterns: ['TECUMSEH', 'T3CUMSEH', 'TECUMS3H'] },
+    { name: 'Bristol', patterns: ['BRISTOL', 'BR1STOL', 'BRIST0L'] },
+    { name: 'Hussmann', patterns: ['HUSSMANN', 'HUSSMAN', 'HU5SMANN'] },
+    { name: 'Hill Phoenix', patterns: ['HILL PHOENIX', 'HILLPHOENIX', 'PHOENIX'] },
+    { name: 'Kysor', patterns: ['KYSOR', 'KYS0R'] },
+    { name: 'Tyler', patterns: ['TYLER', 'TYL3R'] },
+    { name: 'Zero Zone', patterns: ['ZERO ZONE', 'ZER0 Z0NE', 'ZEROZONE'] },
+    { name: 'True', patterns: ['TRUE', 'TRU3', 'TRUE MFG', 'TRUE MANUFACTURING'] },
+    { name: 'Traulsen', patterns: ['TRAULSEN', 'TRAULS3N'] },
+    { name: 'Turbo Air', patterns: ['TURBO AIR', 'TURB0 AIR', 'TURBOAIR'] },
+    { name: 'Master-Bilt', patterns: ['MASTER-BILT', 'MASTER BILT', 'MASTERBILT'] },
+    { name: 'Nor-Lake', patterns: ['NOR-LAKE', 'NORLAKE', 'NOR LAKE'] },
+    { name: 'Kolpak', patterns: ['KOLPAK', 'K0LPAK'] },
+    { name: 'Randell', patterns: ['RANDELL', 'RAND3LL'] },
+    { name: 'Victory', patterns: ['VICTORY', 'V1CTORY', 'VICT0RY'] },
+    { name: 'McQuay', patterns: ['MCQUAY', 'MC QUAY'] },
+    { name: 'Dunham-Bush', patterns: ['DUNHAM-BUSH', 'DUNHAM BUSH', 'DUNHAMBUSH'] },
+    { name: 'Climate Master', patterns: ['CLIMATE MASTER', 'CLIMATEMASTER'] },
+    { name: 'Friedrich', patterns: ['FRIEDRICH', 'FR1EDRICH', 'FRIEDR1CH'] },
+    { name: 'Honeywell', patterns: ['HONEYWELL', 'H0NEYWELL', 'HONEY WELL'] },
+    { name: 'ICP', patterns: ['ICP ', ' ICP', 'I.C.P', 'I C P'] },
+    { name: 'Armstrong', patterns: ['ARMSTRONG', 'ARMSTR0NG'] },
+    { name: 'Aire-Flo', patterns: ['AIRE-FLO', 'AIREFLO', 'AIRE FLO'] },
+    { name: 'Beacon/Morris', patterns: ['BEACON', 'MORRIS', 'BEACON MORRIS'] },
+    { name: 'Larkin', patterns: ['LARKIN', 'LARK1N'] },
+    { name: 'Russell', patterns: ['RUSSELL', 'RUSS3LL'] },
+    { name: 'Kramer Trenton', patterns: ['KRAMER', 'TRENTON', 'KRAMER TRENTON'] },
+    { name: 'Kelvinator', patterns: ['KELVINATOR', 'K3LVINATOR'] },
+    { name: 'McCall', patterns: ['MCCALL', 'MC CALL'] },
+    { name: 'Sub-Zero', patterns: ['SUB-ZERO', 'SUBZERO', 'SUB ZERO'] },
+    { name: 'Bally', patterns: ['BALLY', 'BALLV'] },
+    { name: 'Sporlan', patterns: ['SPORLAN', 'SP0RLAN'] },
+    { name: 'ADP', patterns: ['ADP ', ' ADP', 'A.D.P', 'A D P'] }
   ];
 
-  // Check for manufacturer names in text
+  // Function to calculate similarity between two strings
+  function similarity(s1, s2) {
+    const longer = s1.length > s2.length ? s1 : s2;
+    const shorter = s1.length > s2.length ? s2 : s1;
+    if (longer.length === 0) return 1.0;
+    const costs = [];
+    for (let i = 0; i <= s1.length; i++) {
+      let lastValue = i;
+      for (let j = 0; j <= s2.length; j++) {
+        if (i === 0) costs[j] = j;
+        else if (j > 0) {
+          let newValue = costs[j - 1];
+          if (s1.charAt(i - 1) !== s2.charAt(j - 1))
+            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+          costs[j - 1] = lastValue;
+          lastValue = newValue;
+        }
+      }
+      if (i > 0) costs[s2.length] = lastValue;
+    }
+    return (longer.length - costs[s2.length]) / longer.length;
+  }
+
+  // Check for manufacturer names in text - try exact patterns first
+  let bestMatch = null;
+  let bestScore = 0;
+
   for (const mfg of manufacturers) {
-    if (lines.includes(mfg)) {
-      data.manufacturer = mfg.split(' ').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
-      break;
+    // Check exact pattern matches
+    for (const pattern of mfg.patterns) {
+      if (lines.includes(pattern) || originalText.includes(pattern)) {
+        data.manufacturer = mfg.name;
+        bestMatch = mfg.name;
+        bestScore = 1;
+        break;
+      }
+    }
+    if (bestScore === 1) break;
+  }
+
+  // If no exact match, try fuzzy matching on words in the text
+  if (!bestMatch) {
+    const words = lines.split(/[\s\n\r.,;:]+/).filter(w => w.length >= 3);
+    for (const word of words) {
+      for (const mfg of manufacturers) {
+        const mainName = mfg.patterns[0];
+        const score = similarity(word, mainName);
+        if (score > 0.75 && score > bestScore) {
+          bestScore = score;
+          bestMatch = mfg.name;
+        }
+      }
+    }
+    if (bestMatch && bestScore > 0.75) {
+      data.manufacturer = bestMatch;
     }
   }
 
-  // Model number patterns
+  // Model number patterns - use originalText to preserve numbers
   const modelPatterns = [
     /MODEL\s*[#:.\-]?\s*([A-Z0-9\-\/]+)/i,
     /MOD(?:EL)?\s*[#:.\-]?\s*([A-Z0-9\-\/]+)/i,
@@ -936,11 +1054,11 @@ function extractDataplateInfo(text) {
     /MODEL\s+NO\.?\s*([A-Z0-9\-\/]+)/i
   ];
   for (const p of modelPatterns) {
-    const m = lines.match(p);
+    const m = originalText.match(p);
     if (m && m[1] && m[1].length >= 3) { data.model = m[1].trim(); break; }
   }
 
-  // Serial number patterns
+  // Serial number patterns - use originalText to preserve numbers
   const serialPatterns = [
     /SERIAL\s*[#:.\-]?\s*([A-Z0-9\-]+)/i,
     /SER(?:IAL)?\s*[#:.\-]?\s*([A-Z0-9\-]+)/i,
@@ -948,11 +1066,11 @@ function extractDataplateInfo(text) {
     /SN\s*[#:.\-]?\s*([A-Z0-9\-]+)/i
   ];
   for (const p of serialPatterns) {
-    const m = lines.match(p);
+    const m = originalText.match(p);
     if (m && m[1] && m[1].length >= 4) { data.serial = m[1].trim(); break; }
   }
 
-  // Voltage patterns
+  // Voltage patterns - use originalText to preserve numbers
   const voltagePatterns = [
     /(\d{2,3}\s*[\/\-]\s*\d{2,3}\s*[\/\-]\s*\d{2,3})\s*V(?:OLT)?/i,
     /(\d{2,3}\s*[\/\-]\s*\d{2,3})\s*V(?:OLT)?/i,
@@ -961,11 +1079,11 @@ function extractDataplateInfo(text) {
     /VOLTS?\s*(\d{2,3})/i
   ];
   for (const p of voltagePatterns) {
-    const m = lines.match(p);
+    const m = originalText.match(p);
     if (m && m[1]) { data.voltage = m[1].replace(/\s/g, '').trim(); break; }
   }
 
-  // Phase patterns
+  // Phase patterns - use originalText to preserve numbers
   const phasePatterns = [
     /(\d)\s*(?:PH|PHASE)/i,
     /PHASE\s*[#:.\-]?\s*(\d)/i,
@@ -973,7 +1091,7 @@ function extractDataplateInfo(text) {
     /(\d)\s*Ø/i
   ];
   for (const p of phasePatterns) {
-    const m = lines.match(p);
+    const m = originalText.match(p);
     if (m && m[1]) { data.phase = m[1].trim(); break; }
   }
 
