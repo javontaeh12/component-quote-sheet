@@ -65,23 +65,8 @@ function CallbackHandler() {
         .eq('id', session.user.id)
         .single();
 
-      // Check if a group code was saved during sign-up
-      const signupGroupCode = localStorage.getItem('signup_group_code');
-
       if (!existingProfile) {
-        // Look up group if signup code was provided
-        let groupId: string | null = null;
-        if (signupGroupCode) {
-          const { data: group } = await supabase
-            .from('organization_groups')
-            .select('id')
-            .eq('group_code', signupGroupCode)
-            .single();
-          groupId = group?.id ?? null;
-          localStorage.removeItem('signup_group_code');
-        }
-
-        // Create new profile — include group_id if we have it from sign-up
+        // Create new profile with pending status
         const { error: insertError } = await supabase.from('profiles').insert({
           id: session.user.id,
           email: session.user.email,
@@ -90,7 +75,6 @@ function CallbackHandler() {
             session.user.email?.split('@')[0],
           role: 'tech',
           status: 'pending',
-          ...(groupId ? { group_id: groupId } : {}),
         } as Record<string, unknown>);
 
         if (insertError) {
@@ -99,46 +83,13 @@ function CallbackHandler() {
           return;
         }
 
-        // Send admin notification email
-        try {
-          await fetch('/api/auth/new-user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
-              email: session.user.email,
-            }),
-          });
-        } catch {
-          // Not critical
-        }
-
-        // If group was set, go directly to pending. Otherwise, onboarding.
-        router.replace(groupId ? '/pending' : '/onboarding');
+        // Redirect to onboarding for group code
+        router.replace('/onboarding');
         return;
       }
 
-      // Existing profile without a group — try using signup code, or send to onboarding
+      // Existing profile without a group — send to onboarding
       if (!existingProfile.group_id) {
-        if (signupGroupCode) {
-          const { data: group } = await supabase
-            .from('organization_groups')
-            .select('id')
-            .eq('group_code', signupGroupCode)
-            .single();
-          localStorage.removeItem('signup_group_code');
-
-          if (group) {
-            await supabase
-              .from('profiles')
-              .update({ group_id: group.id })
-              .eq('id', session.user.id);
-
-            router.replace('/pending');
-            return;
-          }
-        }
-
         router.replace('/onboarding');
         return;
       }
