@@ -127,6 +127,16 @@ export default function QuotePage() {
           font-size: 12px; font-weight: 700; flex-shrink: 0;
         }
         .section-header h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--primary); }
+        .section-header { justify-content: space-between; }
+        .section-header-left { display: flex; align-items: center; gap: 8px; }
+        .generate-btn {
+          background: var(--primary); color: #fff; border: none; padding: 5px 12px;
+          border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;
+          text-transform: uppercase; letter-spacing: 0.5px; transition: background 0.2s;
+          white-space: nowrap;
+        }
+        .generate-btn:hover { background: var(--primary-light); }
+        .generate-btn:active { transform: scale(0.97); }
         .row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
         .field { display: flex; flex-direction: column; flex: 1; min-width: 100%; }
         .field.half { min-width: calc(50% - 5px); }
@@ -241,7 +251,14 @@ export default function QuotePage() {
         }
         .actions button:active { opacity: 0.8; }
         .btn-photo { background: #8e44ad; color: #fff; }
+        .btn-photo:disabled { opacity: 0.7; cursor: not-allowed; }
         .btn-reset { background: #fff; color: var(--text-muted); border: 1.5px solid var(--border) !important; }
+        .btn-spinner {
+          display: inline-block; width: 14px; height: 14px;
+          border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+          border-radius: 50%; animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         .form-footer { background: var(--section-bg); padding: 14px 16px; text-align: center; font-size: 10px; color: var(--text-muted); border-top: 1px solid #e4e7ec; }
 
@@ -322,7 +339,7 @@ export default function QuotePage() {
         <div className="form-header">
           <div><h1>Quote Sheet</h1><div className="subtitle">HVAC / Refrigeration Service</div></div>
           <div className="header-actions">
-            <a href="/login" className="header-badge" style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>Admin</a>
+            <a href="/login" className="admin-link">Admin Portal</a>
           </div>
         </div>
         <div className="form-body">
@@ -341,7 +358,7 @@ export default function QuotePage() {
           </div>
 
           <div className="section">
-            <div className="section-header"><div className="section-icon">2</div><h2>Equipment Details</h2></div>
+            <div className="section-header"><div className="section-header-left"><div className="section-icon">2</div><h2>Equipment Details</h2></div><button type="button" className="generate-btn" id="generateBtn">Generate</button></div>
             <div className="row"><div className="field"><label>Equipment Type</label><input type="text" id="equipmentType" placeholder="e.g. RTU, Condenser, Walk-in Cooler" /></div></div>
             <div className="row"><div className="field">
               <label>Location</label>
@@ -385,8 +402,8 @@ export default function QuotePage() {
             <div className="section-header"><div className="section-icon">3</div><h2>Service Details</h2></div>
             <div className="row"><div className="field"><label>Job Information</label><textarea id="workPerformed" rows={3} placeholder="Describe job information..."></textarea></div></div>
             <div className="row"><div className="field"><label>Reason for Repair</label><textarea id="reasonForRepair" rows={3} placeholder="Describe reason for repair..."></textarea></div></div>
-            <div className="row"><div className="field"><label>Work Performed <span className="hint">- scissor lift, duct jack, 40&apos; ladder, etc.</span></label><textarea id="equipmentNeeded" rows={2} placeholder="Describe work performed..."></textarea></div></div>
-            <div className="row"><div className="field"><label>Other Comments</label><textarea id="otherComments" rows={2} placeholder="Additional notes or comments..."></textarea></div></div>
+            <div className="row"><div className="field"><label>Work Performed</label><textarea id="equipmentNeeded" rows={2} placeholder="Describe work performed..."></textarea></div></div>
+            <div className="row"><div className="field"><label>Equipment Needed <span className="hint">- scissor lift, duct jack, 40&apos; ladder, etc.</span></label><textarea id="otherComments" rows={2} placeholder="Scissor lift, duct jack, 40' ladder, etc."></textarea></div></div>
           </div>
 
           <div className="section">
@@ -925,7 +942,7 @@ export default function QuotePage() {
           let equipSection = equipFields ? '<div class="po-section"><div class="po-section-title">Equipment Details</div><div class="po-grid">'+equipFields+'</div></div>' : '';
 
           // Build Service Details section (with updated labels)
-          let serviceFields = field('Job Information', val('workPerformed'), true) + field('Reason for Repair', val('reasonForRepair'), true) + field('Work Performed', val('equipmentNeeded'), true) + field('Other Comments', val('otherComments'), true);
+          let serviceFields = field('Job Information', val('workPerformed'), true) + field('Reason for Repair', val('reasonForRepair'), true) + field('Work Performed', val('equipmentNeeded'), true) + field('Equipment Needed', val('otherComments'), true);
           let serviceSection = serviceFields ? '<div class="po-section"><div class="po-section-title">Service Details</div><div class="po-grid">'+serviceFields+'</div></div>' : '';
 
           // Build Logistics section
@@ -969,6 +986,10 @@ export default function QuotePage() {
         }
 
         function saveAsPhoto() {
+          const btn = document.getElementById('savePhotoBtn');
+          const originalHTML = btn.innerHTML;
+          btn.disabled = true;
+          btn.innerHTML = '<span class="btn-spinner"></span> Generating...';
           const output = document.getElementById('printOutput');
           output.innerHTML = buildOutput();
           output.style.left = '0'; output.style.position = 'fixed'; output.style.top = '0'; output.style.zIndex = '9999';
@@ -978,8 +999,9 @@ export default function QuotePage() {
               canvas.toBlob(blob => {
                 triggerDownload(blob, filename, 'image/png');
                 output.style.left = '-9999px'; output.style.position = 'absolute'; output.style.zIndex = '';
+                btn.innerHTML = originalHTML; btn.disabled = false;
               }, 'image/png');
-            }).catch(() => { output.style.left = '-9999px'; output.style.position = 'absolute'; });
+            }).catch(() => { output.style.left = '-9999px'; output.style.position = 'absolute'; btn.innerHTML = originalHTML; btn.disabled = false; });
           }, 100);
         }
 
@@ -1125,6 +1147,121 @@ export default function QuotePage() {
           }
         }
 
+        function generateFromJobInfo() {
+          var text = val('workPerformed');
+          if (!text.trim()) { alert('Enter job information first, then click Generate.'); return; }
+
+          var customerName = '';
+          var storeNumber = '';
+          var woNumber = '';
+          var equipmentType = '';
+          var unitId = '';
+          var manufacturer = '';
+          var modelNumber = '';
+          var serialNumber = '';
+
+          var lines = text.split('\\n').map(function(l) { return l.trim(); });
+          var allText = text;
+
+          // Customer name & store number: line with " - " separator
+          // Format: "STBU013922 - STARBUCKS 13922"
+          for (var i = 0; i < lines.length; i++) {
+            var dashMatch = lines[i].match(/^\\S+\\s+-\\s+(.+)/);
+            if (dashMatch) {
+              var nameAndStore = dashMatch[1].trim();
+              // Store number is the trailing digits
+              var storeMatch = nameAndStore.match(/^(.+?)\\s+(\\d{3,})\\s*$/);
+              if (storeMatch) {
+                customerName = storeMatch[1].trim();
+                storeNumber = storeMatch[2].trim();
+              } else {
+                customerName = nameAndStore;
+              }
+              break;
+            }
+          }
+
+          // SERVICEWO#: 4181959
+          var woMatch = allText.match(/SERVICEWO#\\s*:?\\s*([A-Za-z0-9\\-]+)/i);
+          if (woMatch) woNumber = woMatch[1].trim();
+
+          // Equipment line: "RIF 2  REACH IN FREEZER  REFR"
+          // Unit ID is before the equipment type, equipment type is the middle part
+          // Look for a line that has the equipment info (after a blank line, contains multiple segments)
+          var equipLine = '';
+          for (var j = 0; j < lines.length; j++) {
+            // Skip lines that are labels (contain ":" like Make:, Model:, etc.)
+            if (lines[j].match(/^(PROBLEM|Make|Model|Serial|Description|Service Area|Year|Service Type|Job Type|Cust PO|NTE|Complete|\\d)/i)) continue;
+            if (lines[j].match(/:/)) continue;
+            if (lines[j].match(/^[A-Z]{2,}/)) continue;
+            // Skip address lines (contain comma with state abbreviation)
+            if (lines[j].match(/,\\s*[A-Z]{2},?\\s*\\d{5}/)) continue;
+            // Skip the customer line (has " - ")
+            if (lines[j].match(/\\s+-\\s+/)) continue;
+            // Skip blank lines
+            if (!lines[j]) continue;
+            // This might be the equipment line - it typically has unit ID + equipment type + service code
+            // Pattern: letters/numbers + spaces + equipment description + spaces + short code
+            var eqMatch = lines[j].match(/^(.+?)\\s{2,}(.+?)\\s{2,}([A-Z]{2,})\\s*$/);
+            if (eqMatch) {
+              unitId = eqMatch[1].trim();
+              equipmentType = eqMatch[2].trim();
+              equipLine = lines[j];
+              break;
+            }
+          }
+
+          // If we didn't find the equipment line with double-space parsing, try another approach
+          if (!equipLine) {
+            for (var k = 0; k < lines.length; k++) {
+              // Look for common equipment keywords on a line
+              if (lines[k].match(/(?:REACH IN|WALK.IN|RTU|AHU|CONDENSER|COMPRESSOR|DISPLAY CASE|ICE MACHINE|ROOFTOP|SPLIT SYSTEM|HEAT PUMP|FURNACE|FREEZER|COOLER|EVAPORATOR|AIR HANDLER)/i)) {
+                // Skip if it's the PROBLEM line
+                if (lines[k].match(/^PROBLEM/i)) continue;
+                var parts = lines[k].split(/\\s{2,}/);
+                if (parts.length >= 2) {
+                  unitId = parts[0].trim();
+                  equipmentType = parts[1].trim();
+                } else {
+                  equipmentType = lines[k].trim();
+                }
+                break;
+              }
+            }
+          }
+
+          // Make / Manufacturer
+          var makeMatch = allText.match(/Make\\s*:\\s*(.+)/im);
+          if (makeMatch) manufacturer = makeMatch[1].trim();
+
+          // Model
+          var modelMatch = allText.match(/Model\\s*#?\\s*:\\s*(.+)/im);
+          if (modelMatch) modelNumber = modelMatch[1].trim();
+
+          // Serial #
+          var serialMatch = allText.match(/Serial\\s*#?\\s*:\\s*(.+)/im);
+          if (serialMatch) serialNumber = serialMatch[1].trim();
+
+          // Set the values
+          function setField(id, value) {
+            if (value) {
+              var el = document.getElementById(id);
+              if (el) { el.value = value; }
+            }
+          }
+
+          setField('customerName', customerName);
+          setField('storeNumber', storeNumber);
+          setField('woNumber', woNumber);
+          setField('equipmentType', equipmentType);
+          setField('unit', unitId);
+          setField('manufacturer', manufacturer);
+          setField('modelNumber', modelNumber);
+          setField('serialNumber', serialNumber);
+
+          saveForm();
+        }
+
         window.initQuoteForm = function() {
           fieldIds.forEach(id => { const el=document.getElementById(id); if(el){el.addEventListener('input',saveForm);el.addEventListener('change',saveForm);} });
           radioNames.forEach(name => document.querySelectorAll('input[name="'+name+'"]').forEach(r => r.addEventListener('change', saveForm)));
@@ -1134,6 +1271,7 @@ export default function QuotePage() {
           document.getElementById('partNext').addEventListener('click', () => navigatePart(1));
           document.getElementById('savePhotoBtn').addEventListener('click', saveAsPhoto);
           document.getElementById('resetBtn').addEventListener('click', resetForm);
+          document.getElementById('generateBtn').addEventListener('click', generateFromJobInfo);
 
           restoreForm();
         };
