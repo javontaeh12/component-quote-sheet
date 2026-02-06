@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from './AuthProvider';
 import {
@@ -39,12 +39,15 @@ const DEVELOPER_EMAIL = 'javontaedharden@gmail.com';
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { profile, signOut } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const handleSignOut = async () => {
-    await signOut();
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
     window.location.href = '/login';
   };
 

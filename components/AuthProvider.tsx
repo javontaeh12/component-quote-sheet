@@ -29,14 +29,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initAuth = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
+        // Use getSession instead of getUser to avoid network call that hangs
+        const { data: { session } } = await supabase.auth.getSession();
+        const authUser = session?.user ?? null;
+        setUser(authUser);
 
-        if (user) {
+        if (authUser) {
           const { data } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', user.id)
+            .eq('id', authUser.id)
             .single();
           setProfile(data as Profile | null);
         }
@@ -74,8 +76,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
+    // Clear all Supabase auth cookies manually as fallback
+    document.cookie.split(';').forEach((c) => {
+      const name = c.split('=')[0].trim();
+      if (name.includes('sb-') && name.includes('auth-token')) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+      }
+    });
     setUser(null);
     setProfile(null);
   };
