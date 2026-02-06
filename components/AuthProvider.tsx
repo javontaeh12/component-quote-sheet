@@ -29,7 +29,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initAuth = async () => {
       try {
-        // Use getSession instead of getUser to avoid network call that hangs
         const { data: { session } } = await supabase.auth.getSession();
         const authUser = session?.user ?? null;
         setUser(authUser);
@@ -77,18 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
+      await fetch('/api/auth/signout', { method: 'POST' });
     } catch (err) {
       console.error('Sign out error:', err);
     }
-    // Clear all Supabase auth cookies manually as fallback
-    document.cookie.split(';').forEach((c) => {
-      const name = c.split('=')[0].trim();
-      if (name.includes('sb-') && name.includes('auth-token')) {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-      }
-    });
     setUser(null);
     setProfile(null);
   };
