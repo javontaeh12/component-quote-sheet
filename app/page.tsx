@@ -321,8 +321,7 @@ export default function QuotePage() {
         <div className="form-header">
           <div><h1>Quote Sheet</h1><div className="subtitle">HVAC / Refrigeration Service</div></div>
           <div className="header-actions">
-            <div className="header-badge">Service Quote</div>
-            <a href="/login" className="admin-link">Admin</a>
+            <a href="/login" className="header-badge" style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>Admin</a>
           </div>
         </div>
         <div className="form-body">
