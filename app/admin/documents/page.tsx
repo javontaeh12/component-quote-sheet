@@ -16,10 +16,12 @@ import {
   FolderOpen,
   ArrowLeft,
   Download,
+  Link2,
+  ExternalLink,
 } from 'lucide-react';
 
 export default function DocumentsPage() {
-  const { profile } = useAuth();
+  const { profile, groupId } = useAuth();
   const [groups, setGroups] = useState<DocumentGroup[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<DocumentGroup | null>(null);
@@ -31,6 +33,9 @@ export default function DocumentsPage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [copied, setCopied] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [linkTitle, setLinkTitle] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
 
   const isAdminOrManager = profile?.role === 'admin' || profile?.role === 'manager';
 
@@ -39,10 +44,12 @@ export default function DocumentsPage() {
   }, []);
 
   const fetchGroups = async () => {
+    if (!groupId) return;
     const supabase = createClient();
     const { data } = await supabase
       .from('document_groups')
       .select('*')
+      .eq('group_id', groupId)
       .order('created_at', { ascending: false });
     setGroups(data || []);
     setIsLoading(false);
@@ -62,16 +69,17 @@ export default function DocumentsPage() {
     e.preventDefault();
     const supabase = createClient();
 
-    // Generate a random 6-character group ID
-    const groupId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    // Generate a random 6-character doc group code
+    const docGroupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
     const { data, error } = await supabase
       .from('document_groups')
       .insert({
-        group_id: groupId,
+        doc_group_code: docGroupCode,
         name: newGroupName,
-        created_by: profile?.id,
-      })
+        created_by: profile?.id ?? null,
+        group_id: groupId,
+      } as Record<string, unknown>)
       .select()
       .single();
 
@@ -84,7 +92,7 @@ export default function DocumentsPage() {
 
   const handleJoinGroup = async (e: React.FormEvent) => {
     e.preventDefault();
-    const group = groups.find((g) => g.group_id === joinGroupId.toUpperCase());
+    const group = groups.find((g) => g.doc_group_code === joinGroupId.toUpperCase());
     if (group) {
       setSelectedGroup(group);
       fetchDocuments(group.id);
@@ -94,7 +102,7 @@ export default function DocumentsPage() {
       const { data } = await supabase
         .from('document_groups')
         .select('*')
-        .eq('group_id', joinGroupId.toUpperCase())
+        .eq('doc_group_code', joinGroupId.toUpperCase())
         .single();
 
       if (data) {
@@ -150,7 +158,7 @@ export default function DocumentsPage() {
         file_url: urlData.publicUrl,
         file_type: uploadFile.type,
         file_size: uploadFile.size,
-        uploaded_by: profile?.id,
+        uploaded_by: profile?.id ?? null,
       })
       .select()
       .single();
@@ -164,13 +172,49 @@ export default function DocumentsPage() {
     setIsUploading(false);
   };
 
+  const handleAddLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!linkUrl || !linkTitle || !selectedGroup) return;
+
+    // Normalize URL — add https:// if no protocol provided
+    let normalizedUrl = linkUrl.trim();
+    if (!/^https?:\/\//i.test(normalizedUrl)) {
+      normalizedUrl = 'https://' + normalizedUrl;
+    }
+
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+      .from('documents')
+      .insert({
+        group_id: selectedGroup.id,
+        name: linkTitle,
+        file_url: normalizedUrl,
+        file_type: 'link',
+        file_size: null,
+        uploaded_by: profile?.id ?? null,
+      } as Record<string, unknown>)
+      .select()
+      .single();
+
+    if (!error && data) {
+      setDocuments([data, ...documents]);
+      setLinkTitle('');
+      setLinkUrl('');
+      setIsLinkModalOpen(false);
+    }
+  };
+
   const handleDeleteDocument = async (doc: Document) => {
     if (!confirm('Delete this document?')) return;
 
-    const supabase = createClient();
-    const { error } = await supabase.from('documents').delete().eq('id', doc.id);
+    const res = await fetch('/api/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'documents', id: doc.id }),
+    });
 
-    if (!error) {
+    if (res.ok) {
       setDocuments(documents.filter((d) => d.id !== doc.id));
     }
   };
@@ -178,10 +222,13 @@ export default function DocumentsPage() {
   const handleDeleteGroup = async (group: DocumentGroup) => {
     if (!confirm('Delete this group and all its documents?')) return;
 
-    const supabase = createClient();
-    const { error } = await supabase.from('document_groups').delete().eq('id', group.id);
+    const res = await fetch('/api/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'document_groups', id: group.id }),
+    });
 
-    if (!error) {
+    if (res.ok) {
       setGroups(groups.filter((g) => g.id !== group.id));
       if (selectedGroup?.id === group.id) {
         setSelectedGroup(null);
@@ -226,10 +273,10 @@ export default function DocumentsPage() {
               <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">{selectedGroup.name}</h1>
               <div className="flex items-center gap-2 mt-1">
                 <code className="bg-gray-100 px-2 py-1 rounded text-xs sm:text-sm font-mono">
-                  {selectedGroup.group_id}
+                  {selectedGroup.doc_group_code}
                 </code>
                 <button
-                  onClick={() => copyGroupId(selectedGroup.group_id)}
+                  onClick={() => copyGroupId(selectedGroup.doc_group_code)}
                   className="p-1 text-gray-400 hover:text-gray-600"
                 >
                   {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
@@ -237,10 +284,16 @@ export default function DocumentsPage() {
               </div>
             </div>
           </div>
-          <Button onClick={() => setIsUploadModalOpen(true)} className="w-full sm:w-auto">
-            <Upload className="w-4 h-4 mr-2" />
-            Upload Document
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={() => setIsLinkModalOpen(true)} className="flex-1 sm:flex-initial">
+              <Link2 className="w-4 h-4 mr-2" />
+              Add Link
+            </Button>
+            <Button onClick={() => setIsUploadModalOpen(true)} className="flex-1 sm:flex-initial">
+              <Upload className="w-4 h-4 mr-2" />
+              Upload Document
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -256,38 +309,47 @@ export default function DocumentsPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 gap-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <FileText className="w-8 h-8 text-blue-500 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{doc.name}</p>
-                        <p className="text-xs sm:text-sm text-gray-500">
-                          {formatFileSize(doc.file_size)} • {formatDate(doc.created_at)}
-                        </p>
+                {documents.map((doc) => {
+                  const isLink = doc.file_type === 'link';
+                  return (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {isLink ? (
+                          <Link2 className="w-8 h-8 text-blue-500 flex-shrink-0" />
+                        ) : (
+                          <FileText className="w-8 h-8 text-blue-500 flex-shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{doc.name}</p>
+                          <p className="text-xs sm:text-sm text-gray-500 truncate">
+                            {isLink
+                              ? new URL(doc.file_url).hostname
+                              : `${formatFileSize(doc.file_size)} • ${formatDate(doc.created_at)}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <a
+                          href={doc.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 text-gray-400 hover:text-blue-600 active:text-blue-700 rounded-lg"
+                        >
+                          {isLink ? <ExternalLink className="w-5 h-5" /> : <Download className="w-5 h-5" />}
+                        </a>
+                        <button
+                          onClick={() => handleDeleteDocument(doc)}
+                          className="p-2.5 text-gray-400 hover:text-red-600 active:text-red-700 rounded-lg"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <a
-                        href={doc.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2.5 text-gray-400 hover:text-blue-600 active:text-blue-700 rounded-lg"
-                      >
-                        <Download className="w-5 h-5" />
-                      </a>
-                      <button
-                        onClick={() => handleDeleteDocument(doc)}
-                        className="p-2.5 text-gray-400 hover:text-red-600 active:text-red-700 rounded-lg"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -320,6 +382,38 @@ export default function DocumentsPage() {
               </Button>
               <Button type="submit" disabled={!uploadFile} isLoading={isUploading}>
                 Upload
+              </Button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Add Link Modal */}
+        <Modal
+          isOpen={isLinkModalOpen}
+          onClose={() => setIsLinkModalOpen(false)}
+          title="Add Link"
+        >
+          <form onSubmit={handleAddLink} className="space-y-4">
+            <Input
+              label="Title"
+              placeholder="e.g., Equipment Manual, Training Video"
+              value={linkTitle}
+              onChange={(e) => setLinkTitle(e.target.value)}
+              required
+            />
+            <Input
+              label="URL"
+              placeholder="https://example.com"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              required
+            />
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setIsLinkModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!linkTitle || !linkUrl}>
+                Add Link
               </Button>
             </div>
           </form>
@@ -388,7 +482,7 @@ export default function DocumentsPage() {
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">{group.name}</p>
-                        <p className="text-xs text-gray-500">ID: {group.group_id}</p>
+                        <p className="text-xs text-gray-500">ID: {group.doc_group_code}</p>
                       </div>
                     </div>
                     {isAdminOrManager && (

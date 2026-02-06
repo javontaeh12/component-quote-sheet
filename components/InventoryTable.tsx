@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { InventoryItem, Van, CustomPart } from '@/types';
+import { InventoryItem, Van, CustomPart, GroupStockPart } from '@/types';
 import { Button, Input, Modal, Select } from '@/components/ui';
 import { formatCurrency } from '@/lib/utils';
-import { searchParts, Part, PARTS_DATABASE } from '@/lib/parts-data';
 import { createClient } from '@/lib/supabase';
 import { Pencil, Trash2, Plus, AlertTriangle } from 'lucide-react';
 
-interface ExtendedPart extends Part {
+interface ExtendedPart {
+  item: string;
+  description: string;
+  category?: string;
   isCustom?: boolean;
 }
 
@@ -20,6 +22,7 @@ interface InventoryTableProps {
   onDelete: (id: string) => Promise<void>;
   selectedVanId: string | null;
   isAdmin: boolean;
+  groupId: string | null;
 }
 
 const CATEGORIES = [
@@ -42,6 +45,7 @@ export function InventoryTable({
   onDelete,
   selectedVanId,
   isAdmin,
+  groupId,
 }: InventoryTableProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -66,22 +70,23 @@ export function InventoryTable({
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [customParts, setCustomParts] = useState<CustomPart[]>([]);
+  const [stockParts, setStockParts] = useState<GroupStockPart[]>([]);
   const autocompleteRef = useRef<HTMLDivElement>(null);
 
-  // Fetch custom parts on mount
+  // Fetch group stock parts and custom parts on mount
   useEffect(() => {
-    const fetchCustomParts = async () => {
+    if (!groupId) return;
+    const fetchParts = async () => {
       const supabase = createClient();
-      const { data } = await supabase
-        .from('custom_parts')
-        .select('*')
-        .order('item');
-      if (data) {
-        setCustomParts(data);
-      }
+      const [stockResult, customResult] = await Promise.all([
+        supabase.from('group_stock_parts').select('*').eq('group_id', groupId).order('item'),
+        supabase.from('custom_parts').select('*').eq('group_id', groupId).order('item'),
+      ]);
+      if (stockResult.data) setStockParts(stockResult.data);
+      if (customResult.data) setCustomParts(customResult.data);
     };
-    fetchCustomParts();
-  }, []);
+    fetchParts();
+  }, [groupId]);
 
   // Handle click outside to close autocomplete
   useEffect(() => {
@@ -99,12 +104,12 @@ export function InventoryTable({
     if (!query || query.length < 1) return [];
     const lowerQuery = query.toLowerCase();
 
-    // Search stock parts
-    const stockResults = PARTS_DATABASE.filter(
+    // Search group stock parts
+    const stockResults = stockParts.filter(
       (p) =>
         p.item.toLowerCase().includes(lowerQuery) ||
-        p.description.toLowerCase().includes(lowerQuery)
-    ).map((p) => ({ ...p, isCustom: false }));
+        (p.description?.toLowerCase().includes(lowerQuery))
+    ).map((p) => ({ item: p.item, description: p.description || '', category: p.category || undefined, isCustom: false }));
 
     // Search custom parts
     const customResults = customParts
@@ -220,6 +225,7 @@ export function InventoryTable({
       vendor: formData.vendor || null,
       category: formData.category || null,
       van_id: formData.van_id,
+      group_id: groupId!,
     };
 
     if (editingItem) {
@@ -238,7 +244,7 @@ export function InventoryTable({
     }
   };
 
-  const vanMap = new Map(vans.map((v) => [v.id, v.name]));
+  const vanMap = new Map(vans.map((v) => [v.id, `Van ${v.van_number || v.name}`]));
 
   return (
     <div className="space-y-4">
@@ -448,7 +454,7 @@ export function InventoryTable({
                 required
                 autoComplete="off"
               />
-              <p className="text-xs text-gray-400 mt-1">Type to search from 200+ parts</p>
+              <p className="text-xs text-gray-400 mt-1">Type to search from {stockParts.length + customParts.length} parts</p>
               {showAutocomplete && autocompleteResults.length > 0 && (
                 <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                   {autocompleteResults.map((part, index) => (
@@ -491,7 +497,7 @@ export function InventoryTable({
             {isAdmin && (
               <Select
                 label="Van"
-                options={vans.map((v) => ({ value: v.id, label: v.name }))}
+                options={vans.map((v) => ({ value: v.id, label: `Van ${v.van_number || v.name}` }))}
                 value={formData.van_id}
                 onChange={(e) => setFormData({ ...formData, van_id: e.target.value })}
                 className="sm:col-span-2"

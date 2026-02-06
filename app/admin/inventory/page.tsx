@@ -6,32 +6,35 @@ import { useAuth } from '@/components/AuthProvider';
 import { InventoryTable } from '@/components/InventoryTable';
 import { Button, Input, Modal, Select } from '@/components/ui';
 import { InventoryItem, Van } from '@/types';
-import { PARTS_DATABASE } from '@/lib/parts-data';
-import { Plus, Truck, Package, Loader2 } from 'lucide-react';
+import { Plus, Truck } from 'lucide-react';
 
 export default function InventoryPage() {
-  const { profile } = useAuth();
+  const { profile, groupId, group, isLoading: authLoading } = useAuth();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [vans, setVans] = useState<Van[]>([]);
   const [selectedVanId, setSelectedVanId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVanModalOpen, setIsVanModalOpen] = useState(false);
-  const [newVanName, setNewVanName] = useState('');
-  const [newVanPlate, setNewVanPlate] = useState('');
+  const [newVanNumber, setNewVanNumber] = useState('');
   const [isLoadingStock, setIsLoadingStock] = useState(false);
+  const [vanError, setVanError] = useState<string | null>(null);
 
   const isAdmin = profile?.role === 'admin';
 
+  // Fix auth race condition: only fetch data after auth finishes loading
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (!authLoading) {
+      fetchData();
+    }
+  }, [authLoading]);
 
   const fetchData = async () => {
+    if (!groupId) return;
     const supabase = createClient();
 
     const [itemsResult, vansResult] = await Promise.all([
-      supabase.from('inventory_items').select('*').order('name'),
-      supabase.from('vans').select('*').order('name'),
+      supabase.from('inventory_items').select('*').eq('group_id', groupId).order('name'),
+      supabase.from('vans').select('*').eq('group_id', groupId).order('name'),
     ]);
 
     setItems(itemsResult.data || []);
@@ -73,10 +76,13 @@ export default function InventoryPage() {
   };
 
   const handleDeleteItem = async (id: string) => {
-    const supabase = createClient();
-    const { error } = await supabase.from('inventory_items').delete().eq('id', id);
+    const res = await fetch('/api/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'inventory_items', id }),
+    });
 
-    if (!error) {
+    if (res.ok) {
       setItems(items.filter((item) => item.id !== id));
     }
   };
@@ -84,127 +90,36 @@ export default function InventoryPage() {
   const handleAddVan = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoadingStock(true);
-    const supabase = createClient();
+    setVanError(null);
 
-    const { data, error } = await supabase
-      .from('vans')
-      .insert({ name: newVanName, license_plate: newVanPlate || null })
-      .select()
-      .single();
+    try {
+      const res = await fetch('/api/vans/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ van_number: newVanNumber.trim(), group_id: groupId }),
+      });
 
-    if (!error && data) {
-      setVans([...vans, data]);
-      setNewVanName('');
-      setNewVanPlate('');
+      const result = await res.json();
+
+      if (!res.ok) {
+        setVanError(result.error || `Failed to create van (${res.status})`);
+        setIsLoadingStock(false);
+        return;
+      }
+
+      // Success — reload the page to show the new van + parts
+      setNewVanNumber('');
       setIsVanModalOpen(false);
-
-      // Auto-load all stock parts for the new van
-      const inventoryItems = PARTS_DATABASE.map((part) => ({
-        van_id: data.id,
-        name: part.description,
-        description: part.description,
-        part_number: part.item,
-        quantity: 0,
-        min_quantity: 1,
-        cost: null,
-        vendor: null,
-        category: part.category?.toLowerCase().replace(/\s+/g, '-') || 'parts',
-      }));
-
-      // Insert in batches of 50
-      const batchSize = 50;
-      const newItems: InventoryItem[] = [];
-
-      for (let i = 0; i < inventoryItems.length; i += batchSize) {
-        const batch = inventoryItems.slice(i, i + batchSize);
-        const { data: batchData } = await supabase
-          .from('inventory_items')
-          .insert(batch)
-          .select();
-
-        if (batchData) {
-          newItems.push(...batchData);
-        }
-      }
-
-      setItems([...items, ...newItems]);
-      setSelectedVanId(data.id);
+      window.location.reload();
+    } catch (err) {
+      console.error('Error creating van:', err);
+      setVanError('Network error. Please try again.');
     }
 
     setIsLoadingStock(false);
   };
 
-  // Load all stock parts into a van's inventory
-  const handleLoadStockParts = async (vanId: string) => {
-    if (!confirm('This will add all 200+ stock parts to this van\'s inventory with 0 quantity. Continue?')) {
-      return;
-    }
-
-    setIsLoadingStock(true);
-    const supabase = createClient();
-
-    // Get existing part numbers for this van to avoid duplicates
-    const { data: existingItems } = await supabase
-      .from('inventory_items')
-      .select('part_number')
-      .eq('van_id', vanId);
-
-    const existingPartNumbers = new Set(
-      existingItems?.map((item) => item.part_number?.toLowerCase()) || []
-    );
-
-    // Filter out parts that already exist
-    const newParts = PARTS_DATABASE.filter(
-      (part) => !existingPartNumbers.has(part.item.toLowerCase())
-    );
-
-    if (newParts.length === 0) {
-      alert('All stock parts are already in this van\'s inventory!');
-      setIsLoadingStock(false);
-      return;
-    }
-
-    // Create inventory items for each part
-    const inventoryItems = newParts.map((part) => ({
-      van_id: vanId,
-      name: part.description,
-      description: part.description,
-      part_number: part.item,
-      quantity: 0,
-      min_quantity: 1,
-      cost: null,
-      vendor: null,
-      category: part.category?.toLowerCase().replace(/\s+/g, '-') || 'parts',
-    }));
-
-    // Insert in batches of 50 to avoid timeouts
-    const batchSize = 50;
-    const newItems: InventoryItem[] = [];
-
-    for (let i = 0; i < inventoryItems.length; i += batchSize) {
-      const batch = inventoryItems.slice(i, i + batchSize);
-      const { data, error } = await supabase
-        .from('inventory_items')
-        .insert(batch)
-        .select();
-
-      if (error) {
-        console.error('Error inserting batch:', error);
-        alert('Error adding some parts. Please try again.');
-        break;
-      }
-
-      if (data) {
-        newItems.push(...data);
-      }
-    }
-
-    setItems([...items, ...newItems]);
-    setIsLoadingStock(false);
-    alert(`Successfully added ${newItems.length} parts to inventory!`);
-  };
-
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="animate-pulse space-y-4">
         <div className="h-8 bg-gray-200 rounded w-48" />
@@ -218,7 +133,9 @@ export default function InventoryPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
-          <p className="text-gray-600 mt-1">Manage your van inventory</p>
+          <p className="text-gray-600 mt-1">
+            {group ? `${group.name} — Manage van inventory` : 'Manage your van inventory'}
+          </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {isAdmin && (
@@ -226,26 +143,12 @@ export default function InventoryPage() {
               <Select
                 options={[
                   { value: '', label: 'All Vans' },
-                  ...vans.map((v) => ({ value: v.id, label: v.name })),
+                  ...vans.map((v) => ({ value: v.id, label: `Van ${v.van_number || v.name}` })),
                 ]}
                 value={selectedVanId || ''}
                 onChange={(e) => setSelectedVanId(e.target.value || null)}
                 className="w-40"
               />
-              {selectedVanId && (
-                <Button
-                  variant="outline"
-                  onClick={() => handleLoadStockParts(selectedVanId)}
-                  disabled={isLoadingStock}
-                >
-                  {isLoadingStock ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Package className="w-4 h-4 mr-2" />
-                  )}
-                  {isLoadingStock ? 'Loading...' : 'Load Stock Parts'}
-                </Button>
-              )}
               <Button variant="outline" onClick={() => setIsVanModalOpen(true)}>
                 <Truck className="w-4 h-4 mr-2" />
                 Add Van
@@ -276,6 +179,7 @@ export default function InventoryPage() {
           onDelete={handleDeleteItem}
           selectedVanId={selectedVanId}
           isAdmin={isAdmin}
+          groupId={groupId}
         />
       )}
 
@@ -286,20 +190,17 @@ export default function InventoryPage() {
       >
         <form onSubmit={handleAddVan} className="space-y-4">
           <Input
-            label="Van Name"
-            placeholder="e.g., Van 1, Truck A"
-            value={newVanName}
-            onChange={(e) => setNewVanName(e.target.value)}
+            label="Van Number"
+            placeholder="e.g., 1, 2, 3"
+            value={newVanNumber}
+            onChange={(e) => setNewVanNumber(e.target.value)}
             required
           />
-          <Input
-            label="License Plate (optional)"
-            placeholder="e.g., ABC-1234"
-            value={newVanPlate}
-            onChange={(e) => setNewVanPlate(e.target.value)}
-          />
+          {vanError && (
+            <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{vanError}</p>
+          )}
           <p className="text-sm text-gray-500 bg-blue-50 p-3 rounded-lg">
-            All 200+ stock parts will be automatically added to this van&apos;s inventory.
+            Your group&apos;s stock parts will be automatically added to this van&apos;s inventory.
           </p>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => setIsVanModalOpen(false)} disabled={isLoadingStock}>

@@ -16,6 +16,9 @@ import {
   FileText,
   Code,
   Wrench,
+  ClipboardList,
+  Building2,
+  Receipt,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -24,11 +27,14 @@ const navigation = [
   { name: 'Inventory', href: '/admin/inventory', icon: Package },
   { name: 'Documents', href: '/admin/documents', icon: FileText },
   { name: 'AI Helper', href: '/admin/ai-helper', icon: MessageSquare },
+  { name: 'Quote', href: '/', icon: Receipt },
 ];
 
 const adminNavigation = [
+  { name: 'Stock Parts', href: '/admin/stock-parts', icon: ClipboardList },
   { name: 'Custom Parts', href: '/admin/parts', icon: Wrench },
   { name: 'Users', href: '/admin/users', icon: Users },
+  { name: 'Create Group', href: '/admin/create-group', icon: Building2 },
 ];
 
 const developerNavigation = [
@@ -39,7 +45,7 @@ const DEVELOPER_EMAIL = 'javontaedharden@gmail.com';
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { profile, signOut } = useAuth();
+  const { profile, group } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -58,7 +64,7 @@ export function Sidebar() {
           <Snowflake className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h2 className="font-bold text-gray-900">HVAC Portal</h2>
+          <h2 className="font-bold text-gray-900">{group?.name || 'HVAC Portal'}</h2>
           <p className="text-xs text-gray-500">{profile?.full_name}</p>
         </div>
       </div>

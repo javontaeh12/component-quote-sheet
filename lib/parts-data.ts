@@ -1,4 +1,6 @@
 // Master parts list - shared across quote form and van inventory
+// NOTE: A duplicate copy exists in supabase/functions/create-van-with-inventory/index.ts
+// If you add/remove parts here, update the Edge Function copy as well.
 export interface Part {
   item: string;
   description: string;

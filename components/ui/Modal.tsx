@@ -25,7 +25,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
         <div
           className={cn(
             'bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden',
@@ -33,6 +33,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
           )}
           role="dialog"
           aria-modal="true"
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           {title && (

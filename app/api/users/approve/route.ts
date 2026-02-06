@@ -18,10 +18,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createServerSupabaseClient();
 
+    // Only allow updating users in the same group
     const { error } = await supabase
       .from('profiles')
       .update({ status: action === 'approve' ? 'approved' : 'rejected' })
-      .eq('id', userId);
+      .eq('id', userId)
+      .eq('group_id', profile.group_id);
 
     if (error) throw error;
 

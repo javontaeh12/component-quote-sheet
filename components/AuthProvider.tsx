@@ -1,13 +1,15 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase';
-import { Profile } from '@/types';
+import { Profile, OrganizationGroup } from '@/types';
 
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
+  groupId: string | null;
+  group: OrganizationGroup | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
 }
@@ -15,14 +17,39 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
+  groupId: null,
+  group: null,
   isLoading: true,
   signOut: async () => {},
 });
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+interface AuthProviderProps {
+  children: ReactNode;
+  initialProfile?: Profile | null;
+  initialGroup?: OrganizationGroup | null;
+}
+
+export function AuthProvider({ children, initialProfile, initialGroup }: AuthProviderProps) {
+  const hasInitialData = initialProfile !== undefined;
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState<Profile | null>(initialProfile ?? null);
+  const [group, setGroup] = useState<OrganizationGroup | null>(initialGroup ?? null);
+  const [isLoading, setIsLoading] = useState(!hasInitialData);
+  const initDone = useRef(false);
+
+  const fetchGroup = async (groupId: string | null) => {
+    if (!groupId) {
+      setGroup(null);
+      return;
+    }
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('organization_groups')
+      .select('*')
+      .eq('id', groupId)
+      .single();
+    setGroup(data as OrganizationGroup | null);
+  };
 
   useEffect(() => {
     const supabase = createClient();
@@ -33,17 +60,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const authUser = session?.user ?? null;
         setUser(authUser);
 
-        if (authUser) {
+        // Only fetch profile/group if we didn't get them from the server
+        if (!hasInitialData && authUser) {
           const { data } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', authUser.id)
             .single();
-          setProfile(data as Profile | null);
+          const prof = data as Profile | null;
+          setProfile(prof);
+          await fetchGroup(prof?.group_id ?? null);
         }
       } catch (err) {
         console.error('Failed to get session:', err);
       } finally {
+        initDone.current = true;
         setIsLoading(false);
       }
     };
@@ -52,6 +83,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        // Skip the initial event — initAuth handles it
+        if (!initDone.current) return;
+
         setUser(session?.user ?? null);
 
         if (session?.user) {
@@ -60,9 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .select('*')
             .eq('id', session.user.id)
             .single();
-          setProfile(data as Profile | null);
+          const prof = data as Profile | null;
+          setProfile(prof);
+          await fetchGroup(prof?.group_id ?? null);
         } else {
           setProfile(null);
+          setGroup(null);
         }
 
         setIsLoading(false);
@@ -82,10 +119,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null);
     setProfile(null);
+    setGroup(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, isLoading, signOut }}>
+    <AuthContext.Provider value={{ user, profile, groupId: profile?.group_id ?? null, group, isLoading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -4,23 +4,21 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
-import { Package, AlertTriangle, Truck, ShoppingCart } from 'lucide-react';
+import { Package, AlertTriangle, Truck } from 'lucide-react';
 import Link from 'next/link';
 
 interface DashboardStats {
   totalItems: number;
   lowStockItems: number;
   totalVans: number;
-  pendingOrders: number;
 }
 
 export default function AdminDashboard() {
-  const { profile } = useAuth();
+  const { profile, groupId, group } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalItems: 0,
     lowStockItems: 0,
     totalVans: 0,
-    pendingOrders: 0,
   });
   const [lowStockList, setLowStockList] = useState<Array<{
     id: string;
@@ -30,46 +28,46 @@ export default function AdminDashboard() {
     van_name: string;
   }>>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
-      const supabase = createClient();
+      if (!groupId) return;
+      try {
+        const supabase = createClient();
 
-      // Fetch all stats in parallel
-      const [itemsResult, vansResult, ordersResult] = await Promise.all([
-        supabase.from('inventory_items').select('id, name, quantity, min_quantity, van_id'),
-        supabase.from('vans').select('id, name'),
-        supabase.from('orders').select('id').eq('status', 'pending'),
-      ]);
+        const [itemsResult, vansResult] = await Promise.all([
+          supabase.from('inventory_items').select('id, name, quantity, min_quantity, van_id').eq('group_id', groupId),
+          supabase.from('vans').select('id, name').eq('group_id', groupId),
+        ]);
 
-      const items = itemsResult.data || [];
-      const vans = vansResult.data || [];
-      const orders = ordersResult.data || [];
+        const items = itemsResult.data || [];
+        const vans = vansResult.data || [];
 
-      // Calculate low stock items
-      const lowStock = items.filter((item) => item.quantity < item.min_quantity);
+        const lowStock = items.filter((item) => item.quantity < item.min_quantity);
+        const vanMap = new Map(vans.map((v) => [v.id, v.name]));
 
-      // Create van lookup map
-      const vanMap = new Map(vans.map((v) => [v.id, v.name]));
+        setStats({
+          totalItems: items.length,
+          lowStockItems: lowStock.length,
+          totalVans: vans.length,
+        });
 
-      setStats({
-        totalItems: items.length,
-        lowStockItems: lowStock.length,
-        totalVans: vans.length,
-        pendingOrders: orders.length,
-      });
-
-      setLowStockList(
-        lowStock.slice(0, 5).map((item) => ({
-          id: item.id,
-          name: item.name,
-          quantity: item.quantity,
-          min_quantity: item.min_quantity,
-          van_name: vanMap.get(item.van_id) || 'Unknown',
-        }))
-      );
-
-      setIsLoading(false);
+        setLowStockList(
+          lowStock.slice(0, 5).map((item) => ({
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            min_quantity: item.min_quantity,
+            van_name: vanMap.get(item.van_id) || 'Unknown',
+          }))
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setError(message);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchStats();
@@ -88,7 +86,7 @@ export default function AdminDashboard() {
       value: stats.lowStockItems,
       icon: AlertTriangle,
       color: stats.lowStockItems > 0 ? 'bg-red-500' : 'bg-green-500',
-      href: '/admin/orders',
+      href: '/admin/inventory',
     },
     {
       title: 'Vans',
@@ -97,24 +95,26 @@ export default function AdminDashboard() {
       color: 'bg-purple-500',
       href: '/admin/inventory',
     },
-    {
-      title: 'Pending Orders',
-      value: stats.pendingOrders,
-      icon: ShoppingCart,
-      color: 'bg-amber-500',
-      href: '/admin/orders',
-    },
   ];
 
   if (isLoading) {
     return (
-      <div className="animate-pulse space-y-6">
-        <div className="h-8 bg-gray-200 rounded w-48" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-gray-200 rounded-xl" />
+      <div className="space-y-6">
+        <div className="h-8 bg-gray-200 rounded w-48 animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-32 bg-gray-200 rounded-xl animate-pulse" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p className="text-red-800 font-medium">Failed to load dashboard</p>
+        <p className="text-red-600 text-sm mt-1">{error}</p>
       </div>
     );
   }
@@ -125,7 +125,9 @@ export default function AdminDashboard() {
         <h1 className="text-2xl font-bold text-gray-900">
           Welcome back, {profile?.full_name?.split(' ')[0]}
         </h1>
-        <p className="text-gray-600 mt-1">Here&apos;s an overview of your inventory</p>
+        <p className="text-gray-600 mt-1">
+          {group ? `${group.name} — ` : ''}Here&apos;s an overview of your inventory
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -184,10 +186,10 @@ export default function AdminDashboard() {
               </table>
             </div>
             <Link
-              href="/admin/orders"
+              href="/admin/inventory"
               className="inline-block mt-4 text-sm font-medium text-blue-600 hover:text-blue-700"
             >
-              View all low stock items →
+              View all inventory →
             </Link>
           </CardContent>
         </Card>

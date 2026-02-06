@@ -34,52 +34,69 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Public routes that don't require auth
-  const publicRoutes = ['/', '/login', '/auth/callback'];
+  const publicRoutes = ['/', '/login', '/auth/callback', '/onboarding'];
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith('/api/'));
 
   // If accessing admin routes without being logged in
-  if (pathname.startsWith('/admin') || pathname === '/pending') {
+  if (pathname.startsWith('/admin') || pathname === '/pending' || pathname === '/onboarding') {
     if (!user) {
       const url = request.nextUrl.clone();
       url.pathname = '/login';
       return NextResponse.redirect(url);
     }
 
-    // Check user profile status for admin routes
-    if (pathname.startsWith('/admin')) {
+    // Check user profile for onboarding and admin routes
+    if (pathname.startsWith('/admin') || pathname === '/onboarding') {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('status, role')
+        .select('status, role, group_id')
         .eq('id', user.id)
         .single();
 
-      // If no profile or pending, redirect to pending page
-      if (!profile || profile.status === 'pending') {
+      // No group_id yet — redirect to onboarding (unless already there)
+      if (profile && !profile.group_id && pathname !== '/onboarding') {
         const url = request.nextUrl.clone();
-        url.pathname = '/pending';
+        url.pathname = '/onboarding';
         return NextResponse.redirect(url);
       }
 
-      // If rejected, redirect to login with error
-      if (profile.status === 'rejected') {
+      // If on onboarding but already has group_id, redirect to appropriate page
+      if (pathname === '/onboarding' && profile?.group_id) {
         const url = request.nextUrl.clone();
-        url.pathname = '/login';
-        url.searchParams.set('error', 'access_denied');
+        url.pathname = profile.status === 'approved' ? '/admin' : '/pending';
         return NextResponse.redirect(url);
       }
 
-      // Admin-only routes
-      if (pathname === '/admin/users' && profile.role !== 'admin') {
-        const url = request.nextUrl.clone();
-        url.pathname = '/admin';
-        return NextResponse.redirect(url);
-      }
+      // Admin route checks
+      if (pathname.startsWith('/admin')) {
+        // If no profile or pending, redirect to pending page
+        if (!profile || profile.status === 'pending') {
+          const url = request.nextUrl.clone();
+          url.pathname = '/pending';
+          return NextResponse.redirect(url);
+        }
 
-      // Developer-only routes (restricted to specific email)
-      if (pathname.startsWith('/admin/developer') && user.email !== 'javontaedharden@gmail.com') {
-        const url = request.nextUrl.clone();
-        url.pathname = '/admin';
-        return NextResponse.redirect(url);
+        // If rejected, redirect to login with error
+        if (profile.status === 'rejected') {
+          const url = request.nextUrl.clone();
+          url.pathname = '/login';
+          url.searchParams.set('error', 'access_denied');
+          return NextResponse.redirect(url);
+        }
+
+        // Admin-only routes
+        if ((pathname === '/admin/users' || pathname === '/admin/stock-parts' || pathname === '/admin/create-group') && profile.role !== 'admin') {
+          const url = request.nextUrl.clone();
+          url.pathname = '/admin';
+          return NextResponse.redirect(url);
+        }
+
+        // Developer-only routes (restricted to specific email)
+        if (pathname.startsWith('/admin/developer') && user.email !== 'javontaedharden@gmail.com') {
+          const url = request.nextUrl.clone();
+          url.pathname = '/admin';
+          return NextResponse.redirect(url);
+        }
       }
     }
   }
@@ -88,9 +105,16 @@ export async function middleware(request: NextRequest) {
   if (user && (pathname === '/login' || pathname === '/pending')) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('status')
+      .select('status, group_id')
       .eq('id', user.id)
       .single();
+
+    // No group yet — send to onboarding
+    if (profile && !profile.group_id && pathname !== '/login') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/onboarding';
+      return NextResponse.redirect(url);
+    }
 
     if (profile?.status === 'approved') {
       const url = request.nextUrl.clone();

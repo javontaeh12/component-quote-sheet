@@ -2,27 +2,31 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
-import { Button, Card, CardContent, CardHeader, CardTitle, Select } from '@/components/ui';
+import { useAuth } from '@/components/AuthProvider';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Select } from '@/components/ui';
 import { Profile, Van } from '@/types';
 import { formatDate } from '@/lib/utils';
-import { Check, X, Users, Clock, UserCheck, UserX } from 'lucide-react';
+import { Check, X, Users, Clock, UserCheck, UserX, Search } from 'lucide-react';
 
 export default function UsersPage() {
+  const { groupId, group } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
   const [vans, setVans] = useState<Van[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
+    if (!groupId) return;
     const supabase = createClient();
 
     const [usersResult, vansResult] = await Promise.all([
-      supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-      supabase.from('vans').select('*').order('name'),
+      supabase.from('profiles').select('*').eq('group_id', groupId).order('created_at', { ascending: false }),
+      supabase.from('vans').select('*').eq('group_id', groupId).order('name'),
     ]);
 
     setUsers(usersResult.data || []);
@@ -75,9 +79,18 @@ export default function UsersPage() {
     }
   };
 
-  const pendingUsers = users.filter((u) => u.status === 'pending');
-  const approvedUsers = users.filter((u) => u.status === 'approved');
-  const rejectedUsers = users.filter((u) => u.status === 'rejected');
+  const filteredUsers = users.filter((u) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      u.full_name?.toLowerCase().includes(query) ||
+      u.email?.toLowerCase().includes(query)
+    );
+  });
+
+  const pendingUsers = filteredUsers.filter((u) => u.status === 'pending');
+  const approvedUsers = filteredUsers.filter((u) => u.status === 'approved');
+  const rejectedUsers = filteredUsers.filter((u) => u.status === 'rejected');
 
   if (isLoading) {
     return (
@@ -92,7 +105,9 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-        <p className="text-gray-600 mt-1">Manage user access and roles</p>
+        <p className="text-gray-600 mt-1">
+          {group ? `${group.name} — ` : ''}Manage user access and roles
+        </p>
       </div>
 
       {/* Stats */}
@@ -130,6 +145,17 @@ export default function UsersPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Input
+          placeholder="Search by name or email..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
       </div>
 
       {/* Pending Requests */}
