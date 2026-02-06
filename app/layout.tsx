@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: "Quote Sheet",
   description: "Quote sheets and inventory management for HVAC service technicians",
   icons: {
+    icon: "/icon-512.png",
     apple: "/apple-touch-icon.png",
   },
   appleWebApp: {

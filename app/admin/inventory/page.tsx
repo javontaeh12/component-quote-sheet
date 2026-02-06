@@ -30,22 +30,26 @@ export default function InventoryPage() {
 
   const fetchData = async () => {
     if (!groupId) return;
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    const [itemsResult, vansResult] = await Promise.all([
-      supabase.from('inventory_items').select('*').eq('group_id', groupId).order('name'),
-      supabase.from('vans').select('*').eq('group_id', groupId).order('name'),
-    ]);
+      const [itemsResult, vansResult] = await Promise.all([
+        supabase.from('inventory_items').select('*').eq('group_id', groupId).order('name'),
+        supabase.from('vans').select('*').eq('group_id', groupId).order('name'),
+      ]);
 
-    setItems(itemsResult.data || []);
-    setVans(vansResult.data || []);
+      setItems(itemsResult.data || []);
+      setVans(vansResult.data || []);
 
-    // If tech, auto-select their van
-    if (profile?.van_id && !isAdmin) {
-      setSelectedVanId(profile.van_id);
+      // If tech, auto-select their van
+      if (profile?.van_id && !isAdmin) {
+        setSelectedVanId(profile.van_id);
+      }
+    } catch (err) {
+      console.error('Failed to fetch inventory:', err);
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   const handleAddItem = async (item: Omit<InventoryItem, 'id' | 'created_at' | 'updated_at'>) => {

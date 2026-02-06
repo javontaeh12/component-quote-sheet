@@ -12,15 +12,17 @@ export default function PendingPage() {
 
   useEffect(() => {
     const supabase = createClient();
+    let userId: string | null = null;
 
-    const getUser = async () => {
+    const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id ?? null;
       setUserEmail(user?.email ?? null);
     };
 
-    getUser();
+    init();
 
-    // Subscribe to profile changes
+    // Subscribe to profile changes — compare against stored userId to avoid re-calling getUser
     const channel = supabase
       .channel('profile-changes')
       .on(
@@ -30,9 +32,8 @@ export default function PendingPage() {
           schema: 'public',
           table: 'profiles',
         },
-        async (payload) => {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (payload.new.id === user?.id && payload.new.status === 'approved') {
+        (payload) => {
+          if (payload.new.id === userId && payload.new.status === 'approved') {
             router.push('/admin');
           }
         }

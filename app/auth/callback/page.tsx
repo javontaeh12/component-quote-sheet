@@ -67,7 +67,7 @@ function CallbackHandler() {
 
       if (!existingProfile) {
         // Create new profile with pending status (no group_id yet - onboarding will set it)
-        await supabase.from('profiles').insert({
+        const { error: insertError } = await supabase.from('profiles').insert({
           id: session.user.id,
           email: session.user.email,
           full_name:
@@ -76,6 +76,12 @@ function CallbackHandler() {
           role: 'tech',
           status: 'pending',
         } as Record<string, unknown>);
+
+        if (insertError) {
+          console.error('Profile creation error:', insertError);
+          router.replace('/login?error=auth_failed');
+          return;
+        }
 
         // Redirect to onboarding to enter group code
         router.replace('/onboarding');

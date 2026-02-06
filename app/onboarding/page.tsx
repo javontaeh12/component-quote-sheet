@@ -17,12 +17,16 @@ export default function OnboardingPage() {
   useEffect(() => {
     const supabase = createClient();
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUserEmail(user?.email ?? null);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUserEmail(user?.email ?? null);
 
-      // Pre-fill name from user metadata if available
-      if (user?.user_metadata?.full_name) {
-        setFullName(user.user_metadata.full_name);
+        // Pre-fill name from user metadata if available
+        if (user?.user_metadata?.full_name) {
+          setFullName(user.user_metadata.full_name);
+        }
+      } catch (err) {
+        console.error('Failed to get user:', err);
       }
     };
     getUser();
@@ -73,7 +77,7 @@ export default function OnboardingPage() {
 
     // Notify admin via server API (handles nodemailer)
     try {
-      await fetch('/api/auth/new-user', {
+      const emailRes = await fetch('/api/auth/new-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -81,8 +85,11 @@ export default function OnboardingPage() {
           email: userEmail || 'Unknown',
         }),
       });
-    } catch {
-      // Email notification is not critical
+      if (!emailRes.ok) {
+        console.error('Admin notification email failed:', emailRes.status);
+      }
+    } catch (err) {
+      console.error('Admin notification email error:', err);
     }
 
     // Redirect to pending approval

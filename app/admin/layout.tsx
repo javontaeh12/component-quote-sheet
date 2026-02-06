@@ -4,6 +4,7 @@ import { AuthProvider } from '@/components/AuthProvider';
 import { Sidebar } from '@/components/Sidebar';
 import { AdminHeader } from '@/components/AdminHeader';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { SessionRefresh } from '@/components/SessionRefresh';
 import { Profile, OrganizationGroup } from '@/types';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -47,6 +48,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="px-3 py-2 sm:p-4 lg:p-8">{children}</div>
         </main>
         <MobileBottomNav />
+        <SessionRefresh />
       </div>
     </AuthProvider>
   );

@@ -45,24 +45,33 @@ export default function DocumentsPage() {
 
   const fetchGroups = async () => {
     if (!groupId) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('document_groups')
-      .select('*')
-      .eq('group_id', groupId)
-      .order('created_at', { ascending: false });
-    setGroups(data || []);
-    setIsLoading(false);
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('document_groups')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: false });
+      setGroups(data || []);
+    } catch (err) {
+      console.error('Failed to fetch groups:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchDocuments = async (groupId: string) => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('documents')
-      .select('*')
-      .eq('group_id', groupId)
-      .order('created_at', { ascending: false });
-    setDocuments(data || []);
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: false });
+      setDocuments(data || []);
+    } catch (err) {
+      console.error('Failed to fetch documents:', err);
+    }
   };
 
   const handleCreateGroup = async (e: React.FormEvent) => {
@@ -126,50 +135,54 @@ export default function DocumentsPage() {
     if (!uploadFile || !selectedGroup) return;
 
     setIsUploading(true);
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    // Upload file to Supabase Storage
-    const fileExt = uploadFile.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `documents/${selectedGroup.id}/${fileName}`;
+      // Upload file to Supabase Storage
+      const fileExt = uploadFile.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `documents/${selectedGroup.id}/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('documents')
-      .upload(filePath, uploadFile);
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, uploadFile);
 
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      alert('Failed to upload file. Make sure storage is configured.');
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        alert('Failed to upload file. Make sure storage is configured.');
+        return;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+
+      // Save document record
+      const { data, error } = await supabase
+        .from('documents')
+        .insert({
+          group_id: selectedGroup.id,
+          name: uploadFile.name,
+          file_url: urlData.publicUrl,
+          file_type: uploadFile.type,
+          file_size: uploadFile.size,
+          uploaded_by: profile?.id ?? null,
+        })
+        .select()
+        .single();
+
+      if (!error && data) {
+        setDocuments([data, ...documents]);
+        setUploadFile(null);
+        setIsUploadModalOpen(false);
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('Upload failed. Please try again.');
+    } finally {
       setIsUploading(false);
-      return;
     }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('documents')
-      .getPublicUrl(filePath);
-
-    // Save document record
-    const { data, error } = await supabase
-      .from('documents')
-      .insert({
-        group_id: selectedGroup.id,
-        name: uploadFile.name,
-        file_url: urlData.publicUrl,
-        file_type: uploadFile.type,
-        file_size: uploadFile.size,
-        uploaded_by: profile?.id ?? null,
-      })
-      .select()
-      .single();
-
-    if (!error && data) {
-      setDocuments([data, ...documents]);
-      setUploadFile(null);
-      setIsUploadModalOpen(false);
-    }
-
-    setIsUploading(false);
   };
 
   const handleAddLink = async (e: React.FormEvent) => {
@@ -182,26 +195,31 @@ export default function DocumentsPage() {
       normalizedUrl = 'https://' + normalizedUrl;
     }
 
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    const { data, error } = await supabase
-      .from('documents')
-      .insert({
-        group_id: selectedGroup.id,
-        name: linkTitle,
-        file_url: normalizedUrl,
-        file_type: 'link',
-        file_size: null,
-        uploaded_by: profile?.id ?? null,
-      } as Record<string, unknown>)
-      .select()
-      .single();
+      const { data, error } = await supabase
+        .from('documents')
+        .insert({
+          group_id: selectedGroup.id,
+          name: linkTitle,
+          file_url: normalizedUrl,
+          file_type: 'link',
+          file_size: null,
+          uploaded_by: profile?.id ?? null,
+        } as Record<string, unknown>)
+        .select()
+        .single();
 
-    if (!error && data) {
-      setDocuments([data, ...documents]);
-      setLinkTitle('');
-      setLinkUrl('');
-      setIsLinkModalOpen(false);
+      if (!error && data) {
+        setDocuments([data, ...documents]);
+        setLinkTitle('');
+        setLinkUrl('');
+        setIsLinkModalOpen(false);
+      }
+    } catch (err) {
+      console.error('Failed to add link:', err);
+      alert('Failed to add link. Please try again.');
     }
   };
 
