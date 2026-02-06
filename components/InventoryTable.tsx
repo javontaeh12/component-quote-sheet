@@ -69,8 +69,8 @@ export function InventoryTable({
     name: '',
     description: '',
     part_number: '',
-    quantity: 0,
-    min_quantity: 1,
+    quantity: '',
+    min_quantity: '',
     cost: '',
     vendor: '',
     category: 'parts',
@@ -199,8 +199,8 @@ export function InventoryTable({
         name: item.name,
         description: item.description || '',
         part_number: item.part_number || '',
-        quantity: item.quantity,
-        min_quantity: item.min_quantity,
+        quantity: item.quantity.toString(),
+        min_quantity: item.min_quantity.toString(),
         cost: item.cost?.toString() || '',
         vendor: item.vendor || '',
         category: item.category || 'parts',
@@ -212,8 +212,8 @@ export function InventoryTable({
         name: '',
         description: '',
         part_number: '',
-        quantity: 0,
-        min_quantity: 1,
+        quantity: '',
+        min_quantity: '',
         cost: '',
         vendor: '',
         category: 'parts',
@@ -231,8 +231,8 @@ export function InventoryTable({
       name: formData.name,
       description: formData.description || null,
       part_number: formData.part_number || null,
-      quantity: formData.quantity,
-      min_quantity: formData.min_quantity,
+      quantity: formData.quantity ? parseInt(formData.quantity) : 0,
+      min_quantity: formData.min_quantity ? parseInt(formData.min_quantity) : 0,
       cost: formData.cost ? parseFloat(formData.cost) : null,
       vendor: formData.vendor || null,
       category: formData.category || null,
@@ -510,11 +510,11 @@ export function InventoryTable({
                         </div>
                       </td>
                       {isAdmin && !selectedVanId && (
-                        <td className="px-4 py-3 text-gray-600">
+                        <td className="px-4 py-3 text-gray-900">
                           {vanMap.get(item.van_id) || 'Unknown'}
                         </td>
                       )}
-                      <td className="px-4 py-3 text-gray-600">{item.part_number || '-'}</td>
+                      <td className="px-4 py-3 text-gray-900">{item.part_number || '-'}</td>
                       <td className="px-4 py-3">
                         {isBatchEditing ? (
                           <input
@@ -546,7 +546,7 @@ export function InventoryTable({
                             onChange={(e) => setBatchValue(item.id, 'min_quantity', parseInt(e.target.value) || 0)}
                           />
                         ) : (
-                          <span className="text-gray-600">{item.min_quantity}</span>
+                          <span className="text-gray-900">{item.min_quantity}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -560,7 +560,7 @@ export function InventoryTable({
                             onChange={(e) => setBatchValue(item.id, 'cost', e.target.value)}
                           />
                         ) : (
-                          <span className="text-gray-600">{formatCurrency(item.cost)}</span>
+                          <span className="text-gray-900">{formatCurrency(item.cost)}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -572,7 +572,7 @@ export function InventoryTable({
                             onChange={(e) => setBatchValue(item.id, 'vendor', e.target.value)}
                           />
                         ) : (
-                          <span className="text-gray-600">{item.vendor || '-'}</span>
+                          <span className="text-gray-900">{item.vendor || '-'}</span>
                         )}
                       </td>
                       {!isBatchEditing && (
@@ -678,18 +678,16 @@ export function InventoryTable({
               type="number"
               min={0}
               value={formData.quantity}
-              onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
-              required
+              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+              placeholder="Enter quantity"
             />
             <Input
               label="Minimum Quantity"
               type="number"
               min={0}
               value={formData.min_quantity}
-              onChange={(e) =>
-                setFormData({ ...formData, min_quantity: parseInt(e.target.value) || 1 })
-              }
-              required
+              onChange={(e) => setFormData({ ...formData, min_quantity: e.target.value })}
+              placeholder="Enter minimum"
             />
             <Input
               label="Cost"
