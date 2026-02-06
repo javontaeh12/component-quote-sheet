@@ -3,29 +3,38 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useAuth } from './AuthProvider';
 import {
   LayoutDashboard,
   Package,
-  ShoppingCart,
   MessageSquare,
   FileText,
+  Code,
 } from 'lucide-react';
+
+const DEVELOPER_EMAIL = 'javontaedharden@gmail.com';
 
 const navItems = [
   { name: 'Home', href: '/admin', icon: LayoutDashboard },
   { name: 'Inventory', href: '/admin/inventory', icon: Package },
-  { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { name: 'Docs', href: '/admin/documents', icon: FileText },
   { name: 'AI Help', href: '/admin/ai-helper', icon: MessageSquare },
 ];
 
+const developerItem = { name: 'Developer', href: '/admin/users', icon: Code };
+
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const { profile } = useAuth();
+
+  const items = profile?.email === DEVELOPER_EMAIL
+    ? [...navItems, developerItem]
+    : navItems;
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around h-14">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
