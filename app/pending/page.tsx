@@ -46,18 +46,10 @@ export default function PendingPage() {
 
   const handleSignOut = async () => {
     try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
+      await fetch('/api/auth/signout', { method: 'POST' });
     } catch (err) {
       console.error('Sign out error:', err);
     }
-    // Clear auth cookies manually as fallback
-    document.cookie.split(';').forEach((c) => {
-      const name = c.split('=')[0].trim();
-      if (name.includes('sb-') && name.includes('auth-token')) {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-      }
-    });
     window.location.href = '/login';
   };
 

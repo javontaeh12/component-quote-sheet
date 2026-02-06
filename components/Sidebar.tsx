@@ -44,7 +44,7 @@ export function Sidebar() {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      await fetch('/api/auth/signout', { method: 'POST' });
     } catch (err) {
       console.error('Sign out error:', err);
     }
