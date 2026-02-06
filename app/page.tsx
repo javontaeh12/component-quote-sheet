@@ -103,8 +103,9 @@ export default function QuotePage() {
         .header-actions { display: flex; align-items: center; gap: 10px; }
         .header-badge {
           background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-          padding: 4px 8px; border-radius: 5px; font-size: 8px; font-weight: 600;
+          padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 600;
           text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+          line-height: 1.4;
         }
         .admin-link {
           background: none; border: none;
