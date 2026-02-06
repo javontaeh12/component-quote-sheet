@@ -23,6 +23,7 @@ interface InventoryTableProps {
   selectedVanId: string | null;
   isAdmin: boolean;
   groupId: string | null;
+  userVanId: string | null;
 }
 
 const CATEGORIES = [
@@ -55,7 +56,10 @@ export function InventoryTable({
   selectedVanId,
   isAdmin,
   groupId,
+  userVanId,
 }: InventoryTableProps) {
+  // Techs can only edit their own van's items
+  const canEdit = isAdmin || !selectedVanId || selectedVanId === userVanId;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -217,7 +221,7 @@ export function InventoryTable({
         cost: '',
         vendor: '',
         category: 'parts',
-        van_id: selectedVanId || vans[0]?.id || '',
+        van_id: selectedVanId || userVanId || vans[0]?.id || '',
       });
     }
     setIsModalOpen(true);
@@ -331,31 +335,33 @@ export function InventoryTable({
             className="w-full sm:w-40"
           />
         </div>
-        <div className="flex items-center gap-2">
-          {isBatchEditing ? (
-            <>
-              <Button variant="ghost" onClick={cancelBatchEdit}>
-                <X className="w-4 h-4 mr-1" />
-                Cancel
-              </Button>
-              <Button onClick={saveBatchEdits} isLoading={isSavingBatch}>
-                <Check className="w-4 h-4 mr-1" />
-                Save{changedCount > 0 ? ` (${changedCount})` : ''}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="outline" onClick={startBatchEdit}>
-                <Pencil className="w-4 h-4 mr-1" />
-                Edit All
-              </Button>
-              <Button onClick={() => handleOpenModal()}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Item
-              </Button>
-            </>
-          )}
-        </div>
+        {canEdit && (
+          <div className="flex items-center gap-2">
+            {isBatchEditing ? (
+              <>
+                <Button variant="ghost" onClick={cancelBatchEdit}>
+                  <X className="w-4 h-4 mr-1" />
+                  Cancel
+                </Button>
+                <Button onClick={saveBatchEdits} isLoading={isSavingBatch}>
+                  <Check className="w-4 h-4 mr-1" />
+                  Save{changedCount > 0 ? ` (${changedCount})` : ''}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={startBatchEdit}>
+                  <Pencil className="w-4 h-4 mr-1" />
+                  Edit All
+                </Button>
+                <Button onClick={() => handleOpenModal()}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Item
+                </Button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Mobile card layout */}
@@ -378,13 +384,13 @@ export function InventoryTable({
                   <div className="flex items-start gap-2 flex-1 min-w-0">
                     {isLowStock && <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />}
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                      <p className="font-medium text-black truncate">{item.name}</p>
                       {item.part_number && (
-                        <p className="text-xs text-gray-500 mt-0.5">{item.part_number}</p>
+                        <p className="text-xs text-black mt-0.5">{item.part_number}</p>
                       )}
                     </div>
                   </div>
-                  {!isBatchEditing && (
+                  {!isBatchEditing && canEdit && (
                     <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                       <button
                         onClick={() => handleOpenModal(item)}
@@ -408,7 +414,7 @@ export function InventoryTable({
                       <input
                         type="number"
                         min={0}
-                        className="w-full mt-1 px-2 py-1 border border-blue-300 rounded text-sm font-medium bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                        className="w-full mt-1 px-2 py-1 border border-blue-300 rounded text-sm font-medium bg-white text-black focus:ring-1 focus:ring-blue-500 focus:outline-none"
                         value={getBatchValue(item.id, 'quantity', item.quantity) as number}
                         onChange={(e) => setBatchValue(item.id, 'quantity', e.target.value)}
                       />
@@ -420,7 +426,7 @@ export function InventoryTable({
                             : 'bg-green-100 text-green-700'
                         }`}
                       >
-                        {item.quantity}
+                        {item.quantity || ''}
                       </span>
                     )}
                   </div>
@@ -430,12 +436,12 @@ export function InventoryTable({
                       <input
                         type="number"
                         min={0}
-                        className="w-full mt-1 px-2 py-1 border border-blue-300 rounded text-sm font-medium bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                        className="w-full mt-1 px-2 py-1 border border-blue-300 rounded text-sm font-medium bg-white text-black focus:ring-1 focus:ring-blue-500 focus:outline-none"
                         value={getBatchValue(item.id, 'min_quantity', item.min_quantity) as number}
                         onChange={(e) => setBatchValue(item.id, 'min_quantity', e.target.value)}
                       />
                     ) : (
-                      <p className="font-medium text-gray-900 mt-1">{item.min_quantity}</p>
+                      <p className="font-medium text-black mt-1">{item.min_quantity || ''}</p>
                     )}
                   </div>
                   <div>
@@ -445,12 +451,12 @@ export function InventoryTable({
                         type="number"
                         step="0.01"
                         min={0}
-                        className="w-full mt-1 px-2 py-1 border border-blue-300 rounded text-sm font-medium bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                        className="w-full mt-1 px-2 py-1 border border-blue-300 rounded text-sm font-medium bg-white text-black focus:ring-1 focus:ring-blue-500 focus:outline-none"
                         value={getBatchValue(item.id, 'cost', item.cost?.toString() || '') as string}
                         onChange={(e) => setBatchValue(item.id, 'cost', e.target.value)}
                       />
                     ) : (
-                      <p className="font-medium text-gray-900 mt-1">{formatCurrency(item.cost)}</p>
+                      <p className="font-medium text-black mt-1">{item.cost ? formatCurrency(item.cost) : ''}</p>
                     )}
                   </div>
                 </div>
@@ -481,7 +487,7 @@ export function InventoryTable({
                 <th className="px-4 py-3 font-medium">Min</th>
                 <th className="px-4 py-3 font-medium">Cost</th>
                 <th className="px-4 py-3 font-medium">Vendor</th>
-                {!isBatchEditing && <th className="px-4 py-3 font-medium">Actions</th>}
+                {!isBatchEditing && canEdit && <th className="px-4 py-3 font-medium">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -500,9 +506,9 @@ export function InventoryTable({
                         <div className="flex items-center gap-2">
                           {isLowStock && <AlertTriangle className="w-4 h-4 text-red-500" />}
                           <div>
-                            <p className="font-medium text-gray-900">{item.name}</p>
+                            <p className="font-medium text-black">{item.name}</p>
                             {item.description && (
-                              <p className="text-sm text-gray-500 truncate max-w-xs">
+                              <p className="text-sm text-black truncate max-w-xs">
                                 {item.description}
                               </p>
                             )}
@@ -510,17 +516,17 @@ export function InventoryTable({
                         </div>
                       </td>
                       {isAdmin && !selectedVanId && (
-                        <td className="px-4 py-3 text-gray-900">
+                        <td className="px-4 py-3 text-black">
                           {vanMap.get(item.van_id) || 'Unknown'}
                         </td>
                       )}
-                      <td className="px-4 py-3 text-gray-900">{item.part_number || '-'}</td>
+                      <td className="px-4 py-3 text-black">{item.part_number || ''}</td>
                       <td className="px-4 py-3">
                         {isBatchEditing ? (
                           <input
                             type="number"
                             min={0}
-                            className="w-20 px-2 py-1 border border-blue-300 rounded text-sm bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            className="w-20 px-2 py-1 border border-blue-300 rounded text-sm bg-white text-black focus:ring-1 focus:ring-blue-500 focus:outline-none"
                             value={getBatchValue(item.id, 'quantity', item.quantity) as number}
                             onChange={(e) => setBatchValue(item.id, 'quantity', e.target.value)}
                           />
@@ -532,7 +538,7 @@ export function InventoryTable({
                                 : 'bg-green-100 text-green-700'
                             }`}
                           >
-                            {item.quantity}
+                            {item.quantity || ''}
                           </span>
                         )}
                       </td>
@@ -541,12 +547,12 @@ export function InventoryTable({
                           <input
                             type="number"
                             min={0}
-                            className="w-20 px-2 py-1 border border-blue-300 rounded text-sm bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            className="w-20 px-2 py-1 border border-blue-300 rounded text-sm bg-white text-black focus:ring-1 focus:ring-blue-500 focus:outline-none"
                             value={getBatchValue(item.id, 'min_quantity', item.min_quantity) as number}
                             onChange={(e) => setBatchValue(item.id, 'min_quantity', e.target.value)}
                           />
                         ) : (
-                          <span className="text-gray-900">{item.min_quantity}</span>
+                          <span className="text-black">{item.min_quantity || ''}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -555,27 +561,27 @@ export function InventoryTable({
                             type="number"
                             step="0.01"
                             min={0}
-                            className="w-24 px-2 py-1 border border-blue-300 rounded text-sm bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            className="w-24 px-2 py-1 border border-blue-300 rounded text-sm bg-white text-black focus:ring-1 focus:ring-blue-500 focus:outline-none"
                             value={getBatchValue(item.id, 'cost', item.cost?.toString() || '') as string}
                             onChange={(e) => setBatchValue(item.id, 'cost', e.target.value)}
                           />
                         ) : (
-                          <span className="text-gray-900">{formatCurrency(item.cost)}</span>
+                          <span className="text-black">{item.cost ? formatCurrency(item.cost) : ''}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         {isBatchEditing ? (
                           <input
                             type="text"
-                            className="w-28 px-2 py-1 border border-blue-300 rounded text-sm bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            className="w-28 px-2 py-1 border border-blue-300 rounded text-sm bg-white text-black focus:ring-1 focus:ring-blue-500 focus:outline-none"
                             value={(getBatchValue(item.id, 'vendor', item.vendor || '') as string)}
                             onChange={(e) => setBatchValue(item.id, 'vendor', e.target.value)}
                           />
                         ) : (
-                          <span className="text-gray-900">{item.vendor || '-'}</span>
+                          <span className="text-black">{item.vendor || ''}</span>
                         )}
                       </td>
-                      {!isBatchEditing && (
+                      {!isBatchEditing && canEdit && (
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <button

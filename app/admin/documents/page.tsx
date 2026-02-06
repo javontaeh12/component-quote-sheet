@@ -36,6 +36,8 @@ export default function DocumentsPage() {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [linkTitle, setLinkTitle] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [docSearchQuery, setDocSearchQuery] = useState('');
 
   const isAdminOrManager = profile?.role === 'admin' || profile?.role === 'manager';
 
@@ -106,12 +108,13 @@ export default function DocumentsPage() {
       setSelectedGroup(group);
       fetchDocuments(group.id);
     } else {
-      // Try to fetch from database
+      // Try to fetch from database — only within the user's organization
       const supabase = createClient();
       const { data } = await supabase
         .from('document_groups')
         .select('*')
         .eq('doc_group_code', joinGroupId.toUpperCase())
+        .eq('group_id', groupId!)
         .single();
 
       if (data) {
@@ -127,6 +130,7 @@ export default function DocumentsPage() {
 
   const handleSelectGroup = (group: DocumentGroup) => {
     setSelectedGroup(group);
+    setDocSearchQuery('');
     fetchDocuments(group.id);
   };
 
@@ -314,6 +318,14 @@ export default function DocumentsPage() {
           </div>
         </div>
 
+        {documents.length > 0 && (
+          <Input
+            placeholder="Search documents..."
+            value={docSearchQuery}
+            onChange={(e) => setDocSearchQuery(e.target.value)}
+          />
+        )}
+
         <Card>
           <CardContent className="pt-6">
             {documents.length === 0 ? (
@@ -327,7 +339,11 @@ export default function DocumentsPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {documents.map((doc) => {
+                {documents.filter((doc) => {
+                  if (!docSearchQuery) return true;
+                  const q = docSearchQuery.toLowerCase();
+                  return doc.name.toLowerCase().includes(q) || doc.file_type?.toLowerCase().includes(q);
+                }).map((doc) => {
                   const isLink = doc.file_type === 'link';
                   return (
                     <div
@@ -472,6 +488,14 @@ export default function DocumentsPage() {
       </Card>
 
       {/* Groups List */}
+      {groups.length > 0 && (
+        <Input
+          placeholder="Search groups..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Your Groups</CardTitle>
@@ -487,7 +511,11 @@ export default function DocumentsPage() {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {groups.map((group) => (
+              {groups.filter((group) => {
+                if (!searchQuery) return true;
+                const q = searchQuery.toLowerCase();
+                return group.name.toLowerCase().includes(q) || group.doc_group_code.toLowerCase().includes(q);
+              }).map((group) => (
                 <div
                   key={group.id}
                   className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer"

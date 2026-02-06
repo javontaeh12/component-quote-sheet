@@ -1,15 +1,68 @@
 'use client';
 
-import { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui';
 import { Snowflake } from 'lucide-react';
 
 function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(true);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const error = searchParams.get('error');
+
+  // Try restoring session from localStorage backup before showing login
+  useEffect(() => {
+    // Don't try to restore if there's an explicit error (e.g. access_denied)
+    if (error) {
+      setIsRestoring(false);
+      return;
+    }
+
+    const tryRestore = async () => {
+      try {
+        // Check localStorage for a backed-up session
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const authKey = `sb-${supabaseUrl.split('//')[1]?.split('.')[0]}-auth-token`;
+        const backup = localStorage.getItem(authKey);
+        if (!backup) {
+          setIsRestoring(false);
+          return;
+        }
+
+        // Parse the backup to get the refresh token
+        const parsed = JSON.parse(backup);
+        const refreshToken = parsed?.refresh_token;
+        if (!refreshToken) {
+          setIsRestoring(false);
+          return;
+        }
+
+        // Use the refresh token to get a fresh session
+        const supabase = createClient();
+        const { data, error: refreshError } = await supabase.auth.refreshSession({
+          refresh_token: refreshToken,
+        });
+
+        if (refreshError || !data.session) {
+          // Refresh failed — clear stale backup and show login
+          localStorage.removeItem(authKey);
+          setIsRestoring(false);
+          return;
+        }
+
+        // Fresh session is now set in cookies via our storage adapter
+        // Navigate to /admin
+        router.replace('/admin');
+      } catch {
+        setIsRestoring(false);
+      }
+    };
+
+    tryRestore();
+  }, [error, router]);
   const detail = searchParams.get('detail');
 
   const handleGoogleLogin = async () => {
@@ -28,6 +81,17 @@ function LoginForm() {
       setIsLoading(false);
     }
   };
+
+  if (isRestoring) {
+    return (
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Checking session...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">

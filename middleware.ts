@@ -27,6 +27,17 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  // Helper: create a redirect that preserves refreshed session cookies.
+  // Without this, Supabase refresh token rotation invalidates the old token
+  // but the new one never reaches the browser, killing the session.
+  function redirect(url: URL) {
+    const res = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      res.cookies.set(cookie.name, cookie.value);
+    });
+    return res;
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -42,7 +53,7 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       const url = request.nextUrl.clone();
       url.pathname = '/login';
-      return NextResponse.redirect(url);
+      return redirect(url);
     }
 
     // Check user profile for onboarding and admin routes
@@ -57,14 +68,14 @@ export async function middleware(request: NextRequest) {
       if (profile && !profile.group_id && pathname !== '/onboarding') {
         const url = request.nextUrl.clone();
         url.pathname = '/onboarding';
-        return NextResponse.redirect(url);
+        return redirect(url);
       }
 
       // If on onboarding but already has group_id, redirect to appropriate page
       if (pathname === '/onboarding' && profile?.group_id) {
         const url = request.nextUrl.clone();
         url.pathname = profile.status === 'approved' ? '/admin' : '/pending';
-        return NextResponse.redirect(url);
+        return redirect(url);
       }
 
       // Admin route checks
@@ -73,7 +84,7 @@ export async function middleware(request: NextRequest) {
         if (!profile || profile.status === 'pending') {
           const url = request.nextUrl.clone();
           url.pathname = '/pending';
-          return NextResponse.redirect(url);
+          return redirect(url);
         }
 
         // If rejected, redirect to login with error
@@ -81,21 +92,21 @@ export async function middleware(request: NextRequest) {
           const url = request.nextUrl.clone();
           url.pathname = '/login';
           url.searchParams.set('error', 'access_denied');
-          return NextResponse.redirect(url);
+          return redirect(url);
         }
 
         // Admin-only routes
-        if ((pathname === '/admin/users' || pathname === '/admin/stock-parts' || pathname === '/admin/create-group') && profile.role !== 'admin') {
+        if ((pathname === '/admin/users' || pathname === '/admin/stock-parts') && profile.role !== 'admin') {
           const url = request.nextUrl.clone();
           url.pathname = '/admin';
-          return NextResponse.redirect(url);
+          return redirect(url);
         }
 
         // Developer-only routes (restricted to specific email)
-        if (pathname.startsWith('/admin/developer') && user.email !== 'javontaedharden@gmail.com') {
+        if ((pathname.startsWith('/admin/developer') || pathname === '/admin/create-group') && user.email !== 'javontaedharden@gmail.com') {
           const url = request.nextUrl.clone();
           url.pathname = '/admin';
-          return NextResponse.redirect(url);
+          return redirect(url);
         }
 
         // Pass verified user ID and group_id to layout via headers so it skips re-fetching
@@ -121,13 +132,13 @@ export async function middleware(request: NextRequest) {
     if (profile && !profile.group_id && pathname !== '/login') {
       const url = request.nextUrl.clone();
       url.pathname = '/onboarding';
-      return NextResponse.redirect(url);
+      return redirect(url);
     }
 
     if (profile?.status === 'approved') {
       const url = request.nextUrl.clone();
       url.pathname = '/admin';
-      return NextResponse.redirect(url);
+      return redirect(url);
     }
   }
 

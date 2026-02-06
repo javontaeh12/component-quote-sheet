@@ -28,7 +28,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
         <div
           className={cn(
-            'bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden',
+            'bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col',
             className
           )}
           role="dialog"
@@ -37,7 +37,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
         >
           {/* Header */}
           {title && (
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
               <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
               <button
                 onClick={onClose}
@@ -49,7 +49,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
           )}
 
           {/* Content */}
-          <div className="px-6 py-4 overflow-y-auto">{children}</div>
+          <div className="px-6 py-4 overflow-y-auto flex-1 min-h-0">{children}</div>
         </div>
       </div>
     </Fragment>

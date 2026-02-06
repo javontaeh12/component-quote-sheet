@@ -9,19 +9,11 @@ import { PARTS_DATABASE } from '@/lib/parts-data';
 import { Users, Copy, Check, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-function generateGroupCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
-
 export default function CreateGroupPage() {
   const router = useRouter();
   const { profile } = useAuth();
   const [groupName, setGroupName] = useState('');
+  const [groupCode, setGroupCode] = useState('');
   const [loadDefaults, setLoadDefaults] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [createdGroup, setCreatedGroup] = useState<{ name: string; group_code: string; id: string } | null>(null);
@@ -34,14 +26,46 @@ export default function CreateGroupPage() {
     setError(null);
 
     const supabase = createClient();
-    const groupCode = generateGroupCode();
+    const code = groupCode.trim().toUpperCase();
+
+    if (code.length < 3) {
+      setError('Group code must be at least 3 characters.');
+      setIsCreating(false);
+      return;
+    }
+
+    // Check if code is already taken
+    const { data: existingCode } = await supabase
+      .from('organization_groups')
+      .select('id')
+      .eq('group_code', code)
+      .single();
+
+    if (existingCode) {
+      setError('That group code is already taken. Choose a different one.');
+      setIsCreating(false);
+      return;
+    }
+
+    // Check if name is already taken
+    const { data: existingName } = await supabase
+      .from('organization_groups')
+      .select('id')
+      .ilike('name', groupName.trim())
+      .single();
+
+    if (existingName) {
+      setError('A group with that name already exists. Choose a different name.');
+      setIsCreating(false);
+      return;
+    }
 
     // Create the organization group
     const { data: group, error: groupError } = await supabase
       .from('organization_groups')
       .insert({
         name: groupName.trim(),
-        group_code: groupCode,
+        group_code: code,
         owner_id: profile?.id ?? null,
       } as Record<string, unknown>)
       .select()
@@ -51,16 +75,6 @@ export default function CreateGroupPage() {
       setError('Failed to create group. Please try again.');
       setIsCreating(false);
       return;
-    }
-
-    // Update the current user's profile to this new group
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ group_id: group.id })
-      .eq('id', profile!.id);
-
-    if (profileError) {
-      setError('Group created but failed to assign you. Please use the group code to join.');
     }
 
     // Optionally load default parts
@@ -161,6 +175,17 @@ export default function CreateGroupPage() {
             required
           />
 
+          <Input
+            label="Group Code"
+            placeholder="e.g., ABCHVAC, TEAM1"
+            value={groupCode}
+            onChange={(e) => setGroupCode(e.target.value.toUpperCase().replace(/\s/g, ''))}
+            required
+          />
+          <p className="text-xs text-gray-500 -mt-2">
+            This is what team members will type to join your group. Keep it simple and memorable.
+          </p>
+
           <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
             <input
               type="checkbox"
@@ -175,7 +200,7 @@ export default function CreateGroupPage() {
           </div>
 
           <p className="text-sm text-gray-500">
-            A unique group code will be auto-generated for your team members to join.
+            Team members will use the group code to join during sign-up.
           </p>
 
           {error && (

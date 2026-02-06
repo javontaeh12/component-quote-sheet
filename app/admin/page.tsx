@@ -36,8 +36,20 @@ export default function AdminDashboard() {
       try {
         const supabase = createClient();
 
+        const userVanId = profile?.van_id;
+
+        // Dashboard shows only the user's assigned van inventory
+        // If no van assigned, show 0 items (not all vans)
+        let itemsQuery = supabase.from('inventory_items').select('id, name, quantity, min_quantity, van_id').eq('group_id', groupId);
+        if (userVanId) {
+          itemsQuery = itemsQuery.eq('van_id', userVanId);
+        } else {
+          // No van assigned — force empty result
+          itemsQuery = itemsQuery.eq('van_id', 'no-van-assigned');
+        }
+
         const [itemsResult, vansResult] = await Promise.all([
-          supabase.from('inventory_items').select('id, name, quantity, min_quantity, van_id').eq('group_id', groupId),
+          itemsQuery,
           supabase.from('vans').select('id, name').eq('group_id', groupId),
         ]);
 
@@ -73,6 +85,8 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
 
+  const isAdminOrManager = profile?.role === 'admin' || profile?.role === 'manager';
+
   const statCards = [
     {
       title: 'Total Items',
@@ -88,13 +102,17 @@ export default function AdminDashboard() {
       color: stats.lowStockItems > 0 ? 'bg-red-500' : 'bg-green-500',
       href: '/admin/inventory',
     },
-    {
-      title: 'Vans',
-      value: stats.totalVans,
-      icon: Truck,
-      color: 'bg-purple-500',
-      href: '/admin/inventory',
-    },
+    ...(isAdminOrManager
+      ? [
+          {
+            title: 'Vans',
+            value: stats.totalVans,
+            icon: Truck,
+            color: 'bg-purple-500',
+            href: '/admin/inventory',
+          },
+        ]
+      : []),
   ];
 
   if (isLoading) {
@@ -159,7 +177,23 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Mobile card layout */}
+            <div className="sm:hidden space-y-3">
+              {lowStockList.map((item) => (
+                <div key={item.id} className="p-3 bg-red-50 rounded-lg">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-gray-900 text-sm">{item.name}</p>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 shrink-0">
+                      {item.quantity}/{item.min_quantity}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{item.van_name}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table layout */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="text-left text-sm text-gray-500 border-b">

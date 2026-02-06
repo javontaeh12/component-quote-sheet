@@ -766,14 +766,11 @@ export default function QuotePage() {
         let selectedAutocompleteIndex = -1;
 
         function createAutocomplete(input, partNumInput) {
-          // Create wrapper if not exists
-          let wrapper = input.parentElement;
+          // Create wrapper if not exists — use the existing .pf parent instead of reparenting
+          let wrapper = input.closest('.part-autocomplete-wrapper') || input.closest('.pf') || input.parentElement;
           if (!wrapper.classList.contains('part-autocomplete-wrapper')) {
-            const newWrapper = document.createElement('div');
-            newWrapper.className = 'part-autocomplete-wrapper';
-            input.parentNode.insertBefore(newWrapper, input);
-            newWrapper.appendChild(input);
-            wrapper = newWrapper;
+            wrapper.classList.add('part-autocomplete-wrapper');
+            wrapper.style.position = 'relative';
           }
 
           // Remove existing dropdown
@@ -789,7 +786,7 @@ export default function QuotePage() {
         }
 
         function showAutocomplete(input, partNumInput, results) {
-          let wrapper = input.parentElement;
+          let wrapper = input.closest('.part-autocomplete-wrapper') || input.closest('.pf') || input.parentElement;
           let dropdown = wrapper.querySelector('.part-autocomplete');
           if (!dropdown) {
             dropdown = createAutocomplete(input, partNumInput);
@@ -959,7 +956,12 @@ export default function QuotePage() {
             partsHTML += '</tbody></table></div>';
           }
 
-          return '<div class="po-header"><div><h1>Quote Sheet</h1><div style="font-size:11px;opacity:0.7;margin-top:3px;">HVAC / Refrigeration Service Documentation</div></div><div style="text-align:right;"><div class="po-badge">Service Quote</div><div style="font-size:10px;opacity:0.7;margin-top:6px;">'+today+'</div></div></div><div class="po-body">'+jobInfoSection+equipSection+serviceSection+logisticsSection+partsHTML+'</div><div class="po-footer">Quote Sheet — Generated '+today+'</div>';
+          return {
+            full: '<div class="po-header"><div><h1>Quote Sheet</h1><div style="font-size:11px;opacity:0.7;margin-top:3px;">HVAC / Refrigeration Service Documentation</div></div><div style="text-align:right;"><div class="po-badge">Service Quote</div><div style="font-size:10px;opacity:0.7;margin-top:6px;">'+today+'</div></div></div><div class="po-body">'+jobInfoSection+equipSection+serviceSection+logisticsSection+partsHTML+'</div><div class="po-footer">Quote Sheet — Generated '+today+'</div>',
+            page1: '<div class="po-header"><div><h1>Quote Sheet</h1><div style="font-size:11px;opacity:0.7;margin-top:3px;">HVAC / Refrigeration Service Documentation</div></div><div style="text-align:right;"><div class="po-badge">Service Quote</div><div style="font-size:10px;opacity:0.7;margin-top:6px;">'+today+'</div></div></div><div class="po-body">'+jobInfoSection+equipSection+serviceSection+logisticsSection+'</div><div class="po-footer">Quote Sheet — Page 1 — Generated '+today+'</div>',
+            page2: partsHTML ? '<div class="po-header"><div><h1>Quote Sheet</h1><div style="font-size:11px;opacity:0.7;margin-top:3px;">HVAC / Refrigeration Service Documentation</div></div><div style="text-align:right;"><div class="po-badge">Service Quote</div><div style="font-size:10px;opacity:0.7;margin-top:6px;">'+today+'</div></div></div><div class="po-body">'+partsHTML+'</div><div class="po-footer">Quote Sheet — Page 2 — Generated '+today+'</div>' : null,
+            hasParts: parts.length > 0
+          };
         }
 
         function getFilename(ext) {
@@ -985,24 +987,89 @@ export default function QuotePage() {
           setTimeout(() => URL.revokeObjectURL(url), 5000);
         }
 
+        function captureOutput(html) {
+          return new Promise(function(resolve, reject) {
+            var output = document.getElementById('printOutput');
+            output.innerHTML = html;
+            output.style.left = '0'; output.style.position = 'fixed'; output.style.top = '0'; output.style.zIndex = '9999';
+            setTimeout(function() {
+              html2canvas(output, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 }).then(function(canvas) {
+                output.style.left = '-9999px'; output.style.position = 'absolute'; output.style.zIndex = '';
+                resolve(canvas);
+              }).catch(function(err) {
+                output.style.left = '-9999px'; output.style.position = 'absolute'; output.style.zIndex = '';
+                reject(err);
+              });
+            }, 100);
+          });
+        }
+
+        var pendingPartsHTML = null;
+        var photoOriginalHTML = null;
+
         function saveAsPhoto() {
-          const btn = document.getElementById('savePhotoBtn');
-          const originalHTML = btn.innerHTML;
+          var btn = document.getElementById('savePhotoBtn');
+          if (!photoOriginalHTML) photoOriginalHTML = btn.innerHTML;
+          if (typeof html2canvas === 'undefined') {
+            var s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+            s.onload = function() { saveAsPhoto(); };
+            document.head.appendChild(s);
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-spinner"></span> Loading...';
+            return;
+          }
+
+          // Step 2: save the parts page
+          if (pendingPartsHTML) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-spinner"></span> Generating...';
+            var partsHtml = pendingPartsHTML;
+            var baseName = getFilename('png').replace('.png', '');
+            pendingPartsHTML = null;
+            captureOutput(partsHtml).then(function(canvas) {
+              canvas.toBlob(function(blob) {
+                triggerDownload(blob, baseName + '_Parts.png', 'image/png');
+                btn.innerHTML = photoOriginalHTML;
+                btn.disabled = false;
+              }, 'image/png');
+            }).catch(function() { btn.innerHTML = photoOriginalHTML; btn.disabled = false; });
+            return;
+          }
+
+          // Step 1: render full output first, check if too tall
           btn.disabled = true;
           btn.innerHTML = '<span class="btn-spinner"></span> Generating...';
-          const output = document.getElementById('printOutput');
-          output.innerHTML = buildOutput();
+          var result = buildOutput();
+          var baseName = getFilename('png').replace('.png', '');
+
+          // Measure the full output height
+          var output = document.getElementById('printOutput');
+          output.innerHTML = result.full;
           output.style.left = '0'; output.style.position = 'fixed'; output.style.top = '0'; output.style.zIndex = '9999';
-          const filename = getFilename('png');
-          setTimeout(() => {
-            html2canvas(output, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 }).then(canvas => {
-              canvas.toBlob(blob => {
-                triggerDownload(blob, filename, 'image/png');
-                output.style.left = '-9999px'; output.style.position = 'absolute'; output.style.zIndex = '';
-                btn.innerHTML = originalHTML; btn.disabled = false;
-              }, 'image/png');
-            }).catch(() => { output.style.left = '-9999px'; output.style.position = 'absolute'; btn.innerHTML = originalHTML; btn.disabled = false; });
-          }, 100);
+          var fullHeight = output.scrollHeight;
+          output.style.left = '-9999px'; output.style.position = 'absolute'; output.style.zIndex = '';
+
+          // If under 1400px tall or no parts, save as one image
+          var isTooLong = fullHeight > 1400 && result.hasParts && result.page2;
+
+          var pageToCapture = isTooLong ? result.page1 : result.full;
+          var filename = isTooLong ? baseName + '_Page1.png' : baseName + '.png';
+
+          captureOutput(pageToCapture).then(function(canvas) {
+            canvas.toBlob(function(blob) {
+              triggerDownload(blob, filename, 'image/png');
+              if (isTooLong) {
+                // Switch button to "Save Parts" for step 2
+                pendingPartsHTML = result.page2;
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4.5A1.5 1.5 0 013.5 3h1.172a1.5 1.5 0 011.06.44L6.94 4.646A.5.5 0 007.293 4.5H12.5A1.5 1.5 0 0114 6v6.5a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="8" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5"/></svg> Save Parts';
+                btn.disabled = false;
+              } else {
+                btn.innerHTML = photoOriginalHTML;
+                btn.disabled = false;
+              }
+            }, 'image/png');
+          }).catch(function() { btn.innerHTML = photoOriginalHTML; btn.disabled = false; });
         }
 
         function saveForm() {
@@ -1181,8 +1248,8 @@ export default function QuotePage() {
             }
           }
 
-          // SERVICEWO#: 4181959
-          var woMatch = allText.match(/SERVICEWO#\\s*:?\\s*([A-Za-z0-9\\-]+)/i);
+          // Match WO number in various formats: SERVICEWO#: 4181959, WO: 123, WO# 456, WO #: 789, Work Order: 123, Work Order#: 456
+          var woMatch = allText.match(/(?:SERVICEWO|Work\\s*Order|WO)\\s*#?\\s*:?\\s*([A-Za-z0-9\\-]+)/i);
           if (woMatch) woNumber = woMatch[1].trim();
 
           // Equipment line: "RIF 2  REACH IN FREEZER  REFR"

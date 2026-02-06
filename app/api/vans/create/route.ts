@@ -6,8 +6,8 @@ export async function POST(request: NextRequest) {
   try {
     const profile = await getProfile();
 
-    if (!profile || profile.role !== 'admin' || profile.status !== 'approved') {
-      return NextResponse.json({ error: 'Only approved admins can create vans' }, { status: 403 });
+    if (!profile || profile.status !== 'approved') {
+      return NextResponse.json({ error: 'Only approved users can create vans' }, { status: 403 });
     }
 
     const { van_number, group_id } = await request.json();
@@ -50,6 +50,14 @@ export async function POST(request: NextRequest) {
         ? `Van number "${trimmedVanNumber}" already exists`
         : vanError.message;
       return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    // Auto-assign this van to the creator's profile if they don't have one
+    if (!profile.van_id) {
+      await adminClient
+        .from('profiles')
+        .update({ van_id: van.id })
+        .eq('id', profile.id);
     }
 
     // Fetch group's stock parts

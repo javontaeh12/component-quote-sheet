@@ -33,6 +33,7 @@ export default function InventoryPage() {
     try {
       const supabase = createClient();
 
+      // All roles can see all vans' items, but default filter to their own van
       const [itemsResult, vansResult] = await Promise.all([
         supabase.from('inventory_items').select('*').eq('group_id', groupId).order('name'),
         supabase.from('vans').select('*').eq('group_id', groupId).order('name'),
@@ -41,8 +42,8 @@ export default function InventoryPage() {
       setItems(itemsResult.data || []);
       setVans(vansResult.data || []);
 
-      // If tech, auto-select their van
-      if (profile?.van_id && !isAdmin) {
+      // Default to the user's assigned van
+      if (profile?.van_id) {
         setSelectedVanId(profile.van_id);
       }
     } catch (err) {
@@ -138,41 +139,49 @@ export default function InventoryPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
           <p className="text-gray-600 mt-1">
-            {group ? `${group.name} — Manage van inventory` : 'Manage your van inventory'}
+            {profile?.van_id
+              ? `Van ${vans.find((v) => v.id === profile.van_id)?.van_number || ''} — Your Inventory`
+              : group ? `${group.name} — Manage van inventory` : 'Manage your van inventory'}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {isAdmin && (
-            <>
-              <Select
-                options={[
-                  { value: '', label: 'All Vans' },
-                  ...vans.map((v) => ({ value: v.id, label: `Van ${v.van_number || v.name}` })),
-                ]}
-                value={selectedVanId || ''}
-                onChange={(e) => setSelectedVanId(e.target.value || null)}
-                className="w-40"
-              />
-              <Button variant="outline" onClick={() => setIsVanModalOpen(true)}>
-                <Truck className="w-4 h-4 mr-2" />
-                Add Van
-              </Button>
-            </>
+          <Select
+            options={[
+              { value: '', label: 'All Vans' },
+              ...vans.map((v) => ({ value: v.id, label: `Van ${v.van_number || v.name}` })),
+            ]}
+            value={selectedVanId || ''}
+            onChange={(e) => setSelectedVanId(e.target.value || null)}
+            className="w-40"
+          />
+          {(isAdmin || !profile?.van_id) && (
+            <Button variant="outline" onClick={() => setIsVanModalOpen(true)}>
+              <Truck className="w-4 h-4 mr-2" />
+              Add Van
+            </Button>
           )}
         </div>
       </div>
 
-      {vans.length === 0 ? (
+      {!isAdmin && !profile?.van_id ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+          <Truck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Van Assigned</h3>
+          <p className="text-gray-600 mb-4">Add your van to start managing your inventory</p>
+          <Button onClick={() => setIsVanModalOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Your Van
+          </Button>
+        </div>
+      ) : vans.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
           <Truck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Vans Yet</h3>
           <p className="text-gray-600 mb-4">Add a van to start tracking inventory</p>
-          {isAdmin && (
-            <Button onClick={() => setIsVanModalOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Your First Van
-            </Button>
-          )}
+          <Button onClick={() => setIsVanModalOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Your First Van
+          </Button>
         </div>
       ) : (
         <InventoryTable
@@ -184,6 +193,7 @@ export default function InventoryPage() {
           selectedVanId={selectedVanId}
           isAdmin={isAdmin}
           groupId={groupId}
+          userVanId={profile?.van_id || null}
         />
       )}
 

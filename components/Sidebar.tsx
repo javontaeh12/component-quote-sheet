@@ -50,6 +50,12 @@ export function Sidebar() {
 
   const handleSignOut = async () => {
     try {
+      // Clear localStorage session backup so user stays signed out
+      Object.keys(localStorage).forEach((key) => {
+        if (key.includes('sb-') && key.includes('auth-token')) {
+          localStorage.removeItem(key);
+        }
+      });
       await fetch('/api/auth/signout', { method: 'POST' });
     } catch (err) {
       console.error('Sign out error:', err);
