@@ -39,12 +39,12 @@ const integrations: Integration[] = [
     details: 'Used by AI Helper feature',
   },
   {
-    id: 'resend',
-    name: 'Resend',
+    id: 'gmail',
+    name: 'Gmail SMTP',
     description: 'Email notifications for admin alerts',
     icon: Globe,
-    status: 'disconnected',
-    details: 'Not configured',
+    status: 'connected',
+    details: 'Via Nodemailer with App Password',
   },
 ];
 
@@ -61,7 +61,7 @@ export default function DeveloperPage() {
     { key: 'NEXT_PUBLIC_SUPABASE_URL', masked: true },
     { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', masked: true },
     { key: 'OPENAI_API_KEY', masked: true },
-    { key: 'RESEND_API_KEY', masked: true },
+    { key: 'GMAIL_APP_PASSWORD', masked: true },
     { key: 'ADMIN_EMAIL', masked: true },
   ];
 
