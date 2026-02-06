@@ -6,11 +6,11 @@ import { ChatMessage } from '@/types';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
 
 const SUGGESTED_QUESTIONS = [
-  'Why is my AC blowing warm air?',
-  'How do I check refrigerant levels?',
-  'What causes a compressor to short cycle?',
-  'Walk-in freezer not reaching temperature',
-  'How to diagnose a bad capacitor?',
+  'RTU compressor pulling high amps but not tripping — what to check?',
+  'Walk-in freezer TXV hunting — superheat swinging 5-25°F',
+  'Scroll compressor megohm reading low to ground',
+  'VRF system showing refrigerant communication error',
+  'High head pressure on rack system after condenser cleaning',
 ];
 
 export function ChatInterface() {
