@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -51,12 +51,18 @@ export async function GET(request: Request) {
           status: 'pending',
         });
 
-        // Send email notification to admin
-        if (process.env.RESEND_API_KEY && process.env.ADMIN_EMAIL) {
+        // Send email notification to admin via Gmail
+        if (process.env.GMAIL_APP_PASSWORD && process.env.ADMIN_EMAIL) {
           try {
-            const resend = new Resend(process.env.RESEND_API_KEY);
-            await resend.emails.send({
-              from: 'HVAC Portal <onboarding@resend.dev>',
+            const transporter = nodemailer.createTransport({
+              service: 'gmail',
+              auth: {
+                user: process.env.ADMIN_EMAIL,
+                pass: process.env.GMAIL_APP_PASSWORD,
+              },
+            });
+            await transporter.sendMail({
+              from: `HVAC Portal <${process.env.ADMIN_EMAIL}>`,
               to: process.env.ADMIN_EMAIL,
               subject: 'New User Access Request',
               html: `
