@@ -15,7 +15,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "HVAC Service Tech Portal",
+  title: "Quote Sheet",
   description: "Quote sheets and inventory management for HVAC service technicians",
   icons: {
     apple: "/apple-touch-icon.png",
@@ -23,13 +23,13 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "HVAC Portal",
+    title: "Quote Sheet",
   },
   formatDetection: {
     telephone: true,
   },
   openGraph: {
-    title: "HVAC Service Tech Portal",
+    title: "Quote Sheet",
     description: "Quote sheets and inventory management for HVAC service technicians",
     images: ["/og-image.png"],
   },

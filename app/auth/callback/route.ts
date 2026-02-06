@@ -62,12 +62,12 @@ export async function GET(request: Request) {
               },
             });
             await transporter.sendMail({
-              from: `HVAC Portal <${process.env.ADMIN_EMAIL}>`,
+              from: `Quote Sheet <${process.env.ADMIN_EMAIL}>`,
               to: process.env.ADMIN_EMAIL,
               subject: 'New User Access Request',
               html: `
                 <h2>New User Access Request</h2>
-                <p>A new user has requested access to the HVAC Service Tech Portal:</p>
+                <p>A new user has requested access to Quote Sheet:</p>
                 <ul>
                   <li><strong>Name:</strong> ${sessionData.user.user_metadata?.full_name || 'Not provided'}</li>
                   <li><strong>Email:</strong> ${sessionData.user.email}</li>
