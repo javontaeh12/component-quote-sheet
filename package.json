@@ -15,7 +15,7 @@
     "exceljs": "^4.4.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.563.0",
-    "next": "15.5.12",
+    "next": "15.4.11",
     "nodemailer": "^8.0.0",
     "openai": "^6.18.0",
     "react": "19.2.3",
@@ -30,7 +30,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.5.12",
+    "eslint-config-next": "15.4.11",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

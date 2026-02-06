@@ -57,3 +57,27 @@ body {
     padding: 9px 12px;
   }
 }
+
+/* Mobile touch improvements */
+@media (max-width: 767px) {
+  /* Prevent text size adjustment on orientation change */
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Better tap targets */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Smooth scrolling */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent pull-to-refresh on admin pages */
+  body {
+    overscroll-behavior-y: contain;
+  }
+}

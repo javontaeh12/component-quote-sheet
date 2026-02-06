@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 interface ExportItem {
   name: string;
@@ -15,14 +15,20 @@ export async function POST(request: NextRequest) {
   try {
     const { items } = await request.json() as { items: ExportItem[] };
 
-    // Create workbook and worksheet
-    const workbook = XLSX.utils.book_new();
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Low Stock Order');
 
-    const worksheetData = [
-      ['Low Stock Order - ' + new Date().toLocaleDateString()],
-      [],
-      ['Item', 'Part Number', 'Current Qty', 'Qty Needed', 'Vendor', 'Unit Cost', 'Est. Total', 'Van'],
-      ...items.map((item) => [
+    // Title row
+    worksheet.addRow(['Low Stock Order - ' + new Date().toLocaleDateString()]);
+    worksheet.addRow([]);
+
+    // Header row
+    const headerRow = worksheet.addRow(['Item', 'Part Number', 'Current Qty', 'Qty Needed', 'Vendor', 'Unit Cost', 'Est. Total', 'Van']);
+    headerRow.font = { bold: true };
+
+    // Data rows
+    items.forEach((item) => {
+      worksheet.addRow([
         item.name,
         item.part_number || '',
         item.quantity,
@@ -31,38 +37,35 @@ export async function POST(request: NextRequest) {
         item.cost ? `$${item.cost.toFixed(2)}` : '',
         item.cost ? `$${(item.cost * item.quantity_needed).toFixed(2)}` : '',
         item.van_name,
-      ]),
-      [],
-      [
-        '',
-        '',
-        '',
-        items.reduce((sum, i) => sum + i.quantity_needed, 0),
-        '',
-        '',
-        `$${items.reduce((sum, i) => sum + (i.cost || 0) * i.quantity_needed, 0).toFixed(2)}`,
-        '',
-      ],
-    ];
+      ]);
+    });
 
-    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    // Totals row
+    worksheet.addRow([]);
+    worksheet.addRow([
+      '',
+      '',
+      '',
+      items.reduce((sum, i) => sum + i.quantity_needed, 0),
+      '',
+      '',
+      `$${items.reduce((sum, i) => sum + (i.cost || 0) * i.quantity_needed, 0).toFixed(2)}`,
+      '',
+    ]);
 
     // Set column widths
-    worksheet['!cols'] = [
-      { wch: 30 }, // Item
-      { wch: 15 }, // Part Number
-      { wch: 12 }, // Current Qty
-      { wch: 12 }, // Qty Needed
-      { wch: 20 }, // Vendor
-      { wch: 12 }, // Unit Cost
-      { wch: 12 }, // Est. Total
-      { wch: 15 }, // Van
+    worksheet.columns = [
+      { width: 30 },
+      { width: 15 },
+      { width: 12 },
+      { width: 12 },
+      { width: 20 },
+      { width: 12 },
+      { width: 12 },
+      { width: 15 },
     ];
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Low Stock Order');
-
-    // Generate buffer
-    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    const buffer = await workbook.xlsx.writeBuffer();
 
     return new NextResponse(buffer, {
       headers: {

@@ -7,8 +7,8 @@ export default function QuotePage() {
   useEffect(() => {
     // Initialize the form after the page loads
     const initForm = () => {
-      if (typeof window !== 'undefined' && (window as any).initQuoteForm) {
-        (window as any).initQuoteForm();
+      if (typeof window !== 'undefined' && (window as unknown as Record<string, () => void>).initQuoteForm) {
+        (window as unknown as Record<string, () => void>).initQuoteForm();
       }
     };
 
@@ -107,12 +107,13 @@ export default function QuotePage() {
           text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
         }
         .admin-link {
-          background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
-          padding: 4px 10px; border-radius: 5px; font-size: 9px; font-weight: 600;
-          text-transform: uppercase; letter-spacing: 0.5px; color: #fff;
-          text-decoration: none; transition: background 0.2s;
+          background: none; border: none;
+          padding: 4px 0; font-size: 9px; font-weight: 500;
+          color: rgba(255,255,255,0.7);
+          text-decoration: underline; text-underline-offset: 2px;
+          transition: color 0.2s;
         }
-        .admin-link:hover { background: rgba(255,255,255,0.3); }
+        .admin-link:hover { color: #fff; }
         .form-body { padding: 16px; }
         .section { margin-bottom: 20px; }
         .section-header {
@@ -293,7 +294,8 @@ export default function QuotePage() {
           .form-header { padding: 28px 40px; position: static; box-shadow: none; }
           .form-header h1 { font-size: 24px; }
           .header-badge { padding: 8px 16px; font-size: 12px; }
-          .admin-link { padding: 8px 14px; font-size: 11px; }
+          .admin-link { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); padding: 8px 14px; border-radius: 5px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-decoration: none; color: #fff; }
+          .admin-link:hover { background: rgba(255,255,255,0.3); }
           .form-body { padding: 32px 40px 40px; }
           .field { min-width: 170px; }
           .field.half, .field.third { min-width: 170px; }
