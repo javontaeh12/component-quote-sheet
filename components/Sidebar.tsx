@@ -7,7 +7,6 @@ import { useAuth } from './AuthProvider';
 import {
   LayoutDashboard,
   Package,
-  ShoppingCart,
   MessageSquare,
   Users,
   LogOut,
@@ -23,7 +22,6 @@ import { useState } from 'react';
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Inventory', href: '/admin/inventory', icon: Package },
-  { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { name: 'Documents', href: '/admin/documents', icon: FileText },
   { name: 'AI Helper', href: '/admin/ai-helper', icon: MessageSquare },
 ];
