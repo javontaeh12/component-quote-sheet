@@ -326,7 +326,7 @@ export default function DocumentsPage() {
                           <p className="font-medium text-gray-900 truncate">{doc.name}</p>
                           <p className="text-xs sm:text-sm text-gray-500 truncate">
                             {isLink
-                              ? new URL(doc.file_url).hostname
+                              ? (() => { try { return new URL(doc.file_url).hostname; } catch { return doc.file_url; } })()
                               : `${formatFileSize(doc.file_size)} • ${formatDate(doc.created_at)}`}
                           </p>
                         </div>

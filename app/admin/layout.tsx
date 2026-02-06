@@ -1,5 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { AuthProvider } from '@/components/AuthProvider';
 import { Sidebar } from '@/components/Sidebar';
 import { AdminHeader } from '@/components/AdminHeader';
@@ -7,7 +7,11 @@ import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { Profile, OrganizationGroup } from '@/types';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
+  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
+
+  // Middleware already verified auth + profile — read user/group IDs from headers
+  const userId = headerStore.get('x-user-id');
+  const groupId = headerStore.get('x-group-id');
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,30 +25,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     }
   );
 
-  let initialProfile: Profile | null = null;
-  let initialGroup: OrganizationGroup | null = null;
+  // Fetch profile and group in parallel — no need for getUser() since middleware already verified
+  const [profileResult, groupResult] = await Promise.all([
+    userId
+      ? supabase.from('profiles').select('*').eq('id', userId).single()
+      : Promise.resolve({ data: null }),
+    groupId
+      ? supabase.from('organization_groups').select('*').eq('id', groupId).single()
+      : Promise.resolve({ data: null }),
+  ]);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-    initialProfile = profile as Profile | null;
-
-    if (initialProfile?.group_id) {
-      const { data: group } = await supabase
-        .from('organization_groups')
-        .select('*')
-        .eq('id', initialProfile.group_id)
-        .single();
-      initialGroup = group as OrganizationGroup | null;
-    }
-  }
+  const initialProfile = (profileResult.data as Profile | null);
+  const initialGroup = (groupResult.data as OrganizationGroup | null);
 
   return (
     <AuthProvider initialProfile={initialProfile} initialGroup={initialGroup}>
@@ -52,7 +44,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Sidebar />
         <AdminHeader />
         <main className="lg:pl-64 pt-14 pb-16 lg:pb-0">
-          <div className="p-4 lg:p-8">{children}</div>
+          <div className="px-3 py-2 sm:p-4 lg:p-8">{children}</div>
         </main>
         <MobileBottomNav />
       </div>

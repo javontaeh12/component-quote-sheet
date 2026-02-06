@@ -97,6 +97,14 @@ export async function middleware(request: NextRequest) {
           url.pathname = '/admin';
           return NextResponse.redirect(url);
         }
+
+        // Pass verified user ID and group_id to layout via headers so it skips re-fetching
+        supabaseResponse.headers.set('x-user-id', user.id);
+        if (profile.group_id) {
+          supabaseResponse.headers.set('x-group-id', profile.group_id);
+        }
+        supabaseResponse.headers.set('x-user-role', profile.role);
+        supabaseResponse.headers.set('x-user-status', profile.status);
       }
     }
   }

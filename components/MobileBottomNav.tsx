@@ -4,12 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from './AuthProvider';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Package,
   MessageSquare,
   FileText,
   Code,
+  Loader2,
 } from 'lucide-react';
 
 const DEVELOPER_EMAIL = 'javontaedharden@gmail.com';
@@ -26,6 +28,12 @@ const developerItem = { name: 'Developer', href: '/admin/users', icon: Code };
 export function MobileBottomNav() {
   const pathname = usePathname();
   const { profile } = useAuth();
+  const [loadingHref, setLoadingHref] = useState<string | null>(null);
+
+  // Clear loading state when navigation completes (pathname changes)
+  useEffect(() => {
+    setLoadingHref(null);
+  }, [pathname]);
 
   const items = profile?.email === DEVELOPER_EMAIL
     ? [...navItems, developerItem]
@@ -36,19 +44,31 @@ export function MobileBottomNav() {
       <div className="flex items-center justify-around h-14">
         {items.map((item) => {
           const isActive = pathname === item.href;
+          const isLoading = loadingHref === item.href && !isActive;
           return (
             <Link
               key={item.name}
               href={item.href}
+              onClick={() => {
+                if (!isActive) setLoadingHref(item.href);
+              }}
               className={cn(
                 'flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors',
                 isActive
                   ? 'text-blue-600'
-                  : 'text-gray-500 active:text-gray-700'
+                  : isLoading
+                    ? 'text-blue-400'
+                    : 'text-gray-500 active:text-gray-700'
               )}
             >
-              <item.icon className={cn('w-5 h-5', isActive && 'stroke-[2.5]')} />
-              <span className="text-[10px] font-medium leading-tight">{item.name}</span>
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <item.icon className={cn('w-5 h-5', isActive && 'stroke-[2.5]')} />
+              )}
+              <span className="text-[10px] font-medium leading-tight">
+                {isLoading ? 'Loading...' : item.name}
+              </span>
             </Link>
           );
         })}

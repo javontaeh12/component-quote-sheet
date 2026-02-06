@@ -20,7 +20,7 @@ function generateGroupCode(): string {
 
 export default function CreateGroupPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [groupName, setGroupName] = useState('');
   const [loadDefaults, setLoadDefaults] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -42,7 +42,7 @@ export default function CreateGroupPage() {
       .insert({
         name: groupName.trim(),
         group_code: groupCode,
-        owner_id: user?.id ?? null,
+        owner_id: profile?.id ?? null,
       } as Record<string, unknown>)
       .select()
       .single();
@@ -57,7 +57,7 @@ export default function CreateGroupPage() {
     const { error: profileError } = await supabase
       .from('profiles')
       .update({ group_id: group.id })
-      .eq('id', user!.id);
+      .eq('id', profile!.id);
 
     if (profileError) {
       setError('Group created but failed to assign you. Please use the group code to join.');

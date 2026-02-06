@@ -120,12 +120,12 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2 sm:space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-lg sm:text-2xl font-bold text-gray-900">
           Welcome back, {profile?.full_name?.split(' ')[0]}
         </h1>
-        <p className="text-gray-600 mt-1">
+        <p className="text-gray-600 text-xs sm:text-sm">
           {group ? `${group.name} — ` : ''}Here&apos;s an overview of your inventory
         </p>
       </div>

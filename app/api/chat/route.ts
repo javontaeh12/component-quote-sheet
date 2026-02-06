@@ -5,27 +5,25 @@ export async function POST(request: NextRequest) {
   try {
     const { messages } = await request.json();
 
-    const stream = await openai.chat.completions.create({
+    const stream = await openai.responses.create({
       model: 'gpt-4o-mini',
-      max_tokens: 1024,
+      instructions: HVAC_SYSTEM_PROMPT,
+      tools: [{ type: 'web_search_preview' }],
+      max_output_tokens: 1024,
+      input: messages.map((m: { role: string; content: string }) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
       stream: true,
-      messages: [
-        { role: 'system', content: HVAC_SYSTEM_PROMPT },
-        ...messages.map((m: { role: string; content: string }) => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-        })),
-      ],
     });
 
     const encoder = new TextEncoder();
 
     const readableStream = new ReadableStream({
       async start(controller) {
-        for await (const chunk of stream) {
-          const content = chunk.choices[0]?.delta?.content;
-          if (content) {
-            controller.enqueue(encoder.encode(content));
+        for await (const event of stream) {
+          if (event.type === 'response.output_text.delta') {
+            controller.enqueue(encoder.encode(event.delta));
           }
         }
         controller.close();
