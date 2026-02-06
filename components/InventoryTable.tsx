@@ -297,8 +297,8 @@ export function InventoryTable({
     const updates = changedIds.map((id) => {
       const edits = batchEdits[id];
       const updates: Partial<InventoryItem> = {};
-      if (edits.quantity !== undefined) updates.quantity = edits.quantity;
-      if (edits.min_quantity !== undefined) updates.min_quantity = edits.min_quantity;
+      if (edits.quantity !== undefined) updates.quantity = parseInt(edits.quantity as unknown as string) || 0;
+      if (edits.min_quantity !== undefined) updates.min_quantity = parseInt(edits.min_quantity as unknown as string) || 0;
       if (edits.cost !== undefined) updates.cost = edits.cost ? parseFloat(edits.cost as string) : null;
       if (edits.vendor !== undefined) updates.vendor = (edits.vendor as string) || null;
       return onUpdate(id, updates);
@@ -410,7 +410,7 @@ export function InventoryTable({
                         min={0}
                         className="w-full mt-1 px-2 py-1 border border-blue-300 rounded text-sm font-medium bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
                         value={getBatchValue(item.id, 'quantity', item.quantity) as number}
-                        onChange={(e) => setBatchValue(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                        onChange={(e) => setBatchValue(item.id, 'quantity', e.target.value)}
                       />
                     ) : (
                       <span
@@ -432,7 +432,7 @@ export function InventoryTable({
                         min={0}
                         className="w-full mt-1 px-2 py-1 border border-blue-300 rounded text-sm font-medium bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
                         value={getBatchValue(item.id, 'min_quantity', item.min_quantity) as number}
-                        onChange={(e) => setBatchValue(item.id, 'min_quantity', parseInt(e.target.value) || 0)}
+                        onChange={(e) => setBatchValue(item.id, 'min_quantity', e.target.value)}
                       />
                     ) : (
                       <p className="font-medium text-gray-900 mt-1">{item.min_quantity}</p>
@@ -522,7 +522,7 @@ export function InventoryTable({
                             min={0}
                             className="w-20 px-2 py-1 border border-blue-300 rounded text-sm bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
                             value={getBatchValue(item.id, 'quantity', item.quantity) as number}
-                            onChange={(e) => setBatchValue(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                            onChange={(e) => setBatchValue(item.id, 'quantity', e.target.value)}
                           />
                         ) : (
                           <span
@@ -543,7 +543,7 @@ export function InventoryTable({
                             min={0}
                             className="w-20 px-2 py-1 border border-blue-300 rounded text-sm bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
                             value={getBatchValue(item.id, 'min_quantity', item.min_quantity) as number}
-                            onChange={(e) => setBatchValue(item.id, 'min_quantity', parseInt(e.target.value) || 0)}
+                            onChange={(e) => setBatchValue(item.id, 'min_quantity', e.target.value)}
                           />
                         ) : (
                           <span className="text-gray-900">{item.min_quantity}</span>
