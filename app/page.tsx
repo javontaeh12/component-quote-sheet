@@ -262,48 +262,67 @@ export default function QuotePage() {
 
         .form-footer { background: var(--section-bg); padding: 14px 16px; text-align: center; font-size: 10px; color: var(--text-muted); border-top: 1px solid #e4e7ec; }
 
-        /* Print output styles */
+        /* Print output styles - FR Form style */
         #printOutput {
           position: absolute; left: -9999px; top: 0;
-          width: 816px; font-family: 'Inter', sans-serif; color: #1a1a2e; background: #fff;
+          width: 816px; font-family: 'Times New Roman', Times, serif; color: #000; background: #fff;
+          padding: 40px 50px;
         }
-        #printOutput .po-header {
-          background: #1a3a5c; color: #fff; padding: 24px 32px;
-          display: flex; justify-content: space-between; align-items: center;
+        #printOutput .fr-title {
+          text-align: center; font-size: 18px; font-weight: 700; margin-bottom: 24px;
         }
-        #printOutput .po-header h1 { font-size: 22px; font-weight: 700; }
-        #printOutput .po-header .po-badge {
-          background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
-          padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600;
-          text-transform: uppercase; letter-spacing: 1px;
+        #printOutput .fr-row {
+          display: flex; align-items: flex-end; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
         }
-        #printOutput .po-body { padding: 24px 32px; }
-        #printOutput .po-section { margin-bottom: 20px; }
-        #printOutput .po-section-title {
-          font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
-          color: #1a3a5c; border-bottom: 2px solid #1a3a5c; padding-bottom: 6px; margin-bottom: 12px;
+        #printOutput .fr-field {
+          display: flex; align-items: flex-end; flex: 1; min-width: 0;
         }
-        #printOutput .po-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
-        #printOutput .po-grid.three { grid-template-columns: 1fr 1fr 1fr; }
-        #printOutput .po-field { margin-bottom: 6px; }
-        #printOutput .po-field .po-label {
-          font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-          color: #667085; margin-bottom: 2px;
+        #printOutput .fr-field.small { flex: 0 0 120px; }
+        #printOutput .fr-field.medium { flex: 0 0 180px; }
+        #printOutput .fr-field.tiny { flex: 0 0 60px; }
+        #printOutput .fr-label {
+          font-size: 12px; font-weight: 400; white-space: nowrap; margin-right: 4px;
         }
-        #printOutput .po-field .po-value {
-          font-size: 13px; font-weight: 500; color: #1a1a2e; padding: 4px 0;
-          border-bottom: 1px solid #e4e7ec; min-height: 22px;
+        #printOutput .fr-value {
+          flex: 1; border-bottom: 1px solid #000; min-height: 18px; font-size: 12px;
+          padding: 0 4px; min-width: 40px;
         }
-        #printOutput .po-field.full { grid-column: 1 / -1; }
-        #printOutput .po-field .po-value.multiline { white-space: pre-wrap; line-height: 1.5; }
-        #printOutput .po-parts-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-        #printOutput .po-parts-table th {
-          background: #1a3a5c; color: #fff; padding: 8px 10px; font-size: 10px;
-          font-weight: 600; text-transform: uppercase; text-align: left;
+        #printOutput .fr-row-full {
+          margin-bottom: 8px;
         }
-        #printOutput .po-parts-table td { padding: 7px 10px; font-size: 12px; border-bottom: 1px solid #e4e7ec; }
-        #printOutput .po-parts-table tr:nth-child(even) { background: #f8f9fb; }
-        #printOutput .po-footer { text-align: center; padding: 12px; font-size: 9px; color: #98a2b3; border-top: 1px solid #e4e7ec; }
+        #printOutput .fr-row-full .fr-label {
+          font-size: 12px; font-weight: 400; margin-bottom: 2px;
+        }
+        #printOutput .fr-row-full .fr-value {
+          border-bottom: 1px solid #000; min-height: 18px; font-size: 12px;
+          padding: 0 4px; margin-top: 2px;
+        }
+        #printOutput .fr-row-full .fr-value.multiline {
+          min-height: 36px;
+        }
+        #printOutput .fr-spacer { height: 8px; }
+        #printOutput .fr-parts-header {
+          display: flex; margin-top: 20px; margin-bottom: 4px; padding-bottom: 4px;
+        }
+        #printOutput .fr-parts-header span {
+          font-size: 11px; font-weight: 700; text-transform: uppercase;
+        }
+        #printOutput .fr-parts-header .col-desc { flex: 2; }
+        #printOutput .fr-parts-header .col-part { flex: 1.2; }
+        #printOutput .fr-parts-header .col-qty { flex: 0.7; }
+        #printOutput .fr-parts-header .col-cost { flex: 1; }
+        #printOutput .fr-parts-header .col-vendor { flex: 1; }
+        #printOutput .fr-parts-row {
+          display: flex; margin-bottom: 6px;
+        }
+        #printOutput .fr-parts-row .fr-cell {
+          border-bottom: 1px solid #000; min-height: 18px; font-size: 12px; padding: 0 4px;
+        }
+        #printOutput .fr-parts-row .col-desc { flex: 2; }
+        #printOutput .fr-parts-row .col-part { flex: 1.2; }
+        #printOutput .fr-parts-row .col-qty { flex: 0.7; }
+        #printOutput .fr-parts-row .col-cost { flex: 1; }
+        #printOutput .fr-parts-row .col-vendor { flex: 1; }
 
         /* Desktop overrides */
         @media (min-width: 768px) {
@@ -916,50 +935,152 @@ export default function QuotePage() {
             if (r.desc || r.part || r.qty || r.cost || r.vendor) parts.push(r);
           });
 
-          const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
-          const pageStr = val('pageNum') && val('pageOf') ? 'Page '+esc(val('pageNum'))+' of '+esc(val('pageOf')) : '';
-
-          // Helper to create field HTML only if value exists
-          function field(label, value, full) {
-            if (!value || value.trim() === '') return '';
-            return '<div class="po-field'+(full?' full':'')+'"><div class="po-label">'+label+'</div><div class="po-value'+(full?' multiline':'')+'">'+ esc(value) +'</div></div>';
+          // Helper functions for FR Form style
+          function frField(label, value, cls) {
+            cls = cls || '';
+            return '<div class="fr-field '+cls+'"><span class="fr-label">'+label+'</span><span class="fr-value">'+esc(value)+'</span></div>';
           }
-          function radioField(label, name) {
+          function frFieldFull(label, value, multiline) {
+            return '<div class="fr-row-full"><span class="fr-label">'+label+'</span><div class="fr-value'+(multiline?' multiline':'')+'">'+esc(value)+'</div></div>';
+          }
+          function radioValChecked(name) {
             const c = document.querySelector('input[name="'+name+'"]:checked');
-            if (!c) return '';
-            return '<div class="po-field"><div class="po-label">'+label+'</div><div class="po-value">'+c.value+'</div></div>';
+            return c ? c.value : '';
           }
 
-          // Build Job Info section
-          let jobInfoFields = field('Customer Name', val('customerName')) + field('Store #', val('storeNumber')) + field('WO Number', val('woNumber')) + field('Technician', val('tech'));
-          let jobInfoSection = jobInfoFields ? '<div class="po-section"><div class="po-section-title">Job Information</div><div class="po-grid">'+jobInfoFields+'</div>'+(pageStr ? '<div style="text-align:right;font-size:11px;color:#667085;margin-top:4px;">'+pageStr+'</div>' : '')+'</div>' : '';
+          // Build FR Form style output
+          let html = '<div class="fr-title">Component Quote Sheet</div>';
 
-          // Build Equipment Details section
-          let equipFields = field('Equipment Type', val('equipmentType')) + field('Location', val('location')) + field('Manufacturer', val('manufacturer')) + field('Unit', val('unit')) + field('Model #', val('modelNumber')) + field('Serial #', val('serialNumber')) + field('Voltage', val('voltage')) + field('Phase', val('phase')) + field('Refrigerant', val('refrigerant')) + radioField('Warranty', 'warranty') + radioField('Operational', 'operational');
-          let equipSection = equipFields ? '<div class="po-section"><div class="po-section-title">Equipment Details</div><div class="po-grid">'+equipFields+'</div></div>' : '';
+          // Row 1: Customer Name, Store#
+          html += '<div class="fr-row">';
+          html += frField('CUSTOMER NAME', val('customerName'));
+          html += frField('STORE#', val('storeNumber'), 'small');
+          html += '</div>';
 
-          // Build Service Details section (with updated labels)
-          let serviceFields = field('Job Information', val('workPerformed'), true) + field('Reason for Repair', val('reasonForRepair'), true) + field('Work Performed', val('equipmentNeeded'), true) + field('Equipment Needed', val('otherComments'), true);
-          let serviceSection = serviceFields ? '<div class="po-section"><div class="po-section-title">Service Details</div><div class="po-grid">'+serviceFields+'</div></div>' : '';
+          // Row 2: WO Number, Tech, Page of
+          html += '<div class="fr-row">';
+          html += frField('WO NUMBER', val('woNumber'));
+          html += frField('TECH', val('tech'), 'small');
+          html += frField('PAGE', val('pageNum'), 'tiny');
+          html += '<span class="fr-label">OF</span>';
+          html += '<div class="fr-field tiny"><span class="fr-value">'+esc(val('pageOf'))+'</span></div>';
+          html += '</div>';
 
-          // Build Logistics section
-          let logisticsFields = radioField('Boom Truck', 'boomTruck') + radioField('Trailer Needed', 'trailerNeeded') + field('Up', val('boomUp')) + field('In', val('boomIn')) + field('Set Back', val('boomSetBack')) + field('Tech Hours', val('techHours')) + field('Helper', val('helperHours')) + field('Travel', val('travelHours'));
-          let logisticsSection = logisticsFields ? '<div class="po-section"><div class="po-section-title">Logistics</div><div class="po-grid three">'+logisticsFields+'</div></div>' : '';
+          // Row 3: Equipment Type, Location
+          html += '<div class="fr-row">';
+          html += frField('EQUIPMENT TYPE', val('equipmentType'));
+          html += '<span class="fr-label">LOCATION:</span>';
+          html += '<div class="fr-field small"><span class="fr-value">'+esc(val('location'))+'</span></div>';
+          html += '</div>';
 
-          // Build Parts section
+          // Row 4: Manufacturer, Unit
+          html += '<div class="fr-row">';
+          html += frField('MANUFACTURER', val('manufacturer'));
+          html += frField('UNIT', val('unit'), 'small');
+          html += '</div>';
+
+          // Row 5: Model#
+          html += '<div class="fr-row">';
+          html += frField('MODEL#', val('modelNumber'));
+          html += '</div>';
+
+          // Row 6: Serial#
+          html += '<div class="fr-row">';
+          html += frField('SERIAL#', val('serialNumber'));
+          html += '</div>';
+
+          // Row 7: Voltage, Phase
+          html += '<div class="fr-row">';
+          html += frField('VOLTAGE', val('voltage'), 'medium');
+          html += frField('PHASE', val('phase'), 'small');
+          html += '</div>';
+
+          // Row 8: Warranty, Operational
+          html += '<div class="fr-row">';
+          html += frField('WARRANTY YES/NO', radioValChecked('warranty'), 'medium');
+          html += frField('OPERATIONAL YES/NO', radioValChecked('operational'), 'medium');
+          html += '</div>';
+
+          // Work Performed (full width, 2 lines)
+          html += frFieldFull('WORK PERFORMED', val('workPerformed'), true);
+          html += '<div class="fr-spacer"></div>';
+
+          // Reason for Repair (full width, 2 lines)
+          html += frFieldFull('REASON FOR REPAIR', val('reasonForRepair'), true);
+          html += '<div class="fr-spacer"></div>';
+
+          // Equipment Needed
+          html += frFieldFull('EQUIPMENT NEEDED ie: scissor lift, duct jack, 40\' ladder, etc, any equipment you don\'t normally have', val('equipmentNeeded'), true);
+          html += '<div class="fr-spacer"></div>';
+
+          // Other Comments
+          html += frFieldFull('OTHER COMMENTS', val('otherComments'), true);
+          html += '<div class="fr-spacer"></div>';
+
+          // Boom Truck row
+          html += '<div class="fr-row">';
+          html += frField('BOOM TRUCK NEEDED? YES/NO', radioValChecked('boomTruck'), 'medium');
+          html += frField('UP', val('boomUp'), 'tiny');
+          html += frField('IN', val('boomIn'), 'tiny');
+          html += frField('SET BACK', val('boomSetBack'), 'small');
+          html += '</div>';
+
+          // Tech Hours row
+          html += '<div class="fr-row">';
+          html += frField('TECH HOURS NEEDED', val('techHours'), 'medium');
+          html += frField('HELPER', val('helperHours'), 'small');
+          html += frField('TRAVEL', val('travelHours'), 'small');
+          html += '</div>';
+
+          // Parts header
+          html += '<div class="fr-parts-header">';
+          html += '<span class="col-desc">DESCRIPTION</span>';
+          html += '<span class="col-part">PART#</span>';
+          html += '<span class="col-qty">QUANTITY</span>';
+          html += '<span class="col-cost">COST</span>';
+          html += '<span class="col-vendor">VENDOR</span>';
+          html += '</div>';
+
+          // Parts rows (always show 12 rows like the original form)
+          const totalRows = Math.max(12, parts.length);
+          for (let i = 0; i < totalRows; i++) {
+            const p = parts[i] || { desc: '', part: '', qty: '', cost: '', vendor: '' };
+            html += '<div class="fr-parts-row">';
+            html += '<div class="fr-cell col-desc">'+esc(p.desc)+'</div>';
+            html += '<div class="fr-cell col-part">'+esc(p.part)+'</div>';
+            html += '<div class="fr-cell col-qty">'+esc(p.qty)+'</div>';
+            html += '<div class="fr-cell col-cost">'+esc(p.cost)+'</div>';
+            html += '<div class="fr-cell col-vendor">'+esc(p.vendor)+'</div>';
+            html += '</div>';
+          }
+
+          // Build Parts-only section for page 2
+          let partsOnlyHTML = '<div class="fr-title">Component Quote Sheet</div>';
+          partsOnlyHTML += '<div class="fr-parts-header">';
+          partsOnlyHTML += '<span class="col-desc">DESCRIPTION</span>';
+          partsOnlyHTML += '<span class="col-part">PART#</span>';
+          partsOnlyHTML += '<span class="col-qty">QUANTITY</span>';
+          partsOnlyHTML += '<span class="col-cost">COST</span>';
+          partsOnlyHTML += '<span class="col-vendor">VENDOR</span>';
+          partsOnlyHTML += '</div>';
+          for (let i = 0; i < totalRows; i++) {
+            const p = parts[i] || { desc: '', part: '', qty: '', cost: '', vendor: '' };
+            partsOnlyHTML += '<div class="fr-parts-row">';
+            partsOnlyHTML += '<div class="fr-cell col-desc">'+esc(p.desc)+'</div>';
+            partsOnlyHTML += '<div class="fr-cell col-part">'+esc(p.part)+'</div>';
+            partsOnlyHTML += '<div class="fr-cell col-qty">'+esc(p.qty)+'</div>';
+            partsOnlyHTML += '<div class="fr-cell col-cost">'+esc(p.cost)+'</div>';
+            partsOnlyHTML += '<div class="fr-cell col-vendor">'+esc(p.vendor)+'</div>';
+            partsOnlyHTML += '</div>';
+          }
+
+          // For legacy compatibility
           let partsHTML = '';
-          if (parts.length > 0) {
-            partsHTML = '<div class="po-section"><div class="po-section-title">Parts & Materials</div><table class="po-parts-table"><thead><tr><th>#</th><th>Description</th><th>Part #</th><th>Qty</th><th>Cost</th><th>Vendor</th></tr></thead><tbody>';
-            parts.forEach((p, i) => {
-              partsHTML += '<tr><td>'+(i+1)+'</td><td>'+esc(p.desc)+'</td><td>'+esc(p.part)+'</td><td>'+esc(p.qty)+'</td><td>'+esc(p.cost)+'</td><td>'+esc(p.vendor)+'</td></tr>';
-            });
-            partsHTML += '</tbody></table></div>';
-          }
 
           return {
-            full: '<div class="po-header"><div><h1>Quote Sheet</h1><div style="font-size:11px;opacity:0.7;margin-top:3px;">HVAC / Refrigeration Service Documentation</div></div><div style="text-align:right;"><div class="po-badge">Service Quote</div><div style="font-size:10px;opacity:0.7;margin-top:6px;">'+today+'</div></div></div><div class="po-body">'+jobInfoSection+equipSection+serviceSection+logisticsSection+partsHTML+'</div><div class="po-footer">Quote Sheet — Generated '+today+'</div>',
-            page1: '<div class="po-header"><div><h1>Quote Sheet</h1><div style="font-size:11px;opacity:0.7;margin-top:3px;">HVAC / Refrigeration Service Documentation</div></div><div style="text-align:right;"><div class="po-badge">Service Quote</div><div style="font-size:10px;opacity:0.7;margin-top:6px;">'+today+'</div></div></div><div class="po-body">'+jobInfoSection+equipSection+serviceSection+logisticsSection+'</div><div class="po-footer">Quote Sheet — Page 1 — Generated '+today+'</div>',
-            page2: partsHTML ? '<div class="po-header"><div><h1>Quote Sheet</h1><div style="font-size:11px;opacity:0.7;margin-top:3px;">HVAC / Refrigeration Service Documentation</div></div><div style="text-align:right;"><div class="po-badge">Service Quote</div><div style="font-size:10px;opacity:0.7;margin-top:6px;">'+today+'</div></div></div><div class="po-body">'+partsHTML+'</div><div class="po-footer">Quote Sheet — Page 2 — Generated '+today+'</div>' : null,
+            full: html,
+            page1: html,
+            page2: parts.length > 0 ? partsOnlyHTML : null,
             hasParts: parts.length > 0
           };
         }
@@ -1260,7 +1381,8 @@ export default function QuotePage() {
             // Skip lines that are labels (contain ":" like Make:, Model:, etc.)
             if (lines[j].match(/^(PROBLEM|Make|Model|Serial|Description|Service Area|Year|Service Type|Job Type|Cust PO|NTE|Complete|\\d)/i)) continue;
             if (lines[j].match(/:/)) continue;
-            if (lines[j].match(/^[A-Z]{2,}/)) continue;
+            // Skip known header labels that start with uppercase (but NOT equipment unit IDs like AC, RTU, AHU)
+            if (lines[j].match(/^(SERVICEWO|PROBLEM|DESCRIPTION|SERVICE AREA|CUSTOMER|ADDRESS|CITY|STATE|ZIP|PHONE|EMAIL|NOTES|STATUS|PRIORITY|DISPATCHED|SCHEDULED|COMPLETED|NTE|INVOICE|BILLING|WARRANTY|OPERATIONAL)/i)) continue;
             // Skip address lines (contain comma with state abbreviation)
             if (lines[j].match(/,\\s*[A-Z]{2},?\\s*\\d{5}/)) continue;
             // Skip the customer line (has " - ")
