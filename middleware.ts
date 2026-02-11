@@ -30,10 +30,13 @@ export async function middleware(request: NextRequest) {
   // Helper: create a redirect that preserves refreshed session cookies.
   // Without this, Supabase refresh token rotation invalidates the old token
   // but the new one never reaches the browser, killing the session.
+  // IMPORTANT: Pass the full cookie object (not just name/value) so maxAge,
+  // path, sameSite etc. are preserved. Without options, cookies become
+  // session-only and are lost when the browser closes.
   function redirect(url: URL) {
     const res = NextResponse.redirect(url);
     supabaseResponse.cookies.getAll().forEach((cookie) => {
-      res.cookies.set(cookie.name, cookie.value);
+      res.cookies.set(cookie);
     });
     return res;
   }
