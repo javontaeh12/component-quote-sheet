@@ -50,6 +50,7 @@ export interface InventoryItem {
   min_quantity: number;
   cost: number | null;
   vendor: string | null;
+  location: string | null;
   category: string | null;
   group_id: string;
   updated_at: string;

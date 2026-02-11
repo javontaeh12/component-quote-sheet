@@ -1,0 +1,1 @@
+ALTER TABLE public.inventory_items ADD COLUMN IF NOT EXISTS location TEXT DEFAULT NULL;

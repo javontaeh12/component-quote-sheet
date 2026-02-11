@@ -5,7 +5,7 @@ import { InventoryItem, Van, CustomPart, GroupStockPart } from '@/types';
 import { Button, Input, Modal, Select } from '@/components/ui';
 import { formatCurrency } from '@/lib/utils';
 import { createClient } from '@/lib/supabase';
-import { Pencil, Trash2, Plus, AlertTriangle, Check, X } from 'lucide-react';
+import { Pencil, Trash2, Plus, AlertTriangle, Check, X, BellOff, Bell, Minus } from 'lucide-react';
 
 interface ExtendedPart {
   item: string;
@@ -68,6 +68,28 @@ export function InventoryTable({
   const [isBatchEditing, setIsBatchEditing] = useState(false);
   const [batchEdits, setBatchEdits] = useState<BatchEdits>({});
   const [isSavingBatch, setIsSavingBatch] = useState(false);
+  const [mutedIds, setMutedIds] = useState<Set<string>>(new Set());
+
+  // Load muted items from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('muted_inventory_items');
+    if (stored) {
+      try { setMutedIds(new Set(JSON.parse(stored))); } catch {}
+    }
+  }, []);
+
+  const toggleMuteItem = (itemId: string) => {
+    setMutedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      localStorage.setItem('muted_inventory_items', JSON.stringify([...next]));
+      return next;
+    });
+  };
 
   const [formData, setFormData] = useState({
     name: '',
@@ -77,6 +99,7 @@ export function InventoryTable({
     min_quantity: '',
     cost: '',
     vendor: '',
+    location: '',
     category: 'parts',
     van_id: selectedVanId || '',
   });
@@ -185,7 +208,8 @@ export function InventoryTable({
     const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.part_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.vendor?.toLowerCase().includes(searchQuery.toLowerCase());
+      item.vendor?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.location?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = !categoryFilter || item.category === categoryFilter;
     const matchesVan = !selectedVanId || item.van_id === selectedVanId;
     return matchesSearch && matchesCategory && matchesVan;
@@ -207,6 +231,7 @@ export function InventoryTable({
         min_quantity: item.min_quantity.toString(),
         cost: item.cost?.toString() || '',
         vendor: item.vendor || '',
+        location: item.location || '',
         category: item.category || 'parts',
         van_id: item.van_id,
       });
@@ -220,6 +245,7 @@ export function InventoryTable({
         min_quantity: '',
         cost: '',
         vendor: '',
+        location: '',
         category: 'parts',
         van_id: selectedVanId || userVanId || vans[0]?.id || '',
       });
@@ -239,6 +265,7 @@ export function InventoryTable({
       min_quantity: formData.min_quantity ? parseInt(formData.min_quantity) : 0,
       cost: formData.cost ? parseFloat(formData.cost) : null,
       vendor: formData.vendor || null,
+      location: formData.location || null,
       category: formData.category || null,
       van_id: formData.van_id,
       group_id: groupId!,
@@ -258,6 +285,11 @@ export function InventoryTable({
     if (confirm('Are you sure you want to delete this item?')) {
       await onDelete(id);
     }
+  };
+
+  const handleUseItem = async (item: InventoryItem) => {
+    if (item.quantity <= 0) return;
+    await onUpdate(item.id, { quantity: item.quantity - 1 });
   };
 
   // Batch edit helpers
@@ -372,7 +404,8 @@ export function InventoryTable({
           </div>
         ) : (
           filteredItems.map((item) => {
-            const isLowStock = item.quantity < item.min_quantity;
+            const isMuted = mutedIds.has(item.id);
+            const isLowStock = !isMuted && item.quantity < item.min_quantity;
             return (
               <div
                 key={item.id}
@@ -390,20 +423,31 @@ export function InventoryTable({
                       )}
                     </div>
                   </div>
-                  {!isBatchEditing && canEdit && (
+                  {!isBatchEditing && (
                     <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                       <button
-                        onClick={() => handleOpenModal(item)}
-                        className="p-2 text-gray-400 hover:text-blue-600 active:text-blue-700 transition-colors rounded-lg"
+                        onClick={() => toggleMuteItem(item.id)}
+                        className={`p-2 transition-colors rounded-lg ${isMuted ? 'text-orange-500 hover:text-orange-700' : 'text-gray-400 hover:text-gray-600'}`}
+                        title={isMuted ? 'Unmute alerts' : 'Mute alerts'}
                       >
-                        <Pencil className="w-4 h-4" />
+                        {isMuted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
                       </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 active:text-red-700 transition-colors rounded-lg"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {canEdit && (
+                        <>
+                          <button
+                            onClick={() => handleOpenModal(item)}
+                            className="p-2 text-gray-400 hover:text-blue-600 active:text-blue-700 transition-colors rounded-lg"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="p-2 text-gray-400 hover:text-red-600 active:text-red-700 transition-colors rounded-lg"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -419,15 +463,27 @@ export function InventoryTable({
                         onChange={(e) => setBatchValue(item.id, 'quantity', e.target.value)}
                       />
                     ) : (
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
-                          isLowStock
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-green-100 text-green-700'
-                        }`}
-                      >
-                        {item.quantity || ''}
-                      </span>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            isLowStock
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-green-100 text-green-700'
+                          }`}
+                        >
+                          {item.quantity || ''}
+                        </span>
+                        {canEdit && (
+                          <button
+                            onClick={() => handleUseItem(item)}
+                            disabled={item.quantity <= 0}
+                            className="p-1 text-gray-400 hover:text-orange-600 active:text-orange-700 transition-colors rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Use 1"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div>
@@ -460,11 +516,12 @@ export function InventoryTable({
                     )}
                   </div>
                 </div>
-                {(isAdmin && !selectedVanId || item.vendor) && (
-                  <div className="flex gap-4 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                {(isAdmin && !selectedVanId || item.vendor || item.location) && (
+                  <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
                     {isAdmin && !selectedVanId && (
                       <span>Van: {vanMap.get(item.van_id) || 'Unknown'}</span>
                     )}
+                    {item.location && <span>Location: {item.location}</span>}
                     {item.vendor && <span>Vendor: {item.vendor}</span>}
                   </div>
                 )}
@@ -483,23 +540,25 @@ export function InventoryTable({
                 <th className="px-4 py-3 font-medium">Item</th>
                 {isAdmin && !selectedVanId && <th className="px-4 py-3 font-medium">Van</th>}
                 <th className="px-4 py-3 font-medium">Part #</th>
+                <th className="px-4 py-3 font-medium">Location</th>
                 <th className="px-4 py-3 font-medium">On Hand</th>
                 <th className="px-4 py-3 font-medium">Min</th>
                 <th className="px-4 py-3 font-medium">Cost</th>
                 <th className="px-4 py-3 font-medium">Vendor</th>
-                {!isBatchEditing && canEdit && <th className="px-4 py-3 font-medium">Actions</th>}
+                {!isBatchEditing && <th className="px-4 py-3 font-medium">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin && !selectedVanId ? 8 : 7} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={isAdmin && !selectedVanId ? 9 : 8} className="px-4 py-8 text-center text-gray-500">
                     No items found
                   </td>
                 </tr>
               ) : (
                 filteredItems.map((item) => {
-                  const isLowStock = item.quantity < item.min_quantity;
+                  const isMuted = mutedIds.has(item.id);
+                  const isLowStock = !isMuted && item.quantity < item.min_quantity;
                   return (
                     <tr key={item.id} className={isLowStock ? 'bg-red-50' : ''}>
                       <td className="px-4 py-3">
@@ -521,6 +580,7 @@ export function InventoryTable({
                         </td>
                       )}
                       <td className="px-4 py-3 text-black">{item.part_number || ''}</td>
+                      <td className="px-4 py-3 text-black text-sm">{item.location || ''}</td>
                       <td className="px-4 py-3">
                         {isBatchEditing ? (
                           <input
@@ -581,21 +641,40 @@ export function InventoryTable({
                           <span className="text-black">{item.vendor || ''}</span>
                         )}
                       </td>
-                      {!isBatchEditing && canEdit && (
+                      {!isBatchEditing && (
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => handleOpenModal(item)}
-                              className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                              onClick={() => toggleMuteItem(item.id)}
+                              className={`p-1 transition-colors ${isMuted ? 'text-orange-500 hover:text-orange-700' : 'text-gray-400 hover:text-gray-600'}`}
+                              title={isMuted ? 'Unmute alerts' : 'Mute alerts'}
                             >
-                              <Pencil className="w-4 h-4" />
+                              {isMuted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
                             </button>
-                            <button
-                              onClick={() => handleDelete(item.id)}
-                              className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {canEdit && (
+                              <>
+                                <button
+                                  onClick={() => handleUseItem(item)}
+                                  disabled={item.quantity <= 0}
+                                  className="p-1 text-gray-400 hover:text-orange-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                  title="Use 1"
+                                >
+                                  <Minus className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleOpenModal(item)}
+                                  className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(item.id)}
+                                  className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       )}
@@ -707,6 +786,12 @@ export function InventoryTable({
               label="Vendor"
               value={formData.vendor}
               onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
+            />
+            <Input
+              label="Location"
+              value={formData.location}
+              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              placeholder="e.g. Top shelf, Drawer 3"
             />
             <Input
               label="Description"
