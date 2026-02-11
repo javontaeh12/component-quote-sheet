@@ -216,6 +216,8 @@ export default function QuotePage() {
         }
         .preset-load-btn { background: var(--primary); color: #fff; }
         .preset-load-btn:hover { background: var(--primary-light); }
+        .preset-update-btn { background: #fffbeb; color: #92400e; border: 1px solid #fde68a !important; }
+        .preset-update-btn:hover { background: #fef3c7; }
         .preset-delete-btn { background: #fef2f2; color: var(--accent); border: 1px solid #fecaca !important; }
         .preset-delete-btn:hover { background: #fee2e2; }
         .preset-mode-btns {
@@ -1690,6 +1692,7 @@ export default function QuotePage() {
               '</div>' +
               '<div class="preset-item-actions">' +
                 '<button class="preset-load-btn" onclick="showPresetModeChoice(\\'' + p.id + '\\')">Load</button>' +
+                '<button class="preset-update-btn" onclick="updatePreset(\\'' + p.id + '\\')">&#9998;</button>' +
                 '<button class="preset-delete-btn" onclick="deletePreset(\\'' + p.id + '\\')">&#128465;</button>' +
               '</div>' +
             '</div>';
@@ -1739,6 +1742,22 @@ export default function QuotePage() {
           showPresetToast('Loaded "' + preset.name + '"');
         }
         window.loadPreset = loadPreset;
+
+        function updatePreset(id) {
+          var parts = collectCurrentParts();
+          if (parts.length === 0) {
+            showPresetToast('Add at least one part before updating');
+            return;
+          }
+          var presets = getPresets();
+          var preset = presets.find(function(p) { return p.id === id; });
+          if (!preset) return;
+          preset.parts = parts;
+          setPresets(presets);
+          renderPresetList();
+          showPresetToast('Updated "' + preset.name + '"');
+        }
+        window.updatePreset = updatePreset;
 
         function deletePreset(id) {
           var presets = getPresets().filter(function(p) { return p.id !== id; });
