@@ -25,7 +25,11 @@ export const metadata: Metadata = {
   description:
     "Licensed & insured HVAC and commercial refrigeration services in Tallahassee and Quincy, FL. Emergency repairs, tune-ups, diagnostics, and priority membership plans.",
   icons: {
-    icon: "/icon-512.png",
+    icon: [
+      { url: "/favicon.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
     apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
@@ -36,7 +40,25 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: true,
   },
+  metadataBase: new URL("https://hardenhvacr.com"),
   openGraph: {
+    title: "Harden HVAC & Refrigeration in Tallahassee and Quincy FL",
+    description:
+      "Reliable HVAC and commercial refrigeration service in Tallahassee and Quincy, FL. Request service online or call (910) 546-6485.",
+    url: "https://hardenhvacr.com",
+    siteName: "Harden HVAC & Refrigeration",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1024,
+        height: 1024,
+        alt: "Harden HVAC & Refrigeration — AC Repair, Heating, Refrigeration in Tallahassee FL",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
     title: "Harden HVAC & Refrigeration in Tallahassee and Quincy FL",
     description:
       "Reliable HVAC and commercial refrigeration service in Tallahassee and Quincy, FL. Request service online or call (910) 546-6485.",
