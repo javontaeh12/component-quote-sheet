@@ -7,13 +7,11 @@ import HowItWorksSection from '../components/HowItWorksSection';
 import MembershipSection from '../components/MembershipSection';
 import TestimonialsSection from '../components/TestimonialsSection';
 import FooterSection from '../components/FooterSection';
-import StickyMobileCTA from '../components/StickyMobileCTA';
-
 export default function HomePage() {
   return (
     <>
       <Navbar />
-      <main className="pb-14 sm:pb-0">
+      <main>
         <HeroSection />
         <PromoBanner />
         <HowItWorksSection />
@@ -23,7 +21,6 @@ export default function HomePage() {
         <TestimonialsSection />
       </main>
       <FooterSection />
-      <StickyMobileCTA />
     </>
   );
 }

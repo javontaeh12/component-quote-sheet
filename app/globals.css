@@ -67,6 +67,12 @@ body {
   color: #9ca8b8;
 }
 
+/* Bottom sheet slide-up animation */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
 /* Mobile touch improvements */
 @media (max-width: 767px) {
   html {
