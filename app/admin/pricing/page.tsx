@@ -1,0 +1,502 @@
+'use client';
+
+import { useEffect, useState, useMemo } from 'react';
+import { createClient } from '@/lib/supabase';
+import { useAuth } from '@/components/AuthProvider';
+import { Card, CardContent, Button, Input, Select, Modal } from '@/components/ui';
+import { formatCurrency } from '@/lib/utils';
+import {
+  DollarSign,
+  Search,
+  Plus,
+  Pencil,
+  Trash2,
+  Wrench,
+  Thermometer,
+  ShieldCheck,
+  Zap,
+  AlertTriangle,
+} from 'lucide-react';
+
+interface PricingItem {
+  id: string;
+  group_id: string;
+  category: string;
+  service_name: string;
+  description: string | null;
+  base_price: number;
+  emergency_price: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const CATEGORIES = ['Diagnostics', 'Repairs', 'Maintenance', 'Installation', 'Emergency'];
+
+const CATEGORY_OPTIONS = [
+  { value: '', label: 'All Categories' },
+  ...CATEGORIES.map((c) => ({ value: c, label: c })),
+];
+
+const CATEGORY_SELECT_OPTIONS = CATEGORIES.map((c) => ({ value: c, label: c }));
+
+const CATEGORY_ICONS: Record<string, typeof Wrench> = {
+  Diagnostics: Search,
+  Repairs: Wrench,
+  Maintenance: ShieldCheck,
+  Installation: Thermometer,
+  Emergency: Zap,
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  Diagnostics: 'bg-blue-100 text-blue-700',
+  Repairs: 'bg-orange-100 text-orange-700',
+  Maintenance: 'bg-green-100 text-green-700',
+  Installation: 'bg-purple-100 text-purple-700',
+  Emergency: 'bg-red-100 text-red-700',
+};
+
+export default function PricingPage() {
+  const { groupId, isLoading: authLoading } = useAuth();
+  const [items, setItems] = useState<PricingItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<PricingItem | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    category: 'Diagnostics',
+    service_name: '',
+    description: '',
+    base_price: 0,
+    emergency_price: 0,
+  });
+
+  useEffect(() => {
+    if (!authLoading) fetchPricing();
+  }, [authLoading]);
+
+  const fetchPricing = async () => {
+    if (!groupId) return;
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('pricing')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('category')
+        .order('service_name');
+
+      if (error) throw error;
+      setItems(data || []);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const matchesSearch =
+        !search ||
+        item.service_name.toLowerCase().includes(search.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(search.toLowerCase()));
+      const matchesCategory = !categoryFilter || item.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+  }, [items, search, categoryFilter]);
+
+  const groupedItems = useMemo(() => {
+    const groups: Record<string, PricingItem[]> = {};
+    filteredItems.forEach((item) => {
+      if (!groups[item.category]) groups[item.category] = [];
+      groups[item.category].push(item);
+    });
+    return groups;
+  }, [filteredItems]);
+
+  const handleOpenAdd = () => {
+    setEditingItem(null);
+    setFormData({
+      category: 'Diagnostics',
+      service_name: '',
+      description: '',
+      base_price: 0,
+      emergency_price: 0,
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (item: PricingItem) => {
+    setEditingItem(item);
+    setFormData({
+      category: item.category,
+      service_name: item.service_name,
+      description: item.description || '',
+      base_price: item.base_price,
+      emergency_price: item.emergency_price || 0,
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!groupId) return;
+
+    try {
+      const supabase = createClient();
+
+      if (editingItem) {
+        // Update
+        const { data, error } = await supabase
+          .from('pricing')
+          .update({
+            ...formData,
+            emergency_price: formData.emergency_price || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', editingItem.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        setItems(items.map((i) => (i.id === editingItem.id ? data : i)));
+      } else {
+        // Create
+        const { data, error } = await supabase
+          .from('pricing')
+          .insert({
+            ...formData,
+            emergency_price: formData.emergency_price || null,
+            group_id: groupId,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        setItems([...items, data]);
+      }
+
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Failed to save pricing item:', err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from('pricing').delete().eq('id', deletingId);
+
+      if (error) throw error;
+      setItems(items.filter((i) => i.id !== deletingId));
+      setIsDeleteConfirmOpen(false);
+      setDeletingId(null);
+    } catch (err) {
+      console.error('Failed to delete pricing item:', err);
+    }
+  };
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    items.forEach((item) => {
+      counts[item.category] = (counts[item.category] || 0) + 1;
+    });
+    return counts;
+  }, [items]);
+
+  if (isLoading || authLoading) {
+    return (
+      <div className="animate-pulse space-y-4">
+        <div className="h-8 bg-gray-200 rounded w-48" />
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-20 bg-gray-200 rounded-xl" />
+          ))}
+        </div>
+        <div className="h-64 bg-gray-200 rounded-xl" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p className="text-red-800 font-medium">Failed to load pricing</p>
+        <p className="text-red-600 text-sm mt-1">{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Pricing</h1>
+          <p className="text-gray-600 mt-1">Manage service pricing and rates</p>
+        </div>
+        <Button onClick={handleOpenAdd}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Service
+        </Button>
+      </div>
+
+      {/* Category Summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {CATEGORIES.map((cat) => {
+          const Icon = CATEGORY_ICONS[cat] || Wrench;
+          const count = categoryCounts[cat] || 0;
+          return (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(categoryFilter === cat ? '' : cat)}
+              className={`p-3 rounded-lg border text-left transition-colors ${
+                categoryFilter === cat ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${CATEGORY_COLORS[cat]}`}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <p className="text-lg font-bold text-gray-900 mt-2">{count}</p>
+              <p className="text-xs text-gray-500">{cat}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Search services..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select
+          options={CATEGORY_OPTIONS}
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="w-full sm:w-44"
+        />
+      </div>
+
+      {/* Pricing Table */}
+      {filteredItems.length === 0 ? (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No pricing items found</h3>
+            <p className="text-gray-600">
+              {search || categoryFilter ? 'Try adjusting your filters' : 'Add your first service pricing to get started'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        Object.entries(groupedItems).map(([category, categoryItems]) => (
+          <Card key={category}>
+            <CardContent className="p-0">
+              <div className="px-6 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                {(() => {
+                  const Icon = CATEGORY_ICONS[category] || Wrench;
+                  return (
+                    <div className={`w-6 h-6 rounded flex items-center justify-center ${CATEGORY_COLORS[category]}`}>
+                      <Icon className="w-3.5 h-3.5" />
+                    </div>
+                  );
+                })()}
+                <h3 className="font-semibold text-gray-900">{category}</h3>
+                <span className="text-sm text-gray-500">({categoryItems.length})</span>
+              </div>
+
+              {/* Mobile layout */}
+              <div className="sm:hidden divide-y divide-gray-200">
+                {categoryItems.map((item) => (
+                  <div key={item.id} className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900">{item.service_name}</p>
+                        {item.description && (
+                          <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{item.description}</p>
+                        )}
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="text-sm font-medium text-gray-900">{formatCurrency(item.base_price)}</span>
+                          {item.emergency_price && (
+                            <span className="text-xs text-red-600 flex items-center gap-0.5">
+                              <AlertTriangle className="w-3 h-3" />
+                              {formatCurrency(item.emergency_price)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleOpenEdit(item)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-600"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => { setDeletingId(item.id); setIsDeleteConfirmOpen(true); }}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left text-sm text-gray-500 border-b">
+                      <th className="px-6 py-3 font-medium">Service Name</th>
+                      <th className="px-6 py-3 font-medium">Description</th>
+                      <th className="px-6 py-3 font-medium">Base Price</th>
+                      <th className="px-6 py-3 font-medium">Emergency Price</th>
+                      <th className="px-6 py-3 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {categoryItems.map((item) => (
+                      <tr key={item.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 font-medium text-gray-900">{item.service_name}</td>
+                        <td className="px-6 py-4 text-gray-600 text-sm max-w-xs truncate">
+                          {item.description || '-'}
+                        </td>
+                        <td className="px-6 py-4 font-medium text-gray-900">
+                          {formatCurrency(item.base_price)}
+                        </td>
+                        <td className="px-6 py-4">
+                          {item.emergency_price ? (
+                            <span className="text-red-600 font-medium flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              {formatCurrency(item.emergency_price)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleOpenEdit(item)}
+                              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => { setDeletingId(item.id); setIsDeleteConfirmOpen(true); }}
+                              className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      )}
+
+      {/* Add/Edit Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingItem ? 'Edit Service Pricing' : 'Add Service Pricing'}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Select
+            label="Category"
+            options={CATEGORY_SELECT_OPTIONS}
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+          />
+          <Input
+            label="Service Name"
+            placeholder="e.g., AC Diagnostic Check"
+            value={formData.service_name}
+            onChange={(e) => setFormData({ ...formData, service_name: e.target.value })}
+            required
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              rows={2}
+              placeholder="Brief description of the service..."
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Base Price ($)"
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.base_price || ''}
+              onChange={(e) => setFormData({ ...formData, base_price: parseFloat(e.target.value) || 0 })}
+              required
+            />
+            <Input
+              label="Emergency Price ($)"
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.emergency_price || ''}
+              onChange={(e) => setFormData({ ...formData, emergency_price: parseFloat(e.target.value) || 0 })}
+              placeholder="Optional"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              {editingItem ? 'Update' : 'Add'} Service
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Delete Confirmation */}
+      <Modal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        title="Delete Pricing Item"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Are you sure you want to delete this pricing item? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleDelete}>
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}

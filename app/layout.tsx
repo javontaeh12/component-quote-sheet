@@ -1,23 +1,29 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Bebas_Neue, Bricolage_Grotesque } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
-const inter = Inter({
+const bebasNeue = Bebas_Neue({
+  weight: "400",
   subsets: ["latin"],
+  variable: "--font-display",
+});
+
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-body",
 });
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
-  title: "Quote Sheet",
-  description: "Quote sheets and inventory management for HVAC service technicians",
+  title: "Harden HVAC & Refrigeration in Tallahassee and Quincy FL",
+  description:
+    "Licensed & insured HVAC and commercial refrigeration services in Tallahassee and Quincy, FL. Emergency repairs, tune-ups, diagnostics, and priority membership plans.",
   icons: {
     icon: "/icon-512.png",
     apple: "/apple-touch-icon.png",
@@ -25,14 +31,15 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Quote Sheet",
+    title: "Harden HVAC",
   },
   formatDetection: {
     telephone: true,
   },
   openGraph: {
-    title: "Quote Sheet",
-    description: "Quote sheets and inventory management for HVAC service technicians",
+    title: "Harden HVAC & Refrigeration in Tallahassee and Quincy FL",
+    description:
+      "Reliable HVAC and commercial refrigeration service in Tallahassee and Quincy, FL. Request service online or call (910) 546-6485.",
     images: ["/og-image.png"],
   },
 };
@@ -43,9 +50,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} antialiased`}>
-        <Script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" strategy="beforeInteractive" />
+    <html lang="en" className={`${bebasNeue.variable} ${bricolage.variable}`}>
+      <body className="font-[var(--font-body)] antialiased">
+        <Script
+          src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+          strategy="beforeInteractive"
+        />
         {children}
       </body>
     </html>
