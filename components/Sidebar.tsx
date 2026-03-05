@@ -49,6 +49,7 @@ const navigation = [
 ];
 
 const hvacToolsNavigation = [
+  { name: 'Quote Sheet', href: '/admin/quote-sheet', icon: Snowflake },
   { name: 'Quotes', href: '/admin/quotes', icon: Receipt },
   { name: 'Contracts', href: '/admin/contracts', icon: FileSignature },
   { name: 'Reports', href: '/admin/reports', icon: ClipboardCheck },

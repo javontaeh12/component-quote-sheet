@@ -7,7 +7,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const getResend = () => new Resend(process.env.RESEND_API_KEY);
 const OWNER_EMAIL = 'Javontaedharden@gmail.com';
 
 function urgencyLabel(val: string) {
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
 
     // Send email to owner
     const emailPromises = [
-      resend.emails.send({
+      getResend().emails.send({
         from: 'Harden HVAC <onboarding@resend.dev>',
         to: OWNER_EMAIL,
         subject: `New Service Request from ${name}${urgency === 'emergency' ? ' ⚠️ EMERGENCY' : ''}`,
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
     // Send confirmation to customer
     if (email) {
       emailPromises.push(
-        resend.emails.send({
+        getResend().emails.send({
           from: 'Harden HVAC <onboarding@resend.dev>',
           to: email,
           subject: 'We received your service request — Harden HVAC',
