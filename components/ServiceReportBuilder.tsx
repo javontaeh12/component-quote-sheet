@@ -131,10 +131,10 @@ const EMPTY_WARRANTY_INFO = {
   notes: '',
 };
 
-const EMPTY_PROBLEM_DETAILS: { severity: 'low' | 'medium' | 'high' | 'critical'; symptoms: string[]; area_affected: string } = {
+const EMPTY_PROBLEM_DETAILS: { severity: 'low' | 'medium' | 'high' | 'critical'; symptoms: string[]; areas_affected: string[] } = {
   severity: 'medium',
   symptoms: [],
-  area_affected: '',
+  areas_affected: [],
 };
 
 function createEmptyQuoteOption(label: string): QuoteOption {
@@ -175,6 +175,10 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
   const [problemDetails, setProblemDetails] = useState(EMPTY_PROBLEM_DETAILS);
   const [healthRatings, setHealthRatings] = useState<Record<string, number>>({});
   const [healthNotes, setHealthNotes] = useState<Record<string, string>>({});
+  const [healthExtras, setHealthExtras] = useState<Record<string, Record<string, unknown>>>({});
+  const [healthMedia, setHealthMedia] = useState<Record<string, { file: File; type: 'photo' | 'video' }[]>>({});
+  const healthMediaInputRef = useRef<HTMLInputElement>(null);
+  const [activeHealthMediaKey, setActiveHealthMediaKey] = useState<string>('');
   const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([createEmptyQuoteOption('A')]);
   const [selectedOptionIdx, setSelectedOptionIdx] = useState<number | null>(null);
   const [expandedOption, setExpandedOption] = useState<number | null>(0);
@@ -239,7 +243,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
     return () => {
       if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
     };
-  }, [savedReportId, customerId, equipmentInfo, warrantyInfo, problemFound, problemDetails, healthRatings, healthNotes, quoteOptions, selectedOptionIdx, upgrades, techNotes]);
+  }, [savedReportId, customerId, equipmentInfo, warrantyInfo, problemFound, problemDetails, healthRatings, healthNotes, healthExtras, quoteOptions, selectedOptionIdx, upgrades, techNotes]);
 
   // Square SDK loading
   useEffect(() => {
@@ -300,6 +304,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
     setProblemDetails(data.problem_details || EMPTY_PROBLEM_DETAILS);
     setHealthRatings(data.health_ratings || {});
     setHealthNotes(data.health_notes || {});
+    setHealthExtras(data.health_extras || {});
     setQuoteOptions(data.quote_options?.length ? data.quote_options : [createEmptyQuoteOption('A')]);
     setSelectedOptionIdx(data.selected_option_idx ?? null);
     setUpgrades(data.upgrades || []);
@@ -327,6 +332,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
     problem_details: problemDetails,
     health_ratings: healthRatings,
     health_notes: healthNotes,
+    health_extras: healthExtras,
     quote_options: quoteOptions,
     selected_option_idx: selectedOptionIdx,
     upgrades,
@@ -334,7 +340,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
     customer_name: customerName || null,
     customer_address: customerAddress || null,
     service_date: serviceDate,
-  }), [customerId, equipmentId, profile, groupId, equipmentInfo, warrantyInfo, problemFound, problemDetails, healthRatings, healthNotes, quoteOptions, selectedOptionIdx, upgrades, techNotes, customerName, customerAddress, serviceDate]);
+  }), [customerId, equipmentId, profile, groupId, equipmentInfo, warrantyInfo, problemFound, problemDetails, healthRatings, healthNotes, healthExtras, quoteOptions, selectedOptionIdx, upgrades, techNotes, customerName, customerAddress, serviceDate]);
 
   const saveDraft = async (silent = false) => {
     if (!groupId) return;
@@ -397,6 +403,13 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       setCustomerAddress(c.address || '');
     }
     setEquipmentId('');
+  };
+
+  const updateHealthExtra = (compKey: string, field: string, value: unknown) => {
+    setHealthExtras(prev => ({
+      ...prev,
+      [compKey]: { ...(prev[compKey] || {}), [field]: value },
+    }));
   };
 
   // Equipment selection handler
@@ -956,27 +969,28 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Area Affected</label>
-        <input
-          value={problemDetails.area_affected}
-          onChange={(e) => setProblemDetails({ ...problemDetails, area_affected: e.target.value })}
-          placeholder="Type or select..."
-          className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-        <div className="flex flex-wrap gap-1.5 mt-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Areas Affected</label>
+        {problemDetails.areas_affected.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {problemDetails.areas_affected.map(area => (
+              <span key={area} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-600 text-white">
+                {area}
+                <button type="button" onClick={() => setProblemDetails({ ...problemDetails, areas_affected: problemDetails.areas_affected.filter(a => a !== area) })} className="hover:bg-blue-700 rounded-full p-0.5">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-1.5">
           {AREA_SUGGESTIONS
-            .filter(a => !problemDetails.area_affected || a.toLowerCase().includes(problemDetails.area_affected.toLowerCase()))
-            .slice(0, 12)
+            .filter(a => !problemDetails.areas_affected.includes(a))
             .map(area => (
               <button
                 key={area}
                 type="button"
-                onClick={() => setProblemDetails({ ...problemDetails, area_affected: area })}
-                className={`px-2.5 py-1 rounded-full text-xs border ${
-                  problemDetails.area_affected === area
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                }`}
+                onClick={() => setProblemDetails({ ...problemDetails, areas_affected: [...problemDetails.areas_affected, area] })}
+                className="px-2.5 py-1 rounded-full text-xs border bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
               >
                 {area}
               </button>
@@ -989,42 +1003,252 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
   const renderStep4 = () => {
     const eqType = equipmentInfo.equipment_type;
     const components = SYSTEM_HEALTH_COMPONENTS[eqType] || DEFAULT_HEALTH_COMPONENTS;
+
+    const isMotorType = (key: string) => ['compressor', 'blower_motor', 'fan_motor', 'inducer_motor', 'circulator_pump', 'water_pump'].includes(key) || key.includes('motor') || key.includes('pump') || key.includes('compressor');
+    const isCoilType = (key: string) => key.includes('coil');
+    const isRefrigerantCharge = (key: string) => key === 'refrigerant_charge' || key === 'refrigerant';
+    const isCapacitor = (key: string) => key === 'capacitor';
+    const isAirFilter = (key: string) => key === 'air_filter';
+    const isDrainLine = (key: string) => key === 'drain_line' || key === 'drain';
+
     return (
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">System Health</h3>
         <p className="text-sm text-gray-500">Rate each component of the {eqType || 'system'}</p>
-        {components.map(comp => (
-          <div key={comp.key} className="border border-gray-100 rounded-lg p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">{comp.label}</span>
-              <span className="text-xs text-gray-400">
-                {healthRatings[comp.key] ? HEALTH_RATINGS.find(r => r.value === healthRatings[comp.key])?.label : 'Not rated'}
-              </span>
-            </div>
-            <div className="flex gap-1">
-              {HEALTH_RATINGS.slice().reverse().map(rating => (
+
+        <input
+          ref={healthMediaInputRef}
+          type="file"
+          accept="image/*,video/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file && activeHealthMediaKey) {
+              const type = file.type.startsWith('video') ? 'video' as const : 'photo' as const;
+              setHealthMedia(prev => ({
+                ...prev,
+                [activeHealthMediaKey]: [...(prev[activeHealthMediaKey] || []), { file, type }],
+              }));
+            }
+            e.target.value = '';
+          }}
+        />
+
+        {components.map(comp => {
+          const extras = healthExtras[comp.key] || {};
+
+          return (
+            <div key={comp.key} className="border border-gray-100 rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">{comp.label}</span>
+                <span className="text-xs text-gray-400">
+                  {isRefrigerantCharge(comp.key)
+                    ? (extras.charge_status as string || 'Not rated')
+                    : healthRatings[comp.key]
+                    ? HEALTH_RATINGS.find(r => r.value === healthRatings[comp.key])?.label
+                    : 'Not rated'}
+                </span>
+              </div>
+
+              {/* Rating buttons -- skip for refrigerant charge (has its own UI) */}
+              {!isRefrigerantCharge(comp.key) && (
+                <div className="flex gap-1">
+                  {HEALTH_RATINGS.slice().reverse().map(rating => (
+                    <button
+                      key={rating.value}
+                      type="button"
+                      onClick={() => setHealthRatings(prev => ({ ...prev, [comp.key]: rating.value }))}
+                      className={`flex-1 py-2 rounded text-xs font-medium transition-colors ${
+                        healthRatings[comp.key] === rating.value
+                          ? `${rating.color} text-white`
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      {rating.value}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Refrigerant Charge: Undercharged / Correct / Overcharged */}
+              {isRefrigerantCharge(comp.key) && (
+                <div className="flex gap-1">
+                  {['Undercharged', 'Correct Charge', 'Overcharged'].map(status => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => updateHealthExtra(comp.key, 'charge_status', status)}
+                      className={`flex-1 py-2 rounded text-xs font-medium transition-colors ${
+                        extras.charge_status === status
+                          ? status === 'Correct Charge' ? 'bg-green-500 text-white' : status === 'Undercharged' ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Amp Rating for compressors/motors */}
+              {isMotorType(comp.key) && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-gray-500 whitespace-nowrap">Amp Reading:</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="Amps"
+                    value={(extras.amp_reading as string) || ''}
+                    onChange={(e) => updateHealthExtra(comp.key, 'amp_reading', e.target.value)}
+                    className="w-24 px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-black"
+                  />
+                </div>
+              )}
+
+              {/* Coil toggles: Heavy Rust, Corrosion, Refrigerant Leak */}
+              {isCoilType(comp.key) && (
+                <div className="flex flex-wrap gap-2">
+                  {['Heavy Rust', 'Corrosion', 'Refrigerant Leak'].map(issue => (
+                    <button
+                      key={issue}
+                      type="button"
+                      onClick={() => {
+                        const current = (extras.issues as string[]) || [];
+                        const updated = current.includes(issue) ? current.filter(i => i !== issue) : [...current, issue];
+                        updateHealthExtra(comp.key, 'issues', updated);
+                      }}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                        ((extras.issues as string[]) || []).includes(issue)
+                          ? 'bg-red-100 text-red-700 border-red-300'
+                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {issue}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Capacitor: Low toggle + current/safe rating */}
+              {isCapacitor(comp.key) && (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => updateHealthExtra(comp.key, 'is_low', !extras.is_low)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      extras.is_low ? 'bg-red-100 text-red-700 border-red-300' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {extras.is_low ? 'Low' : 'Low'}
+                  </button>
+                  {!!extras.is_low && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <label className="text-xs text-gray-500 block mb-0.5">Current (uF)</label>
+                        <input type="number" step="0.1" placeholder="0.0"
+                          value={(extras.current_rating as string) || ''}
+                          onChange={(e) => updateHealthExtra(comp.key, 'current_rating', e.target.value)}
+                          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-black" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-xs text-gray-500 block mb-0.5">MFG Rating (uF)</label>
+                        <input type="number" step="0.1" placeholder="0.0"
+                          value={(extras.safe_rating as string) || ''}
+                          onChange={(e) => updateHealthExtra(comp.key, 'safe_rating', e.target.value)}
+                          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-black" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Air Filter: Needs Replacement toggle */}
+              {isAirFilter(comp.key) && (
                 <button
-                  key={rating.value}
                   type="button"
-                  onClick={() => setHealthRatings(prev => ({ ...prev, [comp.key]: rating.value }))}
-                  className={`flex-1 py-2 rounded text-xs font-medium transition-colors ${
-                    healthRatings[comp.key] === rating.value
-                      ? `${rating.color} text-white`
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  onClick={() => updateHealthExtra(comp.key, 'needs_replacement', !extras.needs_replacement)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    extras.needs_replacement ? 'bg-red-100 text-red-700 border-red-300' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  {rating.value}
+                  {extras.needs_replacement ? 'Needs Replacement' : 'Needs Replacement'}
                 </button>
-              ))}
+              )}
+
+              {/* Drain Line: Clogged, Broken, Missing toggles */}
+              {isDrainLine(comp.key) && (
+                <div className="flex flex-wrap gap-2">
+                  {['Clogged', 'Broken', 'Missing'].map(issue => (
+                    <button
+                      key={issue}
+                      type="button"
+                      onClick={() => {
+                        const current = (extras.issues as string[]) || [];
+                        const updated = current.includes(issue) ? current.filter(i => i !== issue) : [...current, issue];
+                        updateHealthExtra(comp.key, 'issues', updated);
+                      }}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                        ((extras.issues as string[]) || []).includes(issue)
+                          ? 'bg-red-100 text-red-700 border-red-300'
+                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {issue}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Notes field */}
+              <input
+                placeholder="Notes (optional)..."
+                value={healthNotes[comp.key] || ''}
+                onChange={(e) => setHealthNotes(prev => ({ ...prev, [comp.key]: e.target.value }))}
+                className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-black placeholder-gray-400"
+              />
+
+              {/* Photo/Video upload for this component */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveHealthMediaKey(comp.key);
+                    healthMediaInputRef.current?.click();
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded"
+                >
+                  <Camera className="w-3 h-3" /> Add Photo/Video
+                </button>
+                {(healthMedia[comp.key] || []).length > 0 && (
+                  <span className="text-xs text-gray-400">{healthMedia[comp.key].length} file(s)</span>
+                )}
+              </div>
+              {(healthMedia[comp.key] || []).length > 0 && (
+                <div className="flex gap-2 overflow-x-auto">
+                  {healthMedia[comp.key].map((hm, idx) => (
+                    <div key={idx} className="relative flex-shrink-0">
+                      {hm.type === 'photo' ? (
+                        <img src={URL.createObjectURL(hm.file)} alt="" className="w-16 h-16 object-cover rounded" />
+                      ) : (
+                        <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">Video</div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setHealthMedia(prev => ({
+                          ...prev,
+                          [comp.key]: prev[comp.key].filter((_, i) => i !== idx),
+                        }))}
+                        className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <input
-              placeholder="Notes (optional)..."
-              value={healthNotes[comp.key] || ''}
-              onChange={(e) => setHealthNotes(prev => ({ ...prev, [comp.key]: e.target.value }))}
-              className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-black placeholder-gray-400"
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
