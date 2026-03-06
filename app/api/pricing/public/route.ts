@@ -11,7 +11,7 @@ export async function GET() {
     .from('pricing')
     .select('name, price, service_type, trade, note, category, sort_order')
     .order('sort_order')
-    .order('service_name');
+    .order('name');
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
