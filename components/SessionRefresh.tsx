@@ -4,11 +4,12 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 
-// Keeps the auth session alive by proactively refreshing tokens
-// when the user returns to the tab (e.g., after locking the phone).
-// On mobile Safari, cookies set via JS can be cleared while backgrounded,
-// so we refresh the session via the Supabase client (which writes fresh
-// tokens to both cookies and localStorage) before triggering a server refresh.
+// Keeps the auth session alive by validating tokens when the user returns
+// to the tab (e.g., after locking the phone or overnight).
+// Uses getUser() instead of refreshSession() — the SDK's autoRefreshToken
+// handles token rotation internally. Manually calling refreshSession() can
+// race with autoRefreshToken, causing double-rotation and reuse detection
+// which kills the session (the root cause of daily re-login issues).
 export function SessionRefresh() {
   const router = useRouter();
   const refreshing = useRef(false);
@@ -21,20 +22,17 @@ export function SessionRefresh() {
       try {
         const supabase = createClient();
 
-        // Get current session — the storage adapter will restore from
-        // localStorage if cookies are missing
-        const { data: { session } } = await supabase.auth.getSession();
+        // getUser() validates the access token with the Supabase Auth API.
+        // If the access token is expired, autoRefreshToken automatically
+        // uses the refresh token to get fresh tokens (written to cookies
+        // + localStorage by our storage adapter) before getUser() resolves.
+        const { data: { user }, error } = await supabase.auth.getUser();
 
-        if (session?.refresh_token) {
-          // Force a token refresh so fresh cookies are written
-          // This handles expired access tokens after the phone was asleep
-          await supabase.auth.refreshSession({
-            refresh_token: session.refresh_token,
-          });
+        if (user && !error) {
+          // Session is valid — trigger a server refresh so middleware
+          // picks up the fresh cookies
+          router.refresh();
         }
-
-        // Now trigger a server refresh with the fresh cookies in place
-        router.refresh();
       } catch {
         // Don't redirect on transient errors (network hiccup, phone waking up).
         // The middleware will handle real auth failures on next navigation.
@@ -54,10 +52,11 @@ export function SessionRefresh() {
       }
     };
 
-    // Also refresh on a timer every 10 minutes as a safety net
+    // Also refresh on a timer every 30 minutes as a safety net
+    // (reduced from 10min to avoid excessive token operations)
     const interval = setInterval(() => {
       refreshSession();
-    }, 10 * 60 * 1000);
+    }, 30 * 60 * 1000);
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {

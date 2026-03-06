@@ -13,7 +13,10 @@ function LoginForm() {
   const router = useRouter();
   const error = searchParams.get('error');
 
-  // Try restoring session from localStorage backup before showing login
+  // Try restoring session from localStorage backup before showing login.
+  // We call getUser() instead of refreshSession() to avoid a race condition
+  // with autoRefreshToken — both would rotate the refresh token simultaneously,
+  // triggering reuse detection and killing the session overnight.
   useEffect(() => {
     // Don't try to restore if there's an explicit error (e.g. access_denied)
     if (error) {
@@ -23,39 +26,20 @@ function LoginForm() {
 
     const tryRestore = async () => {
       try {
-        // Check localStorage for a backed-up session
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-        const authKey = `sb-${supabaseUrl.split('//')[1]?.split('.')[0]}-auth-token`;
-        const backup = localStorage.getItem(authKey);
-        if (!backup) {
-          setIsRestoring(false);
-          return;
-        }
-
-        // Parse the backup to get the refresh token
-        const parsed = JSON.parse(backup);
-        const refreshToken = parsed?.refresh_token;
-        if (!refreshToken) {
-          setIsRestoring(false);
-          return;
-        }
-
-        // Use the refresh token to get a fresh session
         const supabase = createClient();
-        const { data, error: refreshError } = await supabase.auth.refreshSession({
-          refresh_token: refreshToken,
-        });
 
-        if (refreshError || !data.session) {
-          // Refresh failed — clear stale backup and show login
-          localStorage.removeItem(authKey);
-          setIsRestoring(false);
+        // getUser() waits for the client to initialize from storage
+        // (cookies → localStorage fallback). autoRefreshToken handles
+        // rotating expired tokens internally before getUser() resolves.
+        const { data: { user: existingUser } } = await supabase.auth.getUser();
+
+        if (existingUser) {
+          // Session was restored from backup — navigate away
+          router.replace('/admin');
           return;
         }
 
-        // Fresh session is now set in cookies via our storage adapter
-        // Navigate to /admin
-        router.replace('/admin');
+        setIsRestoring(false);
       } catch {
         setIsRestoring(false);
       }
