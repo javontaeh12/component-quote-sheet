@@ -4,34 +4,44 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 
-// Keeps the auth session alive by validating tokens when the user returns
-// to the tab (e.g., after locking the phone or overnight).
-// Uses getUser() instead of refreshSession() — the SDK's autoRefreshToken
-// handles token rotation internally. Manually calling refreshSession() can
-// race with autoRefreshToken, causing double-rotation and reuse detection
-// which kills the session (the root cause of daily re-login issues).
+const REFRESH_KEY = 'session-last-refresh';
+const REFRESH_COOLDOWN = 60_000; // Don't refresh more than once per minute
+
+// Keeps the auth session alive by syncing cookies ↔ localStorage when the
+// user returns to the tab (e.g., after locking the phone or overnight).
+// Does NOT call router.refresh() on mount to avoid infinite re-render loops.
+// Only refreshes on visibility change (tab focus) and a long interval timer.
 export function SessionRefresh() {
   const router = useRouter();
   const refreshing = useRef(false);
+  const hasMounted = useRef(false);
 
   useEffect(() => {
-    const refreshSession = async () => {
+    const syncSession = async (triggerServerRefresh: boolean) => {
       if (refreshing.current) return;
+
+      // Cooldown: skip if we refreshed very recently
+      const lastRefresh = parseInt(localStorage.getItem(REFRESH_KEY) || '0', 10);
+      if (Date.now() - lastRefresh < REFRESH_COOLDOWN) return;
+
       refreshing.current = true;
 
       try {
         const supabase = createClient();
 
-        // getUser() validates the access token with the Supabase Auth API.
-        // If the access token is expired, autoRefreshToken automatically
-        // uses the refresh token to get fresh tokens (written to cookies
-        // + localStorage by our storage adapter) before getUser() resolves.
+        // getUser() validates the access token. If expired, the SDK's
+        // autoRefreshToken rotates tokens internally (writing fresh
+        // cookies + localStorage via our storage adapter).
         const { data: { user }, error } = await supabase.auth.getUser();
 
         if (user && !error) {
-          // Session is valid — trigger a server refresh so middleware
-          // picks up the fresh cookies
-          router.refresh();
+          localStorage.setItem(REFRESH_KEY, String(Date.now()));
+
+          // Only trigger a server refresh on visibility change / timer,
+          // NOT on initial mount (which would cause an infinite loop).
+          if (triggerServerRefresh) {
+            router.refresh();
+          }
         }
       } catch {
         // Don't redirect on transient errors (network hiccup, phone waking up).
@@ -41,21 +51,23 @@ export function SessionRefresh() {
       }
     };
 
-    // Run immediately on mount so localStorage gets the latest tokens
-    // from the middleware-refreshed cookies (middleware can't update localStorage)
-    refreshSession();
+    // On mount: sync localStorage from cookies but do NOT router.refresh()
+    // (router.refresh re-renders the page, which re-mounts this component → loop)
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      syncSession(false);
+    }
 
-    // Refresh when user returns to the tab
+    // Refresh when user returns to the tab (e.g., after phone sleep)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        refreshSession();
+        syncSession(true);
       }
     };
 
-    // Also refresh on a timer every 30 minutes as a safety net
-    // (reduced from 10min to avoid excessive token operations)
+    // Safety net: refresh every 30 minutes while the tab is open
     const interval = setInterval(() => {
-      refreshSession();
+      syncSession(true);
     }, 30 * 60 * 1000);
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
