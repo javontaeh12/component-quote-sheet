@@ -207,12 +207,13 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
   const [invoiceNote, setInvoiceNote] = useState('');
 
   // Warranty lookup state
-  const [warrantyLookupUrl, setWarrantyLookupUrl] = useState<string | null>(null);
-  const [warrantyIframeBlocked, setWarrantyIframeBlocked] = useState(false);
+  const [warrantyPopupBrand, setWarrantyPopupBrand] = useState<string | null>(null);
   const [warrantyScreenshot, setWarrantyScreenshot] = useState<File | null>(null);
   const [warrantyScreenshotUrl, setWarrantyScreenshotUrl] = useState<string | null>(null);
   const [savingScreenshot, setSavingScreenshot] = useState(false);
   const warrantyScreenshotRef = useRef<HTMLInputElement>(null);
+  const warrantyPopupRef = useRef<Window | null>(null);
+  const warrantyRepositionRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Media state
   const [media, setMedia] = useState<ServiceReportMedia[]>([]);
@@ -253,6 +254,16 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
     };
   }, [savedReportId, customerId, equipmentInfo, warrantyInfo, problemFound, problemDetails, healthRatings, healthNotes, healthExtras, quoteOptions, selectedOptionIdx, upgrades, techNotes]);
+
+  // Cleanup warranty popup on unmount
+  useEffect(() => {
+    return () => {
+      if (warrantyRepositionRef.current) clearInterval(warrantyRepositionRef.current);
+      if (warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
+        warrantyPopupRef.current.close();
+      }
+    };
+  }, []);
 
   // Square SDK loading
   useEffect(() => {
@@ -1032,92 +1043,111 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
         {/* Warranty Lookup Section */}
         <div className="border-t border-gray-200 pt-4 space-y-3">
           <label className="block text-sm font-medium text-gray-700">Warranty Lookup</label>
-          <p className="text-xs text-gray-500">Open a manufacturer&apos;s warranty site to verify coverage. Use the customer &amp; equipment info above to look up the warranty, then screenshot the result.</p>
+          <p className="text-xs text-gray-500">Opens the warranty site in a floating window pinned to the bottom of your screen. Look up the warranty, then screenshot and upload the proof above.</p>
           <div className="flex flex-wrap gap-2">
-            {WARRANTY_LINKS.map(link => (
-              <button
-                key={link.brand}
-                type="button"
-                onClick={() => {
-                  if (warrantyLookupUrl === link.url) {
-                    setWarrantyLookupUrl(null);
-                    setWarrantyIframeBlocked(false);
-                  } else {
-                    setWarrantyLookupUrl(link.url);
-                    setWarrantyIframeBlocked(false);
-                  }
-                }}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                  warrantyLookupUrl === link.url
-                    ? 'border-blue-600 bg-blue-600 text-white'
-                    : 'border-gray-200 bg-white text-blue-600 hover:bg-blue-50'
-                }`}
-              >
-                {link.brand}
-                <ExternalLink className="w-3 h-3" />
-              </button>
-            ))}
+            {WARRANTY_LINKS.map(link => {
+              const isOpen = warrantyPopupBrand === link.brand;
+              return (
+                <button
+                  key={link.brand}
+                  type="button"
+                  onClick={() => {
+                    // Close existing popup if same brand
+                    if (isOpen && warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
+                      warrantyPopupRef.current.close();
+                      setWarrantyPopupBrand(null);
+                      warrantyPopupRef.current = null;
+                      if (warrantyRepositionRef.current) clearInterval(warrantyRepositionRef.current);
+                      return;
+                    }
+                    // Close any existing popup
+                    if (warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
+                      warrantyPopupRef.current.close();
+                    }
+                    if (warrantyRepositionRef.current) clearInterval(warrantyRepositionRef.current);
+
+                    // Open popup window — pinned to bottom of screen
+                    const screenH = window.screen.availHeight;
+                    const screenW = window.screen.availWidth;
+                    const popupH = Math.round(screenH * 0.45);
+                    const popupW = Math.min(screenW, 600);
+                    const popupTop = screenH - popupH;
+                    const popupLeft = Math.round((screenW - popupW) / 2);
+                    const popup = window.open(
+                      link.url,
+                      'warranty_lookup',
+                      `width=${popupW},height=${popupH},top=${popupTop},left=${popupLeft},scrollbars=yes,resizable=yes`
+                    );
+                    warrantyPopupRef.current = popup;
+                    setWarrantyPopupBrand(link.brand);
+
+                    // Continuously reposition popup to bottom of screen (keeps it floating there)
+                    const repositionInterval = setInterval(() => {
+                      if (!popup || popup.closed) {
+                        clearInterval(repositionInterval);
+                        setWarrantyPopupBrand(null);
+                        warrantyPopupRef.current = null;
+                        warrantyRepositionRef.current = null;
+                        return;
+                      }
+                      try {
+                        popup.moveTo(popupLeft, popupTop);
+                        popup.resizeTo(popupW, popupH);
+                      } catch {
+                        // moveTo/resizeTo may be blocked by browser — that's ok
+                      }
+                    }, 2000);
+                    warrantyRepositionRef.current = repositionInterval;
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                    isOpen
+                      ? 'border-green-600 bg-green-600 text-white'
+                      : 'border-gray-200 bg-white text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  {link.brand}
+                  {isOpen ? <Check className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Embedded warranty site */}
-          {warrantyLookupUrl && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500 truncate flex-1">{warrantyLookupUrl}</span>
-                <div className="flex items-center gap-2 ml-2">
-                  <a
-                    href={warrantyLookupUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline flex items-center gap-1 whitespace-nowrap"
-                  >
-                    Open in new tab <ExternalLink className="w-3 h-3" />
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => { setWarrantyLookupUrl(null); setWarrantyIframeBlocked(false); }}
-                    className="p-1 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+          {warrantyPopupBrand && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2">
+              <p className="text-sm text-green-700 font-medium flex items-center gap-2">
+                <Check className="w-4 h-4" /> {warrantyPopupBrand} warranty site is open (pinned to bottom)
+              </p>
+              <p className="text-xs text-green-600">
+                Use the floating window to verify warranty. When done, take a screenshot and upload it above to save the proof.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
+                      warrantyPopupRef.current.focus();
+                    }
+                  }}
+                  className="text-xs text-green-700 font-medium hover:underline"
+                >
+                  Bring to front
+                </button>
+                <span className="text-green-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
+                      warrantyPopupRef.current.close();
+                    }
+                    setWarrantyPopupBrand(null);
+                    warrantyPopupRef.current = null;
+                    if (warrantyRepositionRef.current) clearInterval(warrantyRepositionRef.current);
+                  }}
+                  className="text-xs text-red-600 font-medium hover:underline"
+                >
+                  Close popup
+                </button>
               </div>
-
-              {warrantyIframeBlocked ? (
-                <div className="border border-orange-200 bg-orange-50 rounded-lg p-4 text-center space-y-2">
-                  <p className="text-sm text-orange-700 font-medium">This site doesn&apos;t allow embedded viewing</p>
-                  <p className="text-xs text-orange-600">Open the site in a new tab, verify the warranty, then screenshot and upload the proof above.</p>
-                  <a
-                    href={warrantyLookupUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-medium hover:bg-orange-700"
-                  >
-                    Open {WARRANTY_LINKS.find(l => l.url === warrantyLookupUrl)?.brand || 'Site'} <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-gray-200 overflow-hidden" style={{ height: '40vh', minHeight: '300px' }}>
-                  <iframe
-                    src={warrantyLookupUrl}
-                    className="w-full h-full"
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                    onError={() => setWarrantyIframeBlocked(true)}
-                    onLoad={(e) => {
-                      // Check if iframe loaded or was blocked
-                      try {
-                        const iframe = e.target as HTMLIFrameElement;
-                        // If we can't access contentDocument, it might be blocked
-                        if (iframe.contentDocument === null) {
-                          setWarrantyIframeBlocked(true);
-                        }
-                      } catch {
-                        // Cross-origin — iframe loaded but we can't access it (which is fine)
-                      }
-                    }}
-                  />
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -2348,6 +2378,43 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
           </Button>
           <span className="text-sm text-gray-500">Step 9 of 9</span>
           <div />
+        </div>
+      )}
+
+      {/* Floating warranty popup indicator — visible on all steps */}
+      {warrantyPopupBrand && (
+        <div className="fixed bottom-0 left-0 right-0 z-[60] bg-green-600 text-white px-4 py-2 flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <ExternalLink className="w-4 h-4" />
+            <span>{warrantyPopupBrand} warranty — floating at bottom</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                if (warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
+                  warrantyPopupRef.current.focus();
+                }
+              }}
+              className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full font-medium transition"
+            >
+              Show
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
+                  warrantyPopupRef.current.close();
+                }
+                setWarrantyPopupBrand(null);
+                warrantyPopupRef.current = null;
+                if (warrantyRepositionRef.current) clearInterval(warrantyRepositionRef.current);
+              }}
+              className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full font-medium transition"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
     </div>
