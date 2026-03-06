@@ -9,11 +9,11 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const search = searchParams.get('search');
 
-    let query = supabase.from('pricing').select('*').order('category').order('service_name');
+    let query = supabase.from('pricing').select('*').order('category').order('name');
 
     if (group_id) query = query.eq('group_id', group_id);
     if (category) query = query.eq('category', category);
-    if (search) query = query.or(`service_name.ilike.%${search}%,description.ilike.%${search}%`);
+    if (search) query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
 
     const { data, error } = await query;
     if (error) throw error;

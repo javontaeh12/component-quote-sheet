@@ -15,22 +15,46 @@ import {
   Thermometer,
   ShieldCheck,
   Zap,
-  AlertTriangle,
 } from 'lucide-react';
 
 interface PricingItem {
   id: string;
-  group_id: string;
+  name: string;
   category: string;
-  service_name: string;
+  pricing_type: string;
+  price: number;
+  unit: string;
   description: string | null;
-  base_price: number;
-  emergency_price: number | null;
+  is_active: boolean;
+  service_type: string;
+  trade: string;
+  note: string | null;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }
 
 const CATEGORIES = ['Diagnostics', 'Repairs', 'Maintenance', 'Installation', 'Emergency'];
+
+const SERVICE_TYPES = [
+  { value: 'residential', label: 'Residential' },
+  { value: 'commercial', label: 'Commercial' },
+];
+
+const TRADES = [
+  { value: 'hvac', label: 'HVAC' },
+  { value: 'refrigeration', label: 'Refrigeration' },
+];
+
+const SERVICE_TYPE_COLORS: Record<string, string> = {
+  residential: 'bg-sky-100 text-sky-700',
+  commercial: 'bg-amber-100 text-amber-700',
+};
+
+const TRADE_COLORS: Record<string, string> = {
+  hvac: 'bg-indigo-100 text-indigo-700',
+  refrigeration: 'bg-teal-100 text-teal-700',
+};
 
 const CATEGORY_OPTIONS = [
   { value: '', label: 'All Categories' },
@@ -56,7 +80,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function PricingPage() {
-  const { groupId, isLoading: authLoading } = useAuth();
+  const { isLoading: authLoading } = useAuth();
   const [items, setItems] = useState<PricingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,12 +91,20 @@ export default function PricingPage() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const [serviceTypeFilter, setServiceTypeFilter] = useState('');
+  const [tradeFilter, setTradeFilter] = useState('');
+
   const [formData, setFormData] = useState({
     category: 'Diagnostics',
-    service_name: '',
+    name: '',
     description: '',
-    base_price: 0,
-    emergency_price: 0,
+    price: 0,
+    unit: 'flat',
+    pricing_type: 'fixed',
+    service_type: 'residential',
+    trade: 'hvac',
+    note: '',
+    sort_order: 0,
   });
 
   useEffect(() => {
@@ -80,15 +112,13 @@ export default function PricingPage() {
   }, [authLoading]);
 
   const fetchPricing = async () => {
-    if (!groupId) return;
     try {
       const supabase = createClient();
       const { data, error } = await supabase
         .from('pricing')
         .select('*')
-        .eq('group_id', groupId)
-        .order('category')
-        .order('service_name');
+        .order('sort_order')
+        .order('name');
 
       if (error) throw error;
       setItems(data || []);
@@ -104,12 +134,14 @@ export default function PricingPage() {
     return items.filter((item) => {
       const matchesSearch =
         !search ||
-        item.service_name.toLowerCase().includes(search.toLowerCase()) ||
+        item.name.toLowerCase().includes(search.toLowerCase()) ||
         (item.description && item.description.toLowerCase().includes(search.toLowerCase()));
       const matchesCategory = !categoryFilter || item.category === categoryFilter;
-      return matchesSearch && matchesCategory;
+      const matchesServiceType = !serviceTypeFilter || item.service_type === serviceTypeFilter;
+      const matchesTrade = !tradeFilter || item.trade === tradeFilter;
+      return matchesSearch && matchesCategory && matchesServiceType && matchesTrade;
     });
-  }, [items, search, categoryFilter]);
+  }, [items, search, categoryFilter, serviceTypeFilter, tradeFilter]);
 
   const groupedItems = useMemo(() => {
     const groups: Record<string, PricingItem[]> = {};
@@ -124,10 +156,15 @@ export default function PricingPage() {
     setEditingItem(null);
     setFormData({
       category: 'Diagnostics',
-      service_name: '',
+      name: '',
       description: '',
-      base_price: 0,
-      emergency_price: 0,
+      price: 0,
+      unit: 'flat',
+      pricing_type: 'fixed',
+      service_type: 'residential',
+      trade: 'hvac',
+      note: '',
+      sort_order: 0,
     });
     setIsModalOpen(true);
   };
@@ -136,28 +173,35 @@ export default function PricingPage() {
     setEditingItem(item);
     setFormData({
       category: item.category,
-      service_name: item.service_name,
+      name: item.name,
       description: item.description || '',
-      base_price: item.base_price,
-      emergency_price: item.emergency_price || 0,
+      price: item.price,
+      unit: item.unit || 'flat',
+      pricing_type: item.pricing_type || 'flat_rate',
+      service_type: item.service_type || 'residential',
+      trade: item.trade || 'hvac',
+      note: item.note || '',
+      sort_order: item.sort_order || 0,
     });
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!groupId) return;
 
     try {
       const supabase = createClient();
 
+      const payload = {
+        ...formData,
+        note: formData.note || null,
+      };
+
       if (editingItem) {
-        // Update
         const { data, error } = await supabase
           .from('pricing')
           .update({
-            ...formData,
-            emergency_price: formData.emergency_price || null,
+            ...payload,
             updated_at: new Date().toISOString(),
           })
           .eq('id', editingItem.id)
@@ -167,14 +211,9 @@ export default function PricingPage() {
         if (error) throw error;
         setItems(items.map((i) => (i.id === editingItem.id ? data : i)));
       } else {
-        // Create
         const { data, error } = await supabase
           .from('pricing')
-          .insert({
-            ...formData,
-            emergency_price: formData.emergency_price || null,
-            group_id: groupId,
-          })
+          .insert(payload)
           .select()
           .single();
 
@@ -240,8 +279,8 @@ export default function PricingPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Pricing</h1>
-          <p className="text-gray-600 mt-1">Manage service pricing and rates</p>
+          <h1 className="text-2xl font-bold text-gray-900">Flat Rate Pricing</h1>
+          <p className="text-gray-600 mt-1">Manage labor pricing for all services. These prices are shown on the public pricing page.</p>
         </div>
         <Button onClick={handleOpenAdd}>
           <Plus className="w-4 h-4 mr-2" />
@@ -289,6 +328,18 @@ export default function PricingPage() {
           onChange={(e) => setCategoryFilter(e.target.value)}
           className="w-full sm:w-44"
         />
+        <Select
+          options={[{ value: '', label: 'All Types' }, ...SERVICE_TYPES]}
+          value={serviceTypeFilter}
+          onChange={(e) => setServiceTypeFilter(e.target.value)}
+          className="w-full sm:w-40"
+        />
+        <Select
+          options={[{ value: '', label: 'All Trades' }, ...TRADES]}
+          value={tradeFilter}
+          onChange={(e) => setTradeFilter(e.target.value)}
+          className="w-full sm:w-40"
+        />
       </div>
 
       {/* Pricing Table */}
@@ -298,7 +349,9 @@ export default function PricingPage() {
             <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No pricing items found</h3>
             <p className="text-gray-600">
-              {search || categoryFilter ? 'Try adjusting your filters' : 'Add your first service pricing to get started'}
+              {search || categoryFilter || serviceTypeFilter || tradeFilter
+                ? 'Try adjusting your filters'
+                : 'Add your first service pricing to get started'}
             </p>
           </CardContent>
         </Card>
@@ -325,18 +378,23 @@ export default function PricingPage() {
                   <div key={item.id} className="p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900">{item.service_name}</p>
+                        <p className="font-medium text-gray-900">{item.name}</p>
+                        {item.note && (
+                          <p className="text-xs text-gray-400 mt-0.5">{item.note}</p>
+                        )}
                         {item.description && (
                           <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{item.description}</p>
                         )}
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SERVICE_TYPE_COLORS[item.service_type] || ''}`}>
+                            {item.service_type === 'residential' ? 'Residential' : 'Commercial'}
+                          </span>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TRADE_COLORS[item.trade] || ''}`}>
+                            {item.trade === 'hvac' ? 'HVAC' : 'Refrigeration'}
+                          </span>
+                        </div>
                         <div className="flex items-center gap-3 mt-2">
-                          <span className="text-sm font-medium text-gray-900">{formatCurrency(item.base_price)}</span>
-                          {item.emergency_price && (
-                            <span className="text-xs text-red-600 flex items-center gap-0.5">
-                              <AlertTriangle className="w-3 h-3" />
-                              {formatCurrency(item.emergency_price)}
-                            </span>
-                          )}
+                          <span className="text-sm font-medium text-gray-900">{formatCurrency(item.price)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -364,31 +422,32 @@ export default function PricingPage() {
                   <thead>
                     <tr className="text-left text-sm text-gray-500 border-b">
                       <th className="px-6 py-3 font-medium">Service Name</th>
-                      <th className="px-6 py-3 font-medium">Description</th>
-                      <th className="px-6 py-3 font-medium">Base Price</th>
-                      <th className="px-6 py-3 font-medium">Emergency Price</th>
+                      <th className="px-6 py-3 font-medium">Type / Trade</th>
+                      <th className="px-6 py-3 font-medium">Labor Price</th>
                       <th className="px-6 py-3 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {categoryItems.map((item) => (
                       <tr key={item.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 font-medium text-gray-900">{item.service_name}</td>
-                        <td className="px-6 py-4 text-gray-600 text-sm max-w-xs truncate">
-                          {item.description || '-'}
-                        </td>
-                        <td className="px-6 py-4 font-medium text-gray-900">
-                          {formatCurrency(item.base_price)}
+                        <td className="px-6 py-4">
+                          <span className="font-medium text-gray-900">{item.name}</span>
+                          {item.note && (
+                            <span className="block text-xs text-gray-400">{item.note}</span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
-                          {item.emergency_price ? (
-                            <span className="text-red-600 font-medium flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3" />
-                              {formatCurrency(item.emergency_price)}
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SERVICE_TYPE_COLORS[item.service_type] || ''}`}>
+                              {item.service_type === 'residential' ? 'Res' : 'Com'}
                             </span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TRADE_COLORS[item.trade] || ''}`}>
+                              {item.trade === 'hvac' ? 'HVAC' : 'Refrig'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 font-medium text-gray-900">
+                          {formatCurrency(item.price)}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1">
@@ -423,6 +482,20 @@ export default function PricingPage() {
         title={editingItem ? 'Edit Service Pricing' : 'Add Service Pricing'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Select
+              label="Service Type"
+              options={SERVICE_TYPES}
+              value={formData.service_type}
+              onChange={(e) => setFormData({ ...formData, service_type: e.target.value })}
+            />
+            <Select
+              label="Trade"
+              options={TRADES}
+              value={formData.trade}
+              onChange={(e) => setFormData({ ...formData, trade: e.target.value })}
+            />
+          </div>
           <Select
             label="Category"
             options={CATEGORY_SELECT_OPTIONS}
@@ -431,13 +504,19 @@ export default function PricingPage() {
           />
           <Input
             label="Service Name"
-            placeholder="e.g., AC Diagnostic Check"
-            value={formData.service_name}
-            onChange={(e) => setFormData({ ...formData, service_name: e.target.value })}
+            placeholder="e.g., Capacitor Replacement"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
           />
+          <Input
+            label="Note (shown on public pricing page)"
+            placeholder="e.g., R-410A, Standard wired, etc."
+            value={formData.note}
+            onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+          />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description (internal)</label>
             <textarea
               className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               rows={2}
@@ -448,22 +527,21 @@ export default function PricingPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Base Price ($)"
+              label="Labor Price ($)"
               type="number"
               min="0"
               step="0.01"
-              value={formData.base_price || ''}
-              onChange={(e) => setFormData({ ...formData, base_price: parseFloat(e.target.value) || 0 })}
+              value={formData.price || ''}
+              onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
               required
             />
             <Input
-              label="Emergency Price ($)"
+              label="Sort Order"
               type="number"
               min="0"
-              step="0.01"
-              value={formData.emergency_price || ''}
-              onChange={(e) => setFormData({ ...formData, emergency_price: parseFloat(e.target.value) || 0 })}
-              placeholder="Optional"
+              value={formData.sort_order || ''}
+              onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
+              placeholder="0"
             />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">

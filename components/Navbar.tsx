@@ -23,6 +23,7 @@ const refrigerationServices = Object.values(servicesData)
   .map(makeServiceLink);
 
 const navLinks = [
+  { label: 'Pricing', href: '/pricing' },
   { label: 'How It Works', href: '/#how-it-works' },
   { label: 'Membership', href: '/membership' },
   { label: 'Reviews', href: '/#reviews' },
@@ -58,7 +59,7 @@ export default function Navbar() {
       {/* Header — scrolls with page */}
       <nav className="bg-white z-30 relative">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-18 sm:h-28 items-center justify-between">
+          <div className="flex h-16 sm:h-18 md:h-20 items-center justify-between">
             {/* Logo */}
             <Link href="/" className="flex items-center">
               <Image
@@ -66,7 +67,7 @@ export default function Navbar() {
                 alt="Harden HVAC & Refrigeration"
                 width={360}
                 height={120}
-                className="h-12 sm:h-22 w-auto"
+                className="h-10 sm:h-14 md:h-16 w-auto"
                 priority
               />
             </Link>
@@ -167,9 +168,9 @@ export default function Navbar() {
             {/* Phone CTA (desktop) */}
             <a
               href="tel:9105466485"
-              className="hidden sm:flex items-center gap-2 rounded-full bg-[var(--ember)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--ember-dark)] transition-colors shadow-md shadow-[var(--ember)]/25"
+              className="hidden sm:flex items-center gap-1.5 rounded-full bg-[var(--ember)] px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-white hover:bg-[var(--ember-dark)] transition-colors shadow-md shadow-[var(--ember)]/25"
             >
-              <PhoneIcon className="w-4 h-4" />
+              <PhoneIcon className="w-3.5 h-3.5" />
               (910) 546-6485
             </a>
           </div>
@@ -197,8 +198,9 @@ export default function Navbar() {
             onClick={() => { setMenuOpen(false); setServicesOpen(false); }}
           />
           {/* Sheet */}
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.15)] max-h-[85vh] overflow-y-auto animate-[slideUp_0.25s_ease-out]">
-            <div className="px-4 pt-3 pb-6">
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.15)] max-h-[85vh] flex flex-col animate-[slideUp_0.25s_ease-out]">
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto px-4 pt-3">
               {/* Handle bar */}
               <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
 
@@ -253,19 +255,29 @@ export default function Navbar() {
                   {link.label}
                 </a>
               ))}
+            </div>
 
+            {/* Sticky bottom buttons — always visible */}
+            <div className="flex-shrink-0 px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-[var(--border)] bg-white space-y-2">
               <Link
                 href="/request"
                 onClick={() => { setMenuOpen(false); setServicesOpen(false); }}
-                className="flex items-center justify-center gap-2 mt-3 rounded-xl bg-[var(--ember)] px-4 py-3 text-base font-semibold text-white active:bg-[var(--ember-dark)] transition-colors"
+                className="flex items-center justify-center gap-2 w-full rounded-xl bg-[var(--accent)] px-4 py-3 text-base font-semibold text-white active:bg-[var(--accent-dark)] transition-colors"
               >
                 Request Service
               </Link>
 
-              {/* Close button at bottom */}
+              <a
+                href="tel:9105466485"
+                className="flex items-center justify-center gap-2 w-full rounded-xl bg-[var(--accent)] px-4 py-3 text-base font-semibold text-white active:bg-[var(--accent-dark)] transition-colors"
+              >
+                <PhoneIcon className="w-4 h-4" />
+                Call (910) 546-6485
+              </a>
+
               <button
                 onClick={() => { setMenuOpen(false); setServicesOpen(false); }}
-                className="flex items-center justify-center gap-2 w-full mt-3 rounded-lg px-4 py-3 text-base font-medium text-[var(--steel)] border border-[var(--border)] active:bg-gray-50 transition-colors"
+                className="flex items-center justify-center gap-2 w-full rounded-lg px-4 py-3 text-base font-medium text-[var(--steel)] border border-[var(--border)] active:bg-gray-50 transition-colors"
               >
                 <XIcon className="w-4 h-4" />
                 Close Menu
