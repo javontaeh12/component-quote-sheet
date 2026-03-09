@@ -43,6 +43,7 @@ import {
   Gauge,
   Wrench,
   CalendarCheck,
+  Cpu,
 } from 'lucide-react';
 import type {
   ServiceReportMedia,
@@ -453,6 +454,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
   const [brandSearch, setBrandSearch] = useState('');
   const [showBrands, setShowBrands] = useState(false);
 
+  // Data tag scanner state
+  const [scanningTag, setScanningTag] = useState(false);
+  const [showTagDetails, setShowTagDetails] = useState(true);
+  const tagCameraRef = useRef<HTMLInputElement>(null);
+
   // Signature state
   const [signatureDataUrl, setSignatureDataUrl] = useState('');
   const sigCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -500,6 +506,51 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       }
     }
   }, [initialCustomerId, customers, customerId, reportId]);
+
+  // Load parts from quote-cart in localStorage (added from Parts Store)
+  useEffect(() => {
+    const labels = 'ABCDEFGHIJ';
+    let hasCartItems = false;
+    const updatedOptions = [...quoteOptions];
+
+    for (let i = 0; i < labels.length; i++) {
+      const key = `quote-cart-${labels[i]}`;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const cartItems: QuoteOptionItem[] = JSON.parse(raw);
+        if (!cartItems.length) continue;
+        hasCartItems = true;
+
+        // Find or create the matching quote option
+        let optIdx = updatedOptions.findIndex(o => o.label === labels[i]);
+        if (optIdx === -1) {
+          updatedOptions.push(createEmptyQuoteOption(labels[i], updatedOptions.length + 1));
+          optIdx = updatedOptions.length - 1;
+        }
+
+        // Merge cart items into the option (avoid duplicates by description)
+        const existingDescs = new Set(updatedOptions[optIdx].items.map(it => it.description.toLowerCase()));
+        const newItems = cartItems.filter(ci => ci.description && !existingDescs.has(ci.description.toLowerCase()));
+        if (newItems.length > 0) {
+          // Remove empty placeholder rows
+          const currentItems = updatedOptions[optIdx].items.filter(it => it.description.trim() !== '');
+          const merged = [...currentItems, ...newItems];
+          const subtotal = merged.reduce((sum, li) => sum + li.total, 0);
+          updatedOptions[optIdx] = { ...updatedOptions[optIdx], items: merged, subtotal };
+        }
+
+        // Clear the cart after loading
+        localStorage.removeItem(key);
+      } catch {}
+    }
+
+    if (hasCartItems) {
+      setQuoteOptions(updatedOptions);
+    }
+  // Run once on mount only
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-save every 30s
   useEffect(() => {
@@ -758,6 +809,39 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       });
       if (eq.make) setBrandSearch(eq.make);
     }
+  };
+
+  // Scan data tag with AI
+  const handleScanTag = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setScanningTag(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch('/api/parts-store/read-tag', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok && data) {
+        const prev = units[activeUnitIdx].equipment_info;
+        const updated = {
+          ...prev,
+          equipment_type: data.unit_type || prev.equipment_type,
+          make: data.manufacturer || prev.make,
+          model: data.model_number || prev.model,
+          serial_number: data.serial_number || prev.serial_number,
+          tonnage: data.tonnage || prev.tonnage,
+          refrigerant_type: data.refrigerant_type || prev.refrigerant_type,
+          tag_data: data,
+        };
+        setEquipmentInfo(updated);
+        setShowTagDetails(true);
+        if (data.manufacturer) setBrandSearch(data.manufacturer);
+      }
+    } catch (err) {
+      console.error('Tag scan error:', err);
+    }
+    setScanningTag(false);
+    if (tagCameraRef.current) tagCameraRef.current.value = '';
   };
 
   // Quote option helpers
@@ -1124,6 +1208,21 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
 
     return (
       <div className="space-y-4">
+        {/* Scan Data Tag button */}
+        <button
+          type="button"
+          onClick={() => tagCameraRef.current?.click()}
+          disabled={scanningTag}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-sm transition-colors disabled:opacity-50"
+        >
+          {scanningTag ? (
+            <><span className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" /> Reading Data Tag...</>
+          ) : (
+            <><Camera className="w-5 h-5" /> Scan Data Tag</>
+          )}
+        </button>
+        <input ref={tagCameraRef} type="file" accept="image/*" capture="environment" onChange={handleScanTag} className="hidden" />
+
         {/* Existing equipment selector */}
         {filteredEquipment.length > 0 && (
           <div>
@@ -1240,6 +1339,208 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
             ))}
           </div>
         </div>
+
+        {/* Scanned Tag Data - Full Details */}
+        {equipmentInfo.tag_data && (
+          <div className="border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={() => setShowTagDetails(!showTagDetails)}
+              className="flex items-center justify-between w-full text-left"
+            >
+              <h4 className="text-base font-semibold text-navy flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-amber-600" />
+                Scanned Tag Data
+              </h4>
+              <span className="text-xs font-medium text-accent">{showTagDetails ? 'Hide' : 'Show All'}</span>
+            </button>
+            {showTagDetails && (
+              <div className="mt-3 space-y-3">
+                {/* Electrical */}
+                {(() => {
+                  const td = equipmentInfo.tag_data as Record<string, unknown>;
+                  const elecItems = [
+                    { label: 'Voltage', value: td.voltage },
+                    { label: 'Min Voltage', value: td.voltage_min },
+                    { label: 'Max Voltage', value: td.voltage_max },
+                    { label: 'Phase', value: td.phases },
+                    { label: 'Frequency', value: td.frequency },
+                    { label: 'MCA', value: td.min_circuit_ampacity },
+                    { label: 'Max Fuse/Breaker', value: td.max_overcurrent_protection },
+                    { label: 'Compressor RLA', value: td.compressor_rla },
+                    { label: 'Compressor LRA', value: td.compressor_lra },
+                    { label: 'Fan Motor FLA', value: td.fan_motor_fla },
+                    { label: 'Fan Motor HP', value: td.fan_motor_hp },
+                    { label: 'Blower/Evap FLA', value: td.blower_fla },
+                    { label: 'Heater Amps', value: td.heater_amps },
+                    { label: 'Heater Watts', value: td.heater_watts },
+                    { label: 'Short Circuit', value: td.short_circuit_current },
+                    { label: 'Secondary Power', value: td.solar_secondary_power },
+                  ].filter(i => i.value && i.value !== 'null');
+                  if (elecItems.length === 0) return null;
+                  return (
+                    <div className="bg-amber-50 rounded-lg border border-amber-200 overflow-hidden">
+                      <div className="px-3 py-2 bg-amber-100 border-b border-amber-200">
+                        <p className="text-xs font-bold text-amber-800">Electrical Ratings</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 p-3">
+                        {elecItems.map(i => (
+                          <div key={i.label} className="flex justify-between py-1">
+                            <span className="text-[11px] font-medium text-amber-700">{i.label}</span>
+                            <span className="text-[11px] font-bold text-amber-900">{String(i.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Refrigerant & Pressures */}
+                {(() => {
+                  const td = equipmentInfo.tag_data as Record<string, unknown>;
+                  const refItems = [
+                    { label: 'Factory Charge', value: td.refrigerant_charge },
+                    { label: 'Oil Type', value: td.oil_type },
+                    { label: 'Oil Charge', value: td.oil_charge },
+                    { label: 'Design Pressure (High)', value: td.design_pressure_high },
+                    { label: 'Design Pressure (Low)', value: td.design_pressure_low },
+                    { label: 'Metering Device', value: td.metering_device },
+                    { label: 'Subcooling', value: td.subcooling_spec },
+                    { label: 'Line Charge Notes', value: td.line_charge_notes },
+                    { label: 'Defrost Type', value: td.defrost_type },
+                  ].filter(i => i.value && i.value !== 'null');
+                  if (refItems.length === 0) return null;
+                  return (
+                    <div className="bg-blue-50 rounded-lg border border-blue-200 overflow-hidden">
+                      <div className="px-3 py-2 bg-blue-100 border-b border-blue-200">
+                        <p className="text-xs font-bold text-blue-800">Refrigerant & Pressures</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 p-3">
+                        {refItems.map(i => (
+                          <div key={i.label} className="flex justify-between py-1">
+                            <span className="text-[11px] font-medium text-blue-700">{i.label}</span>
+                            <span className="text-[11px] font-bold text-blue-900">{String(i.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Performance */}
+                {(() => {
+                  const td = equipmentInfo.tag_data as Record<string, unknown>;
+                  const perfItems = [
+                    { label: 'Cooling BTU', value: td.btu_cooling },
+                    { label: 'Heating BTU', value: td.btu_heating },
+                    { label: 'SEER', value: td.seer },
+                    { label: 'EER', value: td.eer },
+                    { label: 'HSPF', value: td.hspf },
+                    { label: 'AFUE', value: td.afue },
+                    { label: 'Temp Range', value: td.temperature_range },
+                    { label: 'CFM', value: td.cfm },
+                  ].filter(i => i.value && i.value !== 'null');
+                  if (perfItems.length === 0) return null;
+                  return (
+                    <div className="bg-green-50 rounded-lg border border-green-200 overflow-hidden">
+                      <div className="px-3 py-2 bg-green-100 border-b border-green-200">
+                        <p className="text-xs font-bold text-green-800">Performance</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 p-3">
+                        {perfItems.map(i => (
+                          <div key={i.label} className="flex justify-between py-1">
+                            <span className="text-[11px] font-medium text-green-700">{i.label}</span>
+                            <span className="text-[11px] font-bold text-green-900">{String(i.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Other Details */}
+                {(() => {
+                  const td = equipmentInfo.tag_data as Record<string, unknown>;
+                  const otherItems = [
+                    { label: 'Assembled In', value: td.assembled_in },
+                    { label: 'Product Number', value: td.product_number },
+                    { label: 'Part Number', value: td.part_number },
+                    { label: 'Compressor Model', value: td.compressor_model },
+                    { label: 'Fan ID', value: td.fan_identification },
+                    { label: 'Drawing Number', value: td.drawing_number },
+                    { label: 'Filter Size', value: td.filter_size },
+                    { label: 'Weight', value: td.weight },
+                    { label: 'Min Outdoor Temp', value: td.min_outdoor_temp },
+                    { label: 'Max Ambient Temp', value: td.max_ambient_temp },
+                  ].filter(i => i.value && i.value !== 'null');
+                  if (otherItems.length === 0) return null;
+                  return (
+                    <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                      <div className="px-3 py-2 bg-gray-100 border-b border-gray-200">
+                        <p className="text-xs font-bold text-gray-600">Other Details</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 p-3">
+                        {otherItems.map(i => (
+                          <div key={i.label} className="flex justify-between py-1">
+                            <span className="text-[11px] font-medium text-gray-500">{i.label}</span>
+                            <span className="text-[11px] font-bold text-gray-800">{String(i.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Certifications */}
+                {(() => {
+                  const td = equipmentInfo.tag_data as Record<string, unknown>;
+                  const certs = td.certifications as string[] | null;
+                  if (!certs || certs.length === 0) return null;
+                  return (
+                    <div className="flex flex-wrap gap-1.5">
+                      {certs.map((c, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700 border border-green-200">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* Additional Info */}
+                {(() => {
+                  const td = equipmentInfo.tag_data as Record<string, unknown>;
+                  const info = td.additional_info as string[] | null;
+                  if (!info || info.length === 0) return null;
+                  return (
+                    <div className="bg-purple-50 rounded-lg border border-purple-200 p-3">
+                      <p className="text-xs font-bold text-purple-800 mb-1.5">Additional Notes</p>
+                      <ul className="space-y-1">
+                        {info.map((item, i) => (
+                          <li key={i} className="text-[11px] text-purple-700">• {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
+
+                {/* Raw Text */}
+                {(() => {
+                  const td = equipmentInfo.tag_data as Record<string, unknown>;
+                  if (!td.raw_text) return null;
+                  return (
+                    <details className="bg-gray-50 rounded-lg border border-gray-200">
+                      <summary className="px-3 py-2 text-[11px] font-bold text-gray-500 cursor-pointer">Raw Tag Text</summary>
+                      <pre className="px-3 pb-3 text-[10px] text-gray-600 whitespace-pre-wrap font-mono leading-relaxed break-words">
+                        {String(td.raw_text)}
+                      </pre>
+                    </details>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Warranty section inline */}
         <div className="border-t border-border pt-4 space-y-4">

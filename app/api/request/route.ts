@@ -136,44 +136,56 @@ export async function POST(request: Request) {
       );
     }
 
-    // Send email to owner
-    const emailPromises = [
-      getResend().emails.send({
-        from: 'Harden HVAC <onboarding@resend.dev>',
-        to: OWNER_EMAIL,
-        subject: `New Service Request from ${name}${urgency === 'emergency' ? ' ⚠️ EMERGENCY' : ''}`,
-        html: buildOwnerHtml({
-          name, phone, email, address, city, zip,
-          service_type, urgency, equipment_info,
-          issue, started_when, symptoms, file_urls,
-          membership_interest: memberInterest,
-        }),
-      }),
-    ];
-
-    // Send confirmation to customer
-    if (email) {
-      emailPromises.push(
-        getResend().emails.send({
+    // Send emails (non-blocking, won't fail the request)
+    try {
+      const resend = getResend();
+      const emailPromises = [
+        resend.emails.send({
           from: 'Harden HVAC <onboarding@resend.dev>',
-          to: email,
-          subject: 'We received your service request — Harden HVAC',
-          html: buildCustomerHtml(name, service_type),
+          to: OWNER_EMAIL,
+          subject: `New Service Request from ${name}${urgency === 'emergency' ? ' ⚠️ EMERGENCY' : ''}`,
+          html: buildOwnerHtml({
+            name, phone, email, address, city, zip,
+            service_type, urgency, equipment_info,
+            issue, started_when, symptoms, file_urls,
+            membership_interest: memberInterest,
+          }),
         }),
-      );
+      ];
+
+      if (email) {
+        emailPromises.push(
+          resend.emails.send({
+            from: 'Harden HVAC <onboarding@resend.dev>',
+            to: email,
+            subject: 'We received your service request — Harden HVAC',
+            html: buildCustomerHtml(name, service_type),
+          }),
+        );
+      }
+
+      Promise.allSettled(emailPromises).then(results => {
+        results.forEach((r, i) => {
+          if (r.status === 'rejected') {
+            console.error(`Email ${i} failed:`, r.reason);
+          }
+        });
+      });
+    } catch (emailErr) {
+      console.error('Email setup error (non-fatal):', emailErr);
     }
 
-    // Fire emails but don't block the response
-    Promise.allSettled(emailPromises).then(results => {
-      results.forEach((r, i) => {
-        if (r.status === 'rejected') {
-          console.error(`Email ${i} failed:`, r.reason);
-        }
-      });
-    });
+    // Trigger AI Dispatch Agent to analyze and schedule (async, non-blocking)
+    const origin = new URL(request.url).origin;
+    fetch(`${origin}/api/dispatch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId: data.id }),
+    }).catch(e => console.error('Dispatch trigger error:', e));
 
     return NextResponse.json({ ok: true, requestId: data.id });
-  } catch {
+  } catch (err) {
+    console.error('Service request error:', err);
     return NextResponse.json(
       { ok: false, error: 'Something went wrong.' },
       { status: 500 }

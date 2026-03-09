@@ -18,8 +18,10 @@ export default function TechLayout({ children }: { children: React.ReactNode }) 
           <span className="text-[10px] font-semibold text-ember uppercase tracking-widest">Tech Portal</span>
         </div>
       </header>
-      <div className="max-w-2xl mx-auto px-4 overflow-x-hidden">
-        {children}
+      <div className="max-w-2xl mx-auto px-4 overflow-x-hidden w-full box-border">
+        <div className="w-full overflow-x-hidden">
+          {children}
+        </div>
       </div>
       <TechBottomNav />
     </div>

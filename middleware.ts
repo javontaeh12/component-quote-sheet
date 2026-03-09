@@ -47,6 +47,11 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // Portal routes — handled by server-side layout auth, just refresh session cookies
+  if (pathname.startsWith('/portal')) {
+    return supabaseResponse;
+  }
+
   // Public routes that don't require auth
   const publicRoutes = ['/', '/login', '/auth/callback', '/onboarding'];
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith('/api/'));

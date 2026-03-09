@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MapPin, Play, Calendar, Wrench, CheckCircle2, DollarSign, ChevronDown, ChevronUp, Clock } from 'lucide-react';
+import { MapPin, Play, Calendar, Wrench, CheckCircle2, DollarSign, ChevronDown, ChevronUp, Clock, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
 interface WorkOrder {
   id: string;
@@ -167,6 +168,20 @@ export default function TechDashboardClient({ jobs, firstName }: TechDashboardCl
           <p className="text-2xl font-bold text-gray-900">${totalPartsCost.toFixed(0)}</p>
         </div>
       </div>
+
+      {/* AI Tech Assistant */}
+      <Link
+        href="/admin/tech/assistant"
+        className="flex items-center gap-3 bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-4 active:opacity-80 transition-opacity"
+      >
+        <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+          <Sparkles className="w-5 h-5 text-red-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900 text-sm">Tech Assistant</h3>
+          <p className="text-xs text-gray-500">AI troubleshooting help — describe symptoms, get step-by-step diagnostics</p>
+        </div>
+      </Link>
 
       {/* Next Job (Today) */}
       {nextJob ? (

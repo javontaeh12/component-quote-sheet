@@ -20,14 +20,14 @@ const steps = [
     icon: ZapIcon,
     title: 'You Pay the Service Fee',
     description:
-      'You receive an invoice with service fee, this covers travel and deposit for any services performed.',
+      'You receive an invoice with a $99 service fee — this covers travel and deposit for any services performed.',
   },
   {
     number: '04',
     icon: WrenchIcon,
     title: 'We Fix It Right',
     description:
-      'A qualified tech arrives with the right parts and tools to get it done.',
+      'A qualified tech arrives with the right tools to get it done.',
   },
 ];
 

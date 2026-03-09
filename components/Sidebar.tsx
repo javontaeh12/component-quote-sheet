@@ -33,6 +33,9 @@ import {
   ClipboardCheck,
   Gift,
   Trophy,
+  ShoppingBag,
+  Sparkles,
+  Activity,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -46,11 +49,14 @@ const navigation = [
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'Documents', href: '/admin/documents', icon: FileText },
   { name: 'AI Helper', href: '/admin/ai-helper', icon: MessageSquare },
+  { name: 'AI Bots', href: '/admin/bots', icon: Sparkles },
+  { name: 'AI Agents', href: '/admin/agents', icon: Activity },
   { name: 'Truck', href: '/admin/truck', icon: Truck },
   { name: 'Service Web App', href: '/admin/tech', icon: Smartphone },
 ];
 
 const hvacToolsNavigation = [
+  { name: 'Parts', href: '/admin/parts-store', icon: ShoppingBag },
   { name: 'Quote Sheet', href: '/admin/quote-sheet', icon: Snowflake },
   { name: 'Quotes', href: '/admin/quotes', icon: Receipt },
   { name: 'Contracts', href: '/admin/contracts', icon: FileSignature },
@@ -243,7 +249,7 @@ export function Sidebar() {
       {/* Mobile menu button */}
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="lg:hidden fixed top-2.5 left-3 z-40 p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors"
+        className="lg:hidden fixed top-0 left-0 z-40 h-14 w-12 flex items-center justify-center rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors"
       >
         <Menu className="w-5 h-5 text-gray-700" />
       </button>

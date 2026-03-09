@@ -89,7 +89,7 @@ const STORAGE_KEY = 'harden-booking-form';
 
 function loadSavedForm(): { step: number; form: FormData } | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch { return null; }
@@ -97,12 +97,12 @@ function loadSavedForm(): { step: number; form: FormData } | null {
 
 function saveForm(step: number, form: FormData) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ step, form }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, form }));
   } catch { /* ignore */ }
 }
 
 function clearSavedForm() {
-  try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+  try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
 }
 
 const DEFAULT_FORM: FormData = {
@@ -137,7 +137,7 @@ export default function BookingForm() {
 
   const update = useCallback((fields: Partial<FormData>) => setForm(prev => ({ ...prev, ...fields })), []);
 
-  // Persist form state to sessionStorage
+  // Persist form state to localStorage
   useEffect(() => {
     saveForm(step, form);
   }, [step, form]);

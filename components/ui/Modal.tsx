@@ -28,7 +28,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
         <div
           className={cn(
-            'bg-white rounded-xl shadow-xl border border-border max-w-lg w-full max-h-[90vh] flex flex-col',
+            'relative bg-white rounded-xl shadow-xl border border-border max-w-lg w-full max-h-[90vh] flex flex-col',
             className
           )}
           role="dialog"

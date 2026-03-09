@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   ClipboardList,
+  ShoppingBag,
   Truck,
   Loader2,
 } from 'lucide-react';
@@ -14,6 +15,7 @@ import {
 const navItems = [
   { label: 'Dashboard', href: '/admin/tech', icon: LayoutDashboard, exact: true },
   { label: 'Jobs', href: '/admin/tech/jobs', icon: ClipboardList, exact: false },
+  { label: 'Parts', href: '/admin/tech/parts', icon: ShoppingBag, exact: true },
   { label: 'Van', href: '/admin/tech/van', icon: Truck, exact: true },
 ];
 

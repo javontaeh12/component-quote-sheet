@@ -237,8 +237,19 @@ export default function MembershipBenefitsGrid() {
             isOpen={openIndex === i}
             onClose={() => setOpenIndex(null)}
           >
+            {/* Close button */}
+            <button
+              onClick={() => setOpenIndex(null)}
+              className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
             {/* Modal header */}
-            <div className="flex items-center gap-4 mb-5">
+            <div className="flex items-center gap-4 mb-5 pr-8">
               <div className={`w-14 h-14 rounded-xl ${color.bg} flex items-center justify-center flex-shrink-0`}>
                 <benefit.icon className={`w-7 h-7 ${color.text}`} />
               </div>

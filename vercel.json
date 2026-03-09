@@ -1,5 +1,51 @@
 {
   "framework": "nextjs",
   "buildCommand": "next build",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "crons": [
+    {
+      "path": "/api/cron/follow-up",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/dispatch-daily",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/manager-daily",
+      "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/agent-reports",
+      "schedule": "0 14 * * 0"
+    },
+    {
+      "path": "/api/cron/manager-monthly",
+      "schedule": "0 15 1 * *"
+    },
+    {
+      "path": "/api/cron/finance-daily",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/finance-weekly",
+      "schedule": "0 15 * * 6"
+    },
+    {
+      "path": "/api/cron/security-daily",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/group-meeting",
+      "schedule": "0 16 * * 0"
+    },
+    {
+      "path": "/api/cron/seo-audit",
+      "schedule": "0 13 * * 1"
+    },
+    {
+      "path": "/api/cron/webdev-fixes",
+      "schedule": "0 15 * * 1"
+    }
+  ]
 }
