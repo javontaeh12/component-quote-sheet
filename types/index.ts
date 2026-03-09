@@ -459,6 +459,22 @@ export interface ServiceReportMedia {
   created_at: string;
 }
 
+// Install App types (re-exported for Database interface)
+import type {
+  InstallProject as _IP,
+  InstallRoom as _IR,
+  InstallSurface as _IS,
+  InstallOpening as _IO,
+  InstallLoad as _IL,
+  InstallEquipmentOption as _IEO,
+  InstallDuctSegment as _IDS,
+  InstallMaterial as _IM,
+  InstallProposal as _IPR,
+  InstallDocument as _ID,
+  EquipmentCatalogItem as _ECI,
+  PriceBookItem as _PBI,
+} from '@/lib/installs/types';
+
 export interface Database {
   public: {
     Tables: {
@@ -510,6 +526,67 @@ export interface Database {
         Row: Document;
         Insert: Omit<Document, 'id' | 'created_at'> & { id?: string; created_at?: string };
         Update: Partial<Document>;
+      };
+      // ---- Install App Tables ----
+      equipment_catalog: {
+        Row: _ECI;
+        Insert: Omit<_ECI, 'id' | 'created_at' | 'updated_at'> & { id?: string; created_at?: string; updated_at?: string };
+        Update: Partial<_ECI>;
+      };
+      install_price_book: {
+        Row: _PBI;
+        Insert: Omit<_PBI, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<_PBI>;
+      };
+      install_projects: {
+        Row: _IP;
+        Insert: Omit<_IP, 'id' | 'created_at' | 'updated_at' | 'customers'> & { id?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Omit<_IP, 'customers'>>;
+      };
+      install_rooms: {
+        Row: _IR;
+        Insert: Omit<_IR, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<_IR>;
+      };
+      install_surfaces: {
+        Row: _IS;
+        Insert: Omit<_IS, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<_IS>;
+      };
+      install_openings: {
+        Row: _IO;
+        Insert: Omit<_IO, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<_IO>;
+      };
+      install_loads: {
+        Row: _IL;
+        Insert: Omit<_IL, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<_IL>;
+      };
+      install_equipment_options: {
+        Row: _IEO;
+        Insert: Omit<_IEO, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<_IEO>;
+      };
+      install_duct_segments: {
+        Row: _IDS;
+        Insert: Omit<_IDS, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<_IDS>;
+      };
+      install_materials: {
+        Row: _IM;
+        Insert: Omit<_IM, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<_IM>;
+      };
+      install_proposals: {
+        Row: _IPR;
+        Insert: Omit<_IPR, 'id' | 'created_at' | 'updated_at'> & { id?: string; created_at?: string; updated_at?: string };
+        Update: Partial<_IPR>;
+      };
+      install_documents: {
+        Row: _ID;
+        Insert: Omit<_ID, 'id' | 'created_at' | 'updated_at'> & { id?: string; created_at?: string; updated_at?: string };
+        Update: Partial<_ID>;
       };
     };
   };

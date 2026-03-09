@@ -63,6 +63,7 @@ const hvacToolsNavigation = [
   { name: 'Reports', href: '/admin/reports', icon: ClipboardCheck },
   { name: 'Service Report', href: '/admin/service-report', icon: FileText },
   { name: 'Rewards', href: '/admin/rewards', icon: Gift },
+  { name: 'Installs', href: '/admin/installs', icon: Building2 },
 ];
 
 const adminNavigation = [
