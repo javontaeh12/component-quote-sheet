@@ -8,6 +8,7 @@ import {
   HVAC_BRANDS,
   REFRIGERANT_TYPES,
   DESIGN_TEMPS_BY_REGION,
+  DESIGN_TEMPS_BY_STATE,
 } from '@/lib/installs/constants';
 import type {
   ProjectType,
@@ -238,6 +239,9 @@ export default function NewInstallProjectPage() {
   // ------------------------------------------
   const autoDetectDesignTemps = () => {
     const cityRaw = form.city.toLowerCase().trim().replace(/\s+/g, '_');
+    const stateRaw = form.state.toUpperCase().trim();
+
+    // 1. Exact city match
     const match = DESIGN_TEMPS_BY_REGION[cityRaw];
     if (match) {
       update({
@@ -248,7 +252,7 @@ export default function NewInstallProjectPage() {
       return;
     }
 
-    // Try fuzzy match on city name
+    // 2. Fuzzy match on city name
     const keys = Object.keys(DESIGN_TEMPS_BY_REGION);
     const fuzzy = keys.find((k) => cityRaw.includes(k) || k.includes(cityRaw));
     if (fuzzy) {
@@ -259,6 +263,17 @@ export default function NewInstallProjectPage() {
       });
       const displayName = fuzzy.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
       setAutoDetectNote(`Matched closest city "${displayName}": ${temps.cooling}\u00B0F cooling / ${temps.heating}\u00B0F heating`);
+      return;
+    }
+
+    // 3. State-level fallback
+    if (stateRaw && DESIGN_TEMPS_BY_STATE[stateRaw]) {
+      const stateTemps = DESIGN_TEMPS_BY_STATE[stateRaw];
+      update({
+        design_cooling_temp: String(stateTemps.cooling),
+        design_heating_temp: String(stateTemps.heating),
+      });
+      setAutoDetectNote(`Using ${stateRaw} state average: ${stateTemps.cooling}\u00B0F cooling / ${stateTemps.heating}\u00B0F heating. Adjust if needed.`);
       return;
     }
 
