@@ -146,6 +146,29 @@ export async function PUT(request: NextRequest) {
       profiles = techData;
     }
 
+    // Trigger CSR auto-call when tech goes en_route with GPS
+    if (updates.status === 'en_route' && (updates.tech_lat || updates.tech_lng)) {
+      const csrUrl = process.env.CSR_ORCHESTRATOR_URL;
+      if (csrUrl) {
+        const customerData = updated.customers as { full_name?: string; phone?: string; address?: string } | null;
+        if (customerData?.phone) {
+          fetch(`${csrUrl}/api/dispatch/notify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customer_phone: customerData.phone,
+              customer_name: customerData.full_name || null,
+              customer_address: customerData.address || null,
+              tech_name: profiles?.full_name || 'Your technician',
+              tech_lat: updates.tech_lat,
+              tech_lng: updates.tech_lng,
+              work_order_id: id,
+            }),
+          }).catch((err: unknown) => console.error('CSR en-route notify failed:', err));
+        }
+      }
+    }
+
     // Send status-change emails (async, non-blocking)
     if (updated.customer_id && updates.status) {
       const { data: customer } = await supabase
@@ -173,7 +196,7 @@ export async function PUT(request: NextRequest) {
           updates.status === 'en_route' ? sendTechEnRoute(customer.email, {
             customerName,
             techName,
-            estimatedArrival: '30-60 minutes',
+            estimatedArrival: updates.tech_lat ? 'See incoming call for live ETA' : '30-60 minutes',
             serviceType: serviceDesc,
           }) : Promise.resolve(),
 

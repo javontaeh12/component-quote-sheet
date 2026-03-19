@@ -130,6 +130,20 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     if (nextStatus === 'in_progress') updates.started_at = new Date().toISOString();
     if (nextStatus === 'completed') updates.completed_at = new Date().toISOString();
 
+    // Grab GPS when going en_route — CSR will auto-call customer with ETA
+    if (nextStatus === 'en_route' && navigator.geolocation) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, enableHighAccuracy: true })
+        );
+        updates.tech_lat = pos.coords.latitude;
+        updates.tech_lng = pos.coords.longitude;
+      } catch {
+        // GPS unavailable — still advance status, just no ETA call
+        console.warn('GPS unavailable — skipping ETA call');
+      }
+    }
+
     const res = await fetch('/api/work-orders', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
