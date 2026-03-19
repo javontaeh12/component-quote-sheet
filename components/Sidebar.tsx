@@ -48,8 +48,6 @@ const navigation = [
   { name: 'Payments', href: '/admin/payments', icon: CreditCard },
   { name: 'Customers', href: '/admin/customers', icon: Contact },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
-  { name: 'Documents', href: '/admin/documents', icon: FileText },
-  { name: 'AI Helper', href: '/admin/ai-helper', icon: MessageSquare },
   { name: 'AI Bots', href: '/admin/bots', icon: Sparkles },
   { name: 'AI Agents', href: '/admin/agents', icon: Activity },
   { name: 'AI Calls', href: '/admin/calls', icon: Phone },
@@ -58,6 +56,7 @@ const navigation = [
 ];
 
 const hvacToolsNavigation = [
+  { name: 'Documents', href: '/admin/documents', icon: FileText },
   { name: 'Parts', href: '/admin/parts-store', icon: ShoppingBag },
   { name: 'Quote Sheet', href: '/admin/quote-sheet', icon: Snowflake },
   { name: 'Quotes', href: '/admin/quotes', icon: Receipt },

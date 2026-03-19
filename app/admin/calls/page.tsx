@@ -97,6 +97,12 @@ function formatAiCost(cost: number | null): string {
   return `$${cost.toFixed(2)}`;
 }
 
+// Vapi cost estimate: ~$0.05/min (STT + TTS + telephony + model)
+function estimateVapiCost(durationSeconds: number | null): number {
+  if (!durationSeconds) return 0;
+  return (durationSeconds / 60) * 0.05;
+}
+
 function formatPhone(phone: string | null): string {
   if (!phone) return 'Unknown';
   // Format US phone numbers
@@ -161,7 +167,9 @@ export default function CallsPage() {
   // Summary stats
   const stats = useMemo(() => {
     const totalCalls = calls.length;
-    const totalCost = calls.reduce((sum, c) => sum + (Number(c.ai_cost) || 0), 0);
+    const totalAiCost = calls.reduce((sum, c) => sum + (Number(c.ai_cost) || 0), 0);
+    const totalVapiCost = calls.reduce((sum, c) => sum + estimateVapiCost(c.duration_seconds), 0);
+    const totalCost = totalAiCost + totalVapiCost;
     const avgDuration = totalCalls > 0
       ? Math.round(calls.reduce((sum, c) => sum + (c.duration_seconds || 0), 0) / totalCalls)
       : 0;
@@ -169,7 +177,7 @@ export default function CallsPage() {
       ? calls.reduce((sum, c) => sum + (Number(c.confidence) || 0), 0) / totalCalls
       : 0;
     const escalated = calls.filter((c) => c.outcome === 'escalated').length;
-    return { totalCalls, totalCost, avgDuration, avgConfidence, escalated };
+    return { totalCalls, totalAiCost, totalVapiCost, totalCost, avgDuration, avgConfidence, escalated };
   }, [calls]);
 
   if (isLoading || authLoading) {
@@ -241,9 +249,13 @@ export default function CallsPage() {
         <div className="bg-white rounded-xl border border-amber-200 p-4">
           <div className="flex items-center gap-2 mb-1">
             <DollarSign className="w-4 h-4 text-amber-600" />
-            <span className="text-xs font-bold text-amber-600 uppercase">Total AI Cost</span>
+            <span className="text-xs font-bold text-amber-600 uppercase">Total Cost</span>
           </div>
           <p className="text-2xl font-bold text-amber-700">{formatAiCost(stats.totalCost)}</p>
+          <div className="flex gap-3 mt-1">
+            <span className="text-[10px] text-gray-500">AI: {formatAiCost(stats.totalAiCost)}</span>
+            <span className="text-[10px] text-gray-500">Vapi: {formatAiCost(stats.totalVapiCost)}</span>
+          </div>
         </div>
       </div>
 
@@ -362,10 +374,11 @@ export default function CallsPage() {
                               <p className="text-sm text-gray-700 font-medium">{(Number(call.confidence) * 100).toFixed(0)}%</p>
                             </div>
                           )}
-                          {call.ai_cost !== null && (
+                          {(call.ai_cost !== null || call.duration_seconds) && (
                             <div>
-                              <span className="text-xs font-bold text-gray-400 uppercase">AI Cost</span>
-                              <p className="text-sm text-gray-700 font-mono">{formatAiCost(call.ai_cost)}</p>
+                              <span className="text-xs font-bold text-gray-400 uppercase">Cost</span>
+                              <p className="text-sm text-gray-700 font-mono">{formatAiCost((Number(call.ai_cost) || 0) + estimateVapiCost(call.duration_seconds))}</p>
+                              <p className="text-[10px] text-gray-400">AI: {formatAiCost(call.ai_cost)} + Vapi: {formatAiCost(estimateVapiCost(call.duration_seconds))}</p>
                             </div>
                           )}
                         </div>
@@ -411,7 +424,7 @@ export default function CallsPage() {
                   <th className="px-4 py-3 font-medium">Service</th>
                   <th className="px-4 py-3 font-medium">Outcome</th>
                   <th className="px-4 py-3 font-medium">Duration</th>
-                  <th className="px-4 py-3 font-medium">AI Cost</th>
+                  <th className="px-4 py-3 font-medium">Cost</th>
                   <th className="px-4 py-3 font-medium w-8"></th>
                 </tr>
               </thead>
@@ -491,7 +504,7 @@ export default function CallsPage() {
                           <span className="text-sm text-gray-600">{formatDuration(call.duration_seconds)}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm text-gray-600 font-mono">{formatAiCost(call.ai_cost)}</span>
+                          <span className="text-sm text-gray-600 font-mono">{formatAiCost((Number(call.ai_cost) || 0) + estimateVapiCost(call.duration_seconds))}</span>
                         </td>
                         <td className="px-4 py-3">
                           {isExpanded ? (

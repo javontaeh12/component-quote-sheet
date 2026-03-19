@@ -13,6 +13,8 @@ import {
   Plus,
   AlertTriangle,
   Calendar,
+  MapPin,
+  ExternalLink,
 } from 'lucide-react';
 
 type Tab = 'inventory' | 'mileage' | 'gas' | 'maintenance';
@@ -273,6 +275,16 @@ export default function TruckPage() {
           </h1>
           <p className="text-gray-600 text-xs sm:text-sm">Track mileage, gas, and maintenance</p>
         </div>
+        <a
+          href="https://www.bouncie.com/my-car"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
+        >
+          <MapPin className="w-3.5 h-3.5" />
+          GPS Tracking
+          <ExternalLink className="w-3 h-3" />
+        </a>
       </div>
 
       {error && (
