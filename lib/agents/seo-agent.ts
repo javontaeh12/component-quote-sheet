@@ -1,5 +1,10 @@
+import { createClient } from '@supabase/supabase-js';
 import { openai } from '@/lib/openai';
 import { calculateCost, extractUsage } from '@/lib/ai-costs';
+
+function getServiceClient() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+}
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://hardenhvacr.com';
 const TIMEOUT_MS = 10000;
@@ -297,6 +302,15 @@ export async function runSEOAudit(): Promise<SEOAuditResult> {
 
   // AI summary with prioritized recommendations
   const { summary, cost } = await buildSEOPrompt(allFindings, score);
+
+  // Log AI cost
+  const supabase = getServiceClient();
+  supabase.from('agent_logs').insert({
+    agent: 'seo',
+    action: 'seo_audit',
+    request_id: null,
+    details: { score, errors: errors, warnings: warnings, pages_audited: AUDIT_PAGES.length, cost },
+  } as Record<string, unknown>).then(() => {}, () => {});
 
   return { findings: allFindings, score, summary, aiCost: cost };
 }

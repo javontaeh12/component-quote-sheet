@@ -323,6 +323,14 @@ export async function runDevBot(supabase: SupabaseClient): Promise<DevBotResult>
     }
   }
 
+  // Log AI cost
+  await supabase.from('agent_logs').insert({
+    agent: 'webdev',
+    action: 'dev_bot_run',
+    request_id: null,
+    details: { fixes_applied: result.fixesApplied, files_changed: result.filesChanged, errors: result.errors.length, cost: result.totalCost },
+  } as Record<string, unknown>);
+
   return result;
 }
 

@@ -172,6 +172,14 @@ export async function runSecurityScan(supabase: SupabaseClient): Promise<{
     severity,
   } as Record<string, unknown>);
 
+  // Log AI cost to agent_logs
+  await supabase.from('agent_logs').insert({
+    agent: 'security',
+    action: 'daily_security_scan',
+    request_id: null,
+    details: { status, severity, findings_count: allFindings.length, fail_count: failCount, warn_count: warnCount, cost },
+  } as Record<string, unknown>);
+
   return { status, findings: allFindings, summary, severity, aiCost: cost };
 }
 

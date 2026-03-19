@@ -1,6 +1,10 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import { openai } from '@/lib/openai';
 import { calculateCost, extractUsage } from '@/lib/ai-costs';
+
+function getServiceClient() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+}
 
 // Sync completed payments to income table (avoids duplicates via invoice_number check)
 export async function autoLogPayments(supabase: SupabaseClient): Promise<number> {
@@ -208,6 +212,15 @@ Give 2-3 bullet points on cash flow health and any concerns. Keep it under 150 w
 
   const usage = extractUsage(response as unknown as Record<string, unknown>);
   const cost = calculateCost('gpt-5-mini', usage.input_tokens, usage.output_tokens);
+
+  // Log AI cost
+  const supabase = getServiceClient();
+  supabase.from('agent_logs').insert({
+    agent: 'finance',
+    action: 'financial_analysis',
+    request_id: null,
+    details: { period: snapshot.period, revenue: snapshot.grossRevenue, expenses: snapshot.totalExpenses, cost },
+  } as Record<string, unknown>).then(() => {}, () => {});
 
   return { analysis: response.output_text || 'No analysis generated.', cost };
 }
