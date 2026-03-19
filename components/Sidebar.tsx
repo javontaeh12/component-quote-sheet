@@ -36,6 +36,7 @@ import {
   ShoppingBag,
   Sparkles,
   Activity,
+  Phone,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -51,6 +52,7 @@ const navigation = [
   { name: 'AI Helper', href: '/admin/ai-helper', icon: MessageSquare },
   { name: 'AI Bots', href: '/admin/bots', icon: Sparkles },
   { name: 'AI Agents', href: '/admin/agents', icon: Activity },
+  { name: 'AI Calls', href: '/admin/calls', icon: Phone },
   { name: 'Truck', href: '/admin/truck', icon: Truck },
   { name: 'Service Web App', href: '/admin/tech', icon: Smartphone },
 ];
