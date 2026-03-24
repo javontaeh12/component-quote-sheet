@@ -9,7 +9,10 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, id, ...props }, ref) => {
+  ({ className, label, error, id, type, value, ...props }, ref) => {
+    // For number inputs, convert 0 to empty string so the field is clearable
+    const displayValue = type === 'number' && (value === 0 || value === '0') ? '' : value;
+
     return (
       <div className="w-full">
         {label && (
@@ -20,6 +23,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={id}
+          type={type}
+          value={displayValue}
           className={cn(
             'block w-full rounded-lg border border-border px-3 py-2 text-black placeholder-gray-400',
             'focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent',

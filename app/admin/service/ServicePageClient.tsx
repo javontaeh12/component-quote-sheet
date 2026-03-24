@@ -12,6 +12,7 @@ import {
   User,
   Phone,
   Search,
+  Trash2,
 } from 'lucide-react';
 
 interface WorkOrder {
@@ -175,6 +176,19 @@ export default function ServicePageClient({
         next.delete(id);
         return next;
       });
+    }
+  };
+
+  const deleteWorkOrder = async (id: string) => {
+    if (!confirm('Delete this work order? This cannot be undone.')) return;
+    try {
+      const res = await fetch(`/api/work-orders?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setWorkOrders((prev) => prev.filter((w) => w.id !== id));
+        if (selectedWO?.id === id) setSelectedWO(null);
+      }
+    } catch (err) {
+      console.error('Delete failed:', err);
     }
   };
 
@@ -353,6 +367,13 @@ export default function ServicePageClient({
                           )}
                         </Button>
                       )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteWorkOrder(wo.id); }}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Delete work order"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 </CardContent>
@@ -511,8 +532,8 @@ export default function ServicePageClient({
               {selectedWO.status !== 'completed' && (
                 <div className="flex gap-2">
                   <Input placeholder="Part name" value={newPart.name} onChange={(e) => setNewPart({ ...newPart, name: e.target.value })} className="flex-1" />
-                  <Input type="number" placeholder="Qty" value={newPart.quantity} onChange={(e) => setNewPart({ ...newPart, quantity: parseInt(e.target.value) || 1 })} className="w-16" />
-                  <Input type="number" placeholder="Cost" value={newPart.cost} onChange={(e) => setNewPart({ ...newPart, cost: parseFloat(e.target.value) || 0 })} className="w-20" />
+                  <Input type="number" placeholder="Qty" value={newPart.quantity} onChange={(e) => setNewPart({ ...newPart, quantity: e.target.value === '' ? 0 : parseInt(e.target.value) || 1 })} className="w-16" />
+                  <Input type="number" placeholder="Cost" value={newPart.cost} onChange={(e) => setNewPart({ ...newPart, cost: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 })} className="w-20" />
                   <Button onClick={addPartToWO} disabled={!newPart.name.trim()}>Add</Button>
                 </div>
               )}

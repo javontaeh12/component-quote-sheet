@@ -1083,6 +1083,10 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
   const navigateToStep = (stepNum: number) => {
     setStep(stepNum);
     setVisitedSteps(prev => new Set(prev).add(stepNum));
+    // Auto-generate AI summary when entering step 6 without one
+    if (stepNum === 6 && !aiSummary && !generatingSummary) {
+      setTimeout(() => generateAISummary(), 0);
+    }
   };
 
   // Step completion checks
@@ -2397,7 +2401,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                 label="Price"
                 type="number"
                 value={upg.price}
-                onChange={(e) => updateUpgrade(idx, { price: Number(e.target.value) })}
+                onChange={(e) => updateUpgrade(idx, { price: e.target.value === '' ? 0 : Number(e.target.value) })}
               />
               <div>
                 <label className="block text-sm font-medium text-navy mb-1">Priority</label>
@@ -2554,7 +2558,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                             type="number"
                             placeholder="Qty"
                             value={item.quantity}
-                            onChange={(e) => updateQuoteItem(optIdx, itemIdx, 'quantity', Number(e.target.value))}
+                            onChange={(e) => updateQuoteItem(optIdx, itemIdx, 'quantity', e.target.value === '' ? 0 : Number(e.target.value))}
                           />
                         </div>
                         <div className="w-24">
@@ -2562,7 +2566,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                             type="number"
                             placeholder="Price"
                             value={item.unit_price}
-                            onChange={(e) => updateQuoteItem(optIdx, itemIdx, 'unit_price', Number(e.target.value))}
+                            onChange={(e) => updateQuoteItem(optIdx, itemIdx, 'unit_price', e.target.value === '' ? 0 : Number(e.target.value))}
                           />
                         </div>
                         <span className="text-sm font-medium text-navy w-20 text-right py-2">

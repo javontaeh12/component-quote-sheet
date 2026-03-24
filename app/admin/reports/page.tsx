@@ -320,7 +320,7 @@ export default function ReportsPage() {
               <select value={newRec.priority} onChange={(e) => setNewRec({ ...newRec, priority: e.target.value })} className="border rounded-lg px-2 py-2 text-sm w-24">
                 {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
-              <Input type="number" placeholder="Cost" value={newRec.estimated_cost} onChange={(e) => setNewRec({ ...newRec, estimated_cost: parseFloat(e.target.value) || 0 })} className="w-24" />
+              <Input type="number" placeholder="Cost" value={newRec.estimated_cost} onChange={(e) => setNewRec({ ...newRec, estimated_cost: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 })} className="w-24" />
               <Button variant="outline" onClick={addRecommendation} disabled={!newRec.item.trim()}>Add</Button>
             </div>
           </div>

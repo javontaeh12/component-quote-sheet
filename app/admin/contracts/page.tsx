@@ -247,7 +247,7 @@ export default function ContractsPage() {
             </div>
             <Input label="Start Date" type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} required />
             <Input label="End Date" type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} required />
-            <Input label="Total Value ($)" type="number" value={form.total_value} onChange={(e) => setForm({ ...form, total_value: parseFloat(e.target.value) || 0 })} />
+            <Input label="Total Value ($)" type="number" value={form.total_value} onChange={(e) => setForm({ ...form, total_value: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 })} />
             <div className="flex items-center gap-2 pt-6">
               <input type="checkbox" id="auto_renew" checked={form.auto_renew} onChange={(e) => setForm({ ...form, auto_renew: e.target.checked })} className="rounded" />
               <label htmlFor="auto_renew" className="text-sm">Auto-renew</label>

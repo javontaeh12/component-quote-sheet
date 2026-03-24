@@ -308,7 +308,7 @@ export default function LeaderboardPage() {
               <option value="bonus">Bonus</option>
             </select>
           </div>
-          <Input label="Points" type="number" value={form.points} onChange={(e) => setForm({ ...form, points: parseInt(e.target.value) || 0 })} required />
+          <Input label="Points" type="number" value={form.points} onChange={(e) => setForm({ ...form, points: e.target.value === '' ? 0 : parseInt(e.target.value) || 0 })} required />
           <Input label="Description" placeholder="Reason..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => setIsAwardOpen(false)}>Cancel</Button>

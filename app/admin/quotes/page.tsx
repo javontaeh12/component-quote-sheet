@@ -333,11 +333,11 @@ export default function QuotesPage() {
                   </div>
                   <div className="w-16">
                     {i === 0 && <label className="text-xs text-gray-500">Qty</label>}
-                    <Input type="number" value={item.quantity} onChange={(e) => updateLineItem(i, 'quantity', parseInt(e.target.value) || 0)} />
+                    <Input type="number" value={item.quantity} onChange={(e) => updateLineItem(i, 'quantity', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)} />
                   </div>
                   <div className="w-24">
                     {i === 0 && <label className="text-xs text-gray-500">Unit $</label>}
-                    <Input type="number" value={item.unit_price} onChange={(e) => updateLineItem(i, 'unit_price', parseFloat(e.target.value) || 0)} />
+                    <Input type="number" value={item.unit_price} onChange={(e) => updateLineItem(i, 'unit_price', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)} />
                   </div>
                   <div className="w-20 text-right">
                     {i === 0 && <label className="text-xs text-gray-500">Total</label>}
@@ -356,7 +356,7 @@ export default function QuotesPage() {
             <div className="flex justify-between text-sm"><span className="text-gray-500">Tax (8%)</span><span>{formatCurrency(tax)}</span></div>
             <div className="flex justify-between text-sm items-center">
               <span className="text-gray-500">Discount</span>
-              <Input type="number" value={builderDiscount} onChange={(e) => setBuilderDiscount(parseFloat(e.target.value) || 0)} className="w-28 text-right" />
+              <Input type="number" value={builderDiscount} onChange={(e) => setBuilderDiscount(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)} className="w-28 text-right" />
             </div>
             <div className="flex justify-between text-lg font-bold border-t pt-2"><span>Total</span><span>{formatCurrency(total)}</span></div>
           </div>

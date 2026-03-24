@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, useRef, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
+import Script from 'next/script';
 import { useAuth } from '@/components/AuthProvider';
-import { ArrowLeft, DollarSign, CreditCard, Banknote, FileText, ChevronRight } from 'lucide-react';
+import { ArrowLeft, DollarSign, CreditCard, Banknote, FileText, ChevronRight, Loader2 } from 'lucide-react';
 
 interface WorkOrder {
   id: string;
@@ -42,6 +43,32 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
   const [checkNumber, setCheckNumber] = useState('');
   const [laborAmount, setLaborAmount] = useState(DEFAULT_LABOR);
   const { groupId, profile } = useAuth();
+  const [squareReady, setSquareReady] = useState(false);
+  const [cardProcessing, setCardProcessing] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const squareCardRef = useRef<any>(null);
+  const cardContainerRef = useRef<HTMLDivElement>(null);
+
+  const initSquareCard = useCallback(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const Square = (window as any).Square;
+    if (!Square || !cardContainerRef.current) return;
+
+    try {
+      const appId = process.env.NEXT_PUBLIC_SQUARE_APP_ID;
+      if (!appId) return;
+
+      const payments = Square.payments(appId, 'LTDTNWDKRJWZ9');
+      const card = await payments.card();
+      await card.attach(cardContainerRef.current);
+      squareCardRef.current = card;
+      setSquareReady(true);
+    } catch (err) {
+      console.error('Square card init error:', err);
+      setCardError('Failed to load card form');
+    }
+  }, []);
 
   // Load draft from server on mount
   useEffect(() => {
@@ -144,6 +171,52 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
     }
 
     try {
+      // Process Square card payment if card method
+      if (method === 'card') {
+        if (!squareCardRef.current) {
+          setCardError('Card form not loaded');
+          setSaving(false);
+          return;
+        }
+
+        setCardProcessing(true);
+        setCardError(null);
+
+        const tokenResult = await squareCardRef.current.tokenize();
+        if (tokenResult.status !== 'OK') {
+          setCardError(tokenResult.errors?.[0]?.message || 'Card tokenization failed');
+          setSaving(false);
+          setCardProcessing(false);
+          return;
+        }
+
+        // Process payment via Square API
+        const squareRes = await fetch('/api/square/payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sourceId: tokenResult.token,
+            amount: Math.round(grandTotal * 100) / 100,
+            currency: 'USD',
+            workOrderId: job.id,
+            customerName: job.customers?.full_name || 'Customer',
+            description: `Service payment — ${job.description?.split('\n')[0] || 'HVAC Service'}`,
+          }),
+        });
+
+        const squareData = await squareRes.json();
+        if (!squareData.success) {
+          setCardError(squareData.error || 'Payment failed');
+          setSaving(false);
+          setCardProcessing(false);
+          return;
+        }
+
+        payment.square_payment_id = squareData.paymentId;
+        payment.receipt_url = squareData.receiptUrl;
+        setCardProcessing(false);
+      }
+
       const res = await fetch('/api/work-orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -156,8 +229,10 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
       }
     } catch (err) {
       console.error('payment error:', err);
+      setCardError('Payment processing error');
     } finally {
       setSaving(false);
+      setCardProcessing(false);
     }
   };
 
@@ -227,8 +302,8 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
               <span className="text-gray-400 text-xs">$</span>
               <input
                 type="number"
-                value={laborAmount}
-                onChange={(e) => setLaborAmount(parseFloat(e.target.value) || 0)}
+                value={laborAmount === 0 ? '' : laborAmount}
+                onChange={(e) => setLaborAmount(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
                 className="w-20 text-right text-sm font-medium text-gray-900 border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -322,11 +397,32 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
       )}
 
       {method === 'card' && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <div className="flex items-center gap-3 text-gray-500">
-            <CreditCard className="w-5 h-5" />
-            <p className="text-sm">Process payment using external card reader, then confirm below.</p>
+        <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+          <Script
+            src="https://web.squarecdn.com/v1/square.js"
+            strategy="lazyOnload"
+            onLoad={() => initSquareCard()}
+          />
+          <div className="flex items-center gap-2 mb-2">
+            <CreditCard className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-700">Enter card details</span>
           </div>
+          <div ref={cardContainerRef} className="min-h-[44px] border border-gray-200 rounded-lg p-1" />
+          {!squareReady && !cardError && (
+            <div className="flex items-center gap-2 text-gray-400 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading card form...
+            </div>
+          )}
+          {cardError && (
+            <p className="text-sm text-red-600">{cardError}</p>
+          )}
+          {cardProcessing && (
+            <div className="flex items-center gap-2 text-blue-600 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Processing payment...
+            </div>
+          )}
         </div>
       )}
 
