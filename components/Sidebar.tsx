@@ -33,26 +33,37 @@ import {
   ClipboardCheck,
   Gift,
   Trophy,
+  Crown,
   ShoppingBag,
   Sparkles,
   Activity,
   Phone,
+  CircuitBoard,
 } from 'lucide-react';
 import { useState } from 'react';
 
-const navigation = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: typeof Sparkles;
+  forceReload?: boolean;
+}
+
+const navigation: NavItem[] = [
+  { name: 'Manager', href: '/admin/manager', icon: Sparkles },
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Inventory', href: '/admin/inventory', icon: Package },
   { name: 'Bookings', href: '/admin/bookings', icon: CalendarCheck },
   { name: 'Service', href: '/admin/service', icon: HardHat },
   { name: 'Payments', href: '/admin/payments', icon: CreditCard },
   { name: 'Customers', href: '/admin/customers', icon: Contact },
+  { name: 'Memberships', href: '/admin/memberships', icon: Crown },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { name: 'AI Bots', href: '/admin/bots', icon: Sparkles },
   { name: 'AI Agents', href: '/admin/agents', icon: Activity },
   { name: 'AI Calls', href: '/admin/calls', icon: Phone },
   { name: 'Truck', href: '/admin/truck', icon: Truck },
-  { name: 'Service Web App', href: '/admin/tech', icon: Smartphone },
+  { name: 'Service Web App', href: '/admin/tech', icon: Smartphone, forceReload: true },
 ];
 
 const hvacToolsNavigation = [
@@ -65,6 +76,7 @@ const hvacToolsNavigation = [
   { name: 'Service Report', href: '/admin/service-report', icon: FileText },
   { name: 'Rewards', href: '/admin/rewards', icon: Gift },
   { name: 'Installs', href: '/admin/installs', icon: Building2 },
+  { name: 'Control Boards', href: '/admin/control-boards', icon: CircuitBoard },
 ];
 
 const adminNavigation = [
@@ -120,21 +132,33 @@ export function Sidebar() {
         <ul className="space-y-1">
           {navigation.map((item) => {
             const isActive = pathname === item.href;
+            const linkClass = cn(
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              isActive
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-gray-700 hover:bg-gray-100'
+            );
             return (
               <li key={item.name}>
-                <Link
-                  href={item.href}
-                  onClick={() => setIsMobileOpen(false)}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  )}
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.name}
-                </Link>
+                {item.forceReload ? (
+                  <a
+                    href={item.href}
+                    onClick={() => setIsMobileOpen(false)}
+                    className={linkClass}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.name}
+                  </a>
+                ) : (
+                  <Link
+                    href={item.href}
+                    onClick={() => setIsMobileOpen(false)}
+                    className={linkClass}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.name}
+                  </Link>
+                )}
               </li>
             );
           })}
