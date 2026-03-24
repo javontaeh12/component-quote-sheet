@@ -129,6 +129,28 @@ export function ServiceReportPreview({ report, media, groupName, showActions = t
           </div>
         )}
 
+        {/* AI Customer Summary */}
+        {report.ai_customer_summary && (
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-br from-blue-50 to-white">
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">What We Found</h2>
+                <p className="text-sm text-gray-700 leading-relaxed">{report.ai_customer_summary.findings_summary}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-amber-700 mb-1">Why This Matters</h3>
+                <p className="text-sm text-gray-700 leading-relaxed">{report.ai_customer_summary.urgency_explanation}</p>
+              </div>
+              {report.ai_customer_summary.recommendation && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <h3 className="text-sm font-semibold text-green-800 mb-1">Our Recommendation</h3>
+                  <p className="text-sm text-green-700 leading-relaxed">{report.ai_customer_summary.recommendation}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Problem Found */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-2 mb-3">

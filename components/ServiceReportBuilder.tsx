@@ -53,6 +53,7 @@ import type {
   QuoteOption,
   QuoteOptionItem,
   ServiceUnit,
+  AISummary,
 } from '@/types';
 
 declare global {
@@ -98,7 +99,8 @@ const STEPS = [
   'Uploads',
   'Upgrades',
   'Quote Options',
-  'Review',
+  'AI Summary',
+  'Confirmation',
   'Payment',
 ];
 
@@ -481,6 +483,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
   const [savingScreenshot, setSavingScreenshot] = useState(false);
   const warrantyScreenshotRef = useRef<HTMLInputElement>(null);
 
+  // AI Summary state
+  const [aiSummary, setAiSummary] = useState<AISummary | null>(null);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState('');
+
   // Media state
   const [media, setMedia] = useState<ServiceReportMedia[]>([]);
   const [pendingFiles, setPendingFiles] = useState<{ file: File; caption: string; type: 'photo' | 'video' }[]>([]);
@@ -650,6 +657,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
     setUpgrades(data.upgrades || []);
     setTechNotes(data.tech_notes || '');
     setServiceDate(data.service_date || new Date().toISOString().split('T')[0]);
+    setAiSummary(data.ai_customer_summary || null);
     setSavedReportId(id);
 
     // Load media
@@ -682,8 +690,9 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       customer_name: customerName || null,
       customer_address: customerAddress || null,
       service_date: serviceDate,
+      ai_customer_summary: aiSummary || null,
     };
-  }, [customerId, units, profile, groupId, quoteOptions, selectedOptionIdx, upgrades, techNotes, customerName, customerAddress, serviceDate]);
+  }, [customerId, units, profile, groupId, quoteOptions, selectedOptionIdx, upgrades, techNotes, customerName, customerAddress, serviceDate, aiSummary]);
 
   const saveDraft = async (silent = false) => {
     if (!groupId) return;
@@ -1084,15 +1093,54 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       case 3: return media.length > 0 || pendingFiles.length > 0; // Uploads
       case 4: return true; // Upgrades are optional
       case 5: return quoteOptions.some(o => o.items.some(i => i.description.trim())); // Quote Options
+      case 6: return !!aiSummary && selectedOptionIdx !== null; // AI Summary + option selected
       default: return false;
     }
   };
 
-  // Review/Payment availability
+  // Availability checks
   const hasMedia = media.length > 0 || pendingFiles.length > 0;
   const allStepsVisited = [1, 2, 3, 4, 5].every(s => visitedSteps.has(s));
-  const reviewAvailable = selectedOptionIdx !== null && allStepsVisited;
+  const aiSummaryAvailable = allStepsVisited && quoteOptions.some(o => o.items.some(i => i.description.trim()));
+  const confirmationAvailable = !!aiSummary && selectedOptionIdx !== null;
   const paymentAvailable = !!signatureDataUrl;
+
+  // Generate AI customer summary
+  const generateAISummary = async () => {
+    setGeneratingSummary(true);
+    setSummaryError('');
+    try {
+      const res = await fetch('/api/service-report/ai-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          units: units.map(u => ({
+            equipment_type: u.equipment_info.equipment_type,
+            make: u.equipment_info.make,
+            model: u.equipment_info.model,
+            condition: u.equipment_info.condition,
+            problem_found: u.problem_found,
+            secondary_problems: u.secondary_problems,
+            severity: u.problem_details.severity,
+            symptoms: u.problem_details.symptoms,
+            areas_affected: u.problem_details.areas_affected,
+            health_ratings: u.health_ratings,
+          })),
+          tech_notes: techNotes,
+          quote_options: quoteOptions,
+          upgrades,
+          customer_name: customerName,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.error || 'Failed to generate summary');
+      setAiSummary(data.summary);
+    } catch (err) {
+      setSummaryError(err instanceof Error ? err.message : 'Failed to generate summary');
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
 
   // Step navigation
   const goNext = async () => {
@@ -1100,9 +1148,16 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       await saveDraft();
     }
     const nextStep = step + 1;
-    if (nextStep === 6 && !reviewAvailable) return;
-    if (nextStep === 7 && !paymentAvailable) return;
-    navigateToStep(Math.min(nextStep, 7));
+    if (nextStep === 6 && !aiSummaryAvailable) return;
+    if (nextStep === 7 && !confirmationAvailable) return;
+    if (nextStep === 8 && !paymentAvailable) return;
+    // Auto-generate AI summary when entering step 6 for the first time
+    if (nextStep === 6 && !aiSummary) {
+      navigateToStep(6);
+      generateAISummary();
+      return;
+    }
+    navigateToStep(Math.min(nextStep, 8));
   };
 
   const goBack = () => navigateToStep(Math.max(step - 1, 1));
@@ -2569,150 +2624,257 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
     </div>
   );
 
-  const renderReview = () => {
+  // --- Step 6: AI Customer Summary ---
+  const renderAISummary = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-navy flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-amber-500" /> Customer Summary
+        </h3>
+        {aiSummary && (
+          <button
+            type="button"
+            onClick={generateAISummary}
+            disabled={generatingSummary}
+            className="text-sm text-accent hover:underline flex items-center gap-1"
+          >
+            <Sparkles className="w-3 h-3" /> Regenerate
+          </button>
+        )}
+      </div>
+
+      {/* Loading State */}
+      {generatingSummary && (
+        <Card>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center py-12 gap-4">
+              <div className="w-10 h-10 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
+              <p className="text-sm text-steel font-medium">Generating customer summary...</p>
+              <p className="text-xs text-steel/60">AI is reviewing your notes and creating a clear explanation</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error State */}
+      {summaryError && !generatingSummary && (
+        <Card>
+          <CardContent>
+            <div className="text-center py-8 space-y-3">
+              <p className="text-red-600 text-sm font-medium">{summaryError}</p>
+              <Button size="sm" onClick={generateAISummary}>
+                <Sparkles className="w-4 h-4 mr-2" /> Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* AI Summary Content */}
+      {aiSummary && !generatingSummary && (
+        <>
+          {/* Findings */}
+          <Card>
+            <CardContent>
+              <h4 className="font-semibold text-navy mb-2 flex items-center gap-2">
+                <Info className="w-4 h-4 text-accent" /> What We Found
+              </h4>
+              <p className="text-sm text-navy/80 leading-relaxed">{aiSummary.findings_summary}</p>
+            </CardContent>
+          </Card>
+
+          {/* Urgency */}
+          <Card>
+            <CardContent>
+              <h4 className="font-semibold text-navy mb-2 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-500" /> Why This Matters
+              </h4>
+              <p className="text-sm text-navy/80 leading-relaxed">{aiSummary.urgency_explanation}</p>
+            </CardContent>
+          </Card>
+
+          {/* Options for Customer Selection */}
+          <div className="space-y-3">
+            <h4 className="font-semibold text-navy">Your Options</h4>
+            <p className="text-xs text-steel">Tap an option to select it</p>
+
+            {aiSummary.options_breakdown.map((opt, idx) => {
+              const matchingQuoteOpt = quoteOptions.find(q => q.label === opt.label);
+              const isSelected = selectedOptionIdx !== null && quoteOptions[selectedOptionIdx]?.label === opt.label;
+              const isRecommended = matchingQuoteOpt?.is_recommended;
+
+              return (
+                <button
+                  key={opt.label}
+                  type="button"
+                  onClick={() => {
+                    const qIdx = quoteOptions.findIndex(q => q.label === opt.label);
+                    if (qIdx !== -1) setSelectedOptionIdx(qIdx);
+                  }}
+                  className={`w-full text-left rounded-xl border-2 p-4 transition-all ${
+                    isSelected
+                      ? 'border-green-500 bg-green-50 shadow-md'
+                      : 'border-border hover:border-accent/40 hover:shadow-sm'
+                  }`}
+                >
+                  {/* Option Header */}
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                        isSelected ? 'bg-green-500 text-white' : 'bg-navy/10 text-navy'
+                      }`}>
+                        {isSelected ? <Check className="w-4 h-4" /> : opt.label}
+                      </span>
+                      <div>
+                        <span className="font-semibold text-navy">{opt.name}</span>
+                        {isRecommended && (
+                          <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 uppercase">Recommended</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-lg font-bold text-navy">{formatCurrency(opt.total)}</span>
+                  </div>
+
+                  {/* AI Description */}
+                  <p className="text-sm text-navy/70 mb-3 leading-relaxed">{opt.summary}</p>
+
+                  {/* Line Items */}
+                  {matchingQuoteOpt && (
+                    <div className="space-y-1 mb-3">
+                      {matchingQuoteOpt.items.filter(i => i.description.trim()).map((item, ii) => (
+                        <div key={ii} className="flex justify-between text-xs">
+                          <span className="text-steel">
+                            {item.description}
+                            {item.category === 'upgrade' && (
+                              <span className="ml-1 px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-medium">Upgrade</span>
+                            )}
+                          </span>
+                          <span className="text-navy font-medium">{formatCurrency(item.total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Upgrades included */}
+                  {opt.includes_upgrades && opt.includes_upgrades.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {opt.includes_upgrades.map(u => (
+                        <span key={u} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-600 border border-purple-200">
+                          + {u}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Value Note */}
+                  <p className="text-xs text-accent font-medium italic">{opt.value_note}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Recommendation */}
+          <Card>
+            <CardContent>
+              <h4 className="font-semibold text-navy mb-2 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-green-600" /> Our Recommendation
+              </h4>
+              <p className="text-sm text-navy/80 leading-relaxed">{aiSummary.recommendation}</p>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+
+  // --- Step 7: Confirmation (formerly Review) ---
+  const renderConfirmation = () => {
     const selectedCustomer = customers.find((c) => c.id === customerId);
     const selectedOpt = selectedOptionIdx !== null ? quoteOptions[selectedOptionIdx] : null;
+    const subtotal = selectedOpt?.subtotal || 0;
+    const tax = Math.round(subtotal * 0.075 * 100) / 100;
+    const total = Math.round((subtotal + tax) * 100) / 100;
 
     return (
       <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-navy">Review & Submit</h3>
+        <h3 className="text-lg font-semibold text-navy">Final Confirmation</h3>
 
-        {/* Customer Summary */}
-        {selectedCustomer && (
+        {/* AI Summary Recap */}
+        {aiSummary && (
           <Card>
             <CardContent>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-navy">Customer</h4>
-                <button type="button" onClick={() => navigateToStep(1)} className="text-sm text-accent hover:underline">Edit</button>
-              </div>
-              <p className="text-sm text-navy/80">{selectedCustomer.full_name}</p>
-              {selectedCustomer.address && <p className="text-xs text-steel">{selectedCustomer.address}</p>}
+              <h4 className="font-medium text-navy mb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-accent" /> Service Summary
+              </h4>
+              <p className="text-sm text-navy/70 leading-relaxed">{aiSummary.findings_summary}</p>
             </CardContent>
           </Card>
         )}
 
-        {/* Units Summary */}
-        {units.map((u, idx) => (
-          <Card key={u.id}>
-            <CardContent>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-navy">Unit {idx + 1}: {u.equipment_info.equipment_type || 'Unknown'}</h4>
-                <button type="button" onClick={() => { setActiveUnitIdx(idx); navigateToStep(2); }} className="text-sm text-accent hover:underline">Edit</button>
-              </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                {u.equipment_info.make && <p className="text-navy/80"><span className="text-steel">Make:</span> {u.equipment_info.make}</p>}
-                {u.equipment_info.model && <p className="text-navy/80"><span className="text-steel">Model:</span> {u.equipment_info.model}</p>}
-                {u.equipment_info.condition && <p className="text-navy/80"><span className="text-steel">Condition:</span> {u.equipment_info.condition}</p>}
-                {u.warranty_info.has_warranty && <p className="text-navy/80"><span className="text-steel">Warranty:</span> {u.warranty_info.warranty_type || 'Yes'}</p>}
-              </div>
-              {u.problem_found && (
-                <div className="mt-2 pt-2 border-t border-border/30">
-                  <p className="text-xs text-steel font-medium">Problem:</p>
-                  <p className="text-sm text-navy/80 line-clamp-2">{u.problem_found}</p>
-                  <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                    u.problem_details.severity === 'critical' ? 'bg-red-100 text-red-700' :
-                    u.problem_details.severity === 'high' ? 'bg-orange-100 text-orange-700' :
-                    u.problem_details.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-green-100 text-green-700'
-                  }`}>{u.problem_details.severity}</span>
-                </div>
-              )}
-              {u.secondary_problems && u.secondary_problems.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-border/30">
-                  <p className="text-xs text-steel font-medium mb-1">Secondary Problems:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {u.secondary_problems.map(p => (
-                      <span key={p} className="px-2 py-0.5 rounded-full text-xs bg-accent/10 text-accent font-medium">{p}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-
-        {/* Photos Summary */}
-        {media.length > 0 && (
-          <Card>
-            <CardContent>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-navy">Uploads ({media.length})</h4>
-                <button type="button" onClick={() => navigateToStep(3)} className="text-sm text-accent hover:underline">Edit</button>
-              </div>
-              <div className="flex gap-2 overflow-x-auto">
-                {media.slice(0, 6).map((m) => (
-                  <div key={m.id} className="flex-shrink-0">
-                    {m.type === 'photo' ? (
-                      <img src={m.url} alt={m.caption || ''} className="w-20 h-20 object-cover rounded" />
-                    ) : (
-                      <div className="w-20 h-20 bg-gray-200 rounded flex items-center justify-center text-xs text-steel">Video</div>
-                    )}
-                  </div>
-                ))}
-                {media.length > 6 && (
-                  <div className="w-20 h-20 bg-ice rounded flex items-center justify-center text-sm text-steel">+{media.length - 6}</div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Upgrades Summary */}
-        {upgrades.length > 0 && (
-          <Card>
-            <CardContent>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-navy">Upgrades ({upgrades.length})</h4>
-                <button type="button" onClick={() => navigateToStep(4)} className="text-sm text-accent hover:underline">Edit</button>
-              </div>
-              <div className="space-y-1">
-                {upgrades.map((u, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span className="text-navy/80">{u.name || 'Unnamed'}</span>
-                    <span className="font-medium text-navy">{formatCurrency(u.price)}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Selected Quote Option */}
+        {/* Selected Option + Cost Breakdown */}
         {selectedOpt && (
           <Card>
             <CardContent>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-xs">{selectedOpt.label}</span>
-                  <h4 className="font-medium text-navy">Selected: {selectedOpt.name || 'Unnamed Option'}</h4>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">
+                  <Check className="w-4 h-4" />
+                </span>
+                <div>
+                  <h4 className="font-semibold text-navy">{selectedOpt.name || 'Selected Option'}</h4>
+                  <p className="text-xs text-steel">Option {selectedOpt.label}</p>
                 </div>
-                <button type="button" onClick={() => navigateToStep(5)} className="text-sm text-accent hover:underline">Edit</button>
+                <button type="button" onClick={() => navigateToStep(6)} className="ml-auto text-sm text-accent hover:underline">Change</button>
               </div>
-              <div className="space-y-1.5">
-                {selectedOpt.items.map((item, i) => (
+
+              <div className="space-y-2 mb-4">
+                {selectedOpt.items.filter(i => i.description.trim()).map((item, i) => (
                   <div key={i} className="flex justify-between text-sm">
-                    <div className="flex-1">
-                      <span className="text-navy/80">{item.description || 'No description'}</span>
-                      <span className="text-steel/60 ml-2 text-xs">{QUOTE_ITEM_CATEGORIES.find(c => c.key === item.category)?.label || item.category}</span>
-                    </div>
-                    <div className="text-right flex-shrink-0 ml-4">
-                      <span className="text-steel text-xs">{item.quantity} x {formatCurrency(item.unit_price)}</span>
-                      <span className="font-medium text-navy ml-2">{formatCurrency(item.total)}</span>
-                    </div>
+                    <span className="text-navy/80">
+                      {item.description}
+                      {item.category === 'upgrade' && (
+                        <span className="ml-1 px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-medium">Upgrade</span>
+                      )}
+                    </span>
+                    <span className="font-medium text-navy">{formatCurrency(item.total)}</span>
                   </div>
                 ))}
               </div>
-              <div className="flex justify-end text-lg font-bold text-navy pt-2 mt-2 border-t border-border/50">
-                Total: {formatCurrency(selectedOpt.subtotal)}
+
+              <div className="border-t border-border/50 pt-3 space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-steel">Subtotal</span>
+                  <span className="text-navy">{formatCurrency(subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-steel">Tax (7.5%)</span>
+                  <span className="text-navy">{formatCurrency(tax)}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold pt-1">
+                  <span className="text-navy">Total</span>
+                  <span className="text-navy">{formatCurrency(total)}</span>
+                </div>
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Customer Info */}
+        {selectedCustomer && (
+          <div className="flex items-center gap-3 px-1">
+            <div className="w-10 h-10 rounded-full bg-navy/10 flex items-center justify-center text-navy font-bold text-sm">
+              {selectedCustomer.full_name.charAt(0)}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-navy">{selectedCustomer.full_name}</p>
+              {selectedCustomer.address && <p className="text-xs text-steel">{selectedCustomer.address}</p>}
+            </div>
+          </div>
         )}
 
         {/* Signature */}
         <div className="space-y-3">
           <h4 className="font-medium text-navy">Customer Signature</h4>
-          <p className="text-xs text-steel">By signing below, the customer accepts the selected quote option.</p>
+          <p className="text-xs text-steel">By signing below, you accept the selected service option and authorize the work to be performed.</p>
           <div className="border-2 border-dashed border-border rounded-lg p-4 min-h-[120px] flex items-center justify-center">
             {signatureDataUrl ? (
               <div className="relative w-full">
@@ -2748,14 +2910,13 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
           <Button variant="outline" onClick={() => saveDraft()} isLoading={saving}>
             <Save className="w-4 h-4 mr-2" /> Save Draft
           </Button>
-          <Button variant="secondary" onClick={generateReport} isLoading={saving}>
-            <Check className="w-4 h-4 mr-2" /> Generate Report
-          </Button>
           <Button
-            onClick={() => { if (paymentAvailable) navigateToStep(7); }}
+            onClick={() => { if (paymentAvailable) navigateToStep(8); }}
             disabled={!paymentAvailable}
+            size="lg"
+            className="flex-1"
           >
-            <CreditCard className="w-4 h-4 mr-2" /> Move to Payment
+            <CreditCard className="w-5 h-5 mr-2" /> Proceed to Payment — {formatCurrency(total)}
           </Button>
         </div>
       </div>
@@ -2917,8 +3078,9 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       case 3: return renderStep5(); // Uploads
       case 4: return renderUpgrades();
       case 5: return renderStep7(); // Quote Options
-      case 6: return renderReview();
-      case 7: return renderStep9(); // Payment
+      case 6: return renderAISummary();
+      case 7: return renderConfirmation();
+      case 8: return renderStep9(); // Payment
       default: return null;
     }
   };
@@ -2945,9 +3107,10 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
           {STEPS.map((s, i) => {
             const stepNum = i + 1;
             const isActive = step === stepNum;
-            const isReview = stepNum === 6;
-            const isPayment = stepNum === 7;
-            const canClick = isPayment ? paymentAvailable : isReview ? reviewAvailable : true;
+            const isAISummary = stepNum === 6;
+            const isConfirmation = stepNum === 7;
+            const isPayment = stepNum === 8;
+            const canClick = isPayment ? paymentAvailable : isConfirmation ? confirmationAvailable : isAISummary ? aiSummaryAvailable : true;
             return (
               <button
                 key={s}
@@ -2957,7 +3120,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                 className={`flex items-center gap-1 px-2 py-1.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
                   isActive
                     ? 'bg-ember text-white'
-                    : (isReview && !reviewAvailable) || (isPayment && !paymentAvailable)
+                    : (!canClick)
                     ? 'bg-gray-200 text-steel/60 cursor-not-allowed opacity-50'
                     : visitedSteps.has(stepNum) && isStepComplete(stepNum)
                     ? 'bg-accent-light text-accent hover:bg-accent-light/80 cursor-pointer'
@@ -2982,19 +3145,19 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       </div>
 
       {/* Footer Navigation */}
-      {step < 6 && (
+      {step <= 5 && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
           <Button variant="ghost" onClick={goBack} disabled={step === 1}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <span className="text-sm text-steel">Step {step} of 7</span>
-          {step === 5 && !reviewAvailable ? (
+          <span className="text-sm text-steel">Step {step} of 8</span>
+          {step === 5 && !aiSummaryAvailable ? (
             <div className="text-xs text-amber-600 font-medium max-w-[140px] text-right">
-              {selectedOptionIdx === null ? 'Select a quote option' : 'Visit all tabs to continue'}
+              Visit all tabs to continue
             </div>
           ) : (
             <Button onClick={goNext}>
-              Next <ChevronRight className="w-4 h-4 ml-1" />
+              {step === 5 ? (<><Sparkles className="w-4 h-4 mr-1" /> Generate Summary</>) : (<>Next <ChevronRight className="w-4 h-4 ml-1" /></>)}
             </Button>
           )}
         </div>
@@ -3004,8 +3167,16 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
           <Button variant="ghost" onClick={goBack}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <span className="text-sm text-steel">Step 6 of 7</span>
-          <div />
+          <span className="text-sm text-steel">Step 6 of 8</span>
+          {selectedOptionIdx !== null && aiSummary ? (
+            <Button onClick={goNext}>
+              Confirm <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          ) : (
+            <div className="text-xs text-amber-600 font-medium max-w-[140px] text-right">
+              {!aiSummary ? 'Generating...' : 'Select an option'}
+            </div>
+          )}
         </div>
       )}
       {step === 7 && (
@@ -3013,7 +3184,16 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
           <Button variant="ghost" onClick={goBack}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <span className="text-sm text-steel">Step 7 of 7</span>
+          <span className="text-sm text-steel">Step 7 of 8</span>
+          <div />
+        </div>
+      )}
+      {step === 8 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
+          <Button variant="ghost" onClick={goBack}>
+            <ChevronLeft className="w-4 h-4 mr-1" /> Back
+          </Button>
+          <span className="text-sm text-steel">Step 8 of 8</span>
           <div />
         </div>
       )}

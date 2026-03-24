@@ -444,9 +444,27 @@ export interface ServiceReport {
   service_date: string;
   report_url: string | null;
   share_token: string | null;
+  ai_customer_summary: AISummary | null;
   created_at: string;
   updated_at: string;
   customers?: { full_name: string; phone: string | null; address: string | null } | null;
+}
+
+export interface AISummaryOptionBreakdown {
+  label: string;
+  name: string;
+  summary: string;
+  includes_upgrades: string[];
+  total: number;
+  value_note: string;
+}
+
+export interface AISummary {
+  findings_summary: string;
+  urgency_explanation: string;
+  options_breakdown: AISummaryOptionBreakdown[];
+  recommendation: string;
+  ai_cost: number;
 }
 
 export interface ServiceReportMedia {
