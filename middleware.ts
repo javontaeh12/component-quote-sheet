@@ -53,8 +53,22 @@ export async function middleware(request: NextRequest) {
   }
 
   // Public routes that don't require auth
-  const publicRoutes = ['/', '/login', '/auth/callback', '/onboarding'];
-  const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith('/api/'));
+  const publicRoutes = [
+    '/',
+    '/login',
+    '/auth/callback',
+    '/onboarding',
+    '/api/pricing/public',
+    '/api/request',
+    '/api/webhooks/discord',
+    '/api/webhooks/inbound-email',
+    '/api/webhooks/vapi',
+    '/api/truck/bouncie/webhook',
+    '/api/truck/bouncie/auth',
+  ];
+  const isPublicRoute = publicRoutes.some(
+    (route) => pathname === route
+  ) || pathname.startsWith('/api/cron/');
 
   // If accessing admin routes without being logged in
   if (pathname.startsWith('/admin') || pathname === '/pending' || pathname === '/onboarding') {
@@ -111,7 +125,7 @@ export async function middleware(request: NextRequest) {
         }
 
         // Developer-only routes (restricted to specific email)
-        if ((pathname.startsWith('/admin/developer') || pathname === '/admin/create-group') && user.email !== 'javontaedharden@gmail.com') {
+        if ((pathname.startsWith('/admin/developer') || pathname === '/admin/create-group') && user.email !== (process.env.DEVELOPER_EMAIL || 'javontaedharden@gmail.com')) {
           const url = request.nextUrl.clone();
           url.pathname = '/admin';
           return redirect(url);

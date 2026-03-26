@@ -187,7 +187,7 @@ export default function AnalyticsPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => document.getElementById('section-revenue')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -198,7 +198,7 @@ export default function AnalyticsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => document.getElementById('section-methods')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -209,7 +209,7 @@ export default function AnalyticsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => document.getElementById('section-tech')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -220,7 +220,7 @@ export default function AnalyticsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => document.getElementById('section-revenue')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -234,7 +234,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Revenue Chart */}
-      <Card>
+      <Card id="section-revenue">
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Over Time</h3>
           {revenueByDay.length > 0 ? (
@@ -256,7 +256,7 @@ export default function AnalyticsPage() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Service Breakdown */}
-        <Card>
+        <Card id="section-service">
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Service Breakdown</h3>
             {serviceBreakdown.length > 0 ? (
@@ -275,7 +275,7 @@ export default function AnalyticsPage() {
         </Card>
 
         {/* Payment Methods */}
-        <Card>
+        <Card id="section-methods">
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Payment Method</h3>
             {methodBreakdown.length > 0 ? (
@@ -295,7 +295,7 @@ export default function AnalyticsPage() {
         </Card>
 
         {/* Booking Trends */}
-        <Card>
+        <Card id="section-days">
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Busiest Days</h3>
             <ResponsiveContainer width="100%" height={250}>
@@ -311,7 +311,7 @@ export default function AnalyticsPage() {
         </Card>
 
         {/* Tech Performance */}
-        <Card>
+        <Card id="section-tech">
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Tech Performance</h3>
             {techPerformance.length > 0 ? (

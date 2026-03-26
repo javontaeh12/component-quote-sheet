@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Bricolage_Grotesque } from "next/font/google";
 import Script from "next/script";
+import ChatWidget from "@/components/ChatWidget";
 import "./globals.css";
 
 const bebasNeue = Bebas_Neue({
@@ -83,6 +84,7 @@ export default function RootLayout({
           {`if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }`}
         </Script>
         {children}
+        <ChatWidget />
       </body>
     </html>
   );

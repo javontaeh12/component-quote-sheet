@@ -15,9 +15,62 @@ import {
   Calendar,
   MapPin,
   ExternalLink,
+  Satellite,
+  RefreshCw,
+  Loader2,
+  Activity,
+  Navigation,
+  Zap,
+  Battery,
+  AlertCircle,
 } from 'lucide-react';
 
-type Tab = 'inventory' | 'mileage' | 'gas' | 'maintenance';
+type Tab = 'bouncie' | 'inventory' | 'mileage' | 'gas' | 'maintenance';
+
+interface BouncieVehicle {
+  bouncie_id: string;
+  van_id: string | null;
+  vin: string | null;
+  year: number | null;
+  make: string | null;
+  model: string | null;
+  nickname: string | null;
+  odometer: number | null;
+  fuel_level: number | null;
+  battery_voltage: number | null;
+  last_lat: number | null;
+  last_lng: number | null;
+  last_location_at: string | null;
+  status: string;
+  synced_at: string;
+}
+
+interface BouncieSummary {
+  total_miles: number;
+  total_fuel_gallons: number;
+  avg_mpg: number;
+  total_drive_hours: number;
+  trip_count: number;
+  hard_brakes: number;
+  rapid_accels: number;
+  active_dtcs: number;
+}
+
+interface BouncieTrip {
+  id: string;
+  start_time: string;
+  end_time: string | null;
+  start_address: string | null;
+  end_address: string | null;
+  distance_miles: number | null;
+  duration_minutes: number | null;
+  max_speed_mph: number | null;
+  avg_speed_mph: number | null;
+  fuel_used_gallons: number | null;
+  mpg: number | null;
+  hard_brakes: number;
+  rapid_accels: number;
+}
 
 interface MileageLog {
   id: string;
@@ -74,8 +127,18 @@ function formatCurrency(amount: number): string {
 
 export default function TruckPage() {
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('mileage');
+  const [activeTab, setActiveTab] = useState<Tab>('bouncie');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+
+  // Bouncie state
+  const [bouncieVehicles, setBouncieVehicles] = useState<BouncieVehicle[]>([]);
+  const [bouncieSelected, setBouncieSelected] = useState<string>('');
+  const [bouncineSummary, setBouncineSummary] = useState<BouncieSummary | null>(null);
+  const [bouncieTrips, setBouncieTrips] = useState<BouncieTrip[]>([]);
+  const [bouncieConfigured, setBouncieConfigured] = useState<boolean | null>(null);
+  const [bouncieLoading, setBouncieLoading] = useState(false);
+  const [bouncineSyncing, setBouncineSyncing] = useState(false);
+  const [bouncieAuthUrl, setBouncieAuthUrl] = useState<string>('');
 
   // Mileage state
   const [mileageLogs, setMileageLogs] = useState<MileageLog[]>([]);
@@ -97,6 +160,95 @@ export default function TruckPage() {
   const [error, setError] = useState<string | null>(null);
 
   const vanId = profile?.van_id;
+
+  // Bouncie: fetch vehicles
+  const fetchBouncieVehicles = useCallback(async () => {
+    setBouncieLoading(true);
+    try {
+      const res = await fetch('/api/truck/bouncie?type=vehicles');
+      const data = await res.json();
+      setBouncieConfigured(data.configured ?? false);
+      if (data.vehicles) {
+        setBouncieVehicles(data.vehicles);
+        if (data.vehicles.length > 0 && !bouncieSelected) {
+          setBouncieSelected(data.vehicles[0].bouncie_id);
+        }
+      }
+    } catch {
+      setBouncieConfigured(false);
+    } finally {
+      setBouncieLoading(false);
+    }
+  }, [bouncieSelected]);
+
+  // Bouncie: fetch summary for selected vehicle
+  const fetchBouncineSummary = useCallback(async () => {
+    if (!bouncieSelected) return;
+    try {
+      const res = await fetch(`/api/truck/bouncie?type=summary&imei=${bouncieSelected}`);
+      const data = await res.json();
+      setBouncineSummary(data.summary || null);
+    } catch {
+      console.error('Failed to fetch Bouncie summary');
+    }
+  }, [bouncieSelected]);
+
+  // Bouncie: fetch trips
+  const fetchBouncieTrips = useCallback(async () => {
+    if (!bouncieSelected) return;
+    try {
+      const res = await fetch(`/api/truck/bouncie?type=trips&imei=${bouncieSelected}`);
+      const data = await res.json();
+      setBouncieTrips(data.trips || []);
+    } catch {
+      console.error('Failed to fetch Bouncie trips');
+    }
+  }, [bouncieSelected]);
+
+  // Bouncie: fetch auth URL
+  useEffect(() => {
+    if (bouncieConfigured === false) {
+      fetch('/api/truck/bouncie/auth')
+        .then(r => r.json())
+        .then(d => setBouncieAuthUrl(d.auth_url || ''))
+        .catch(() => {});
+    }
+  }, [bouncieConfigured]);
+
+  // Bouncie: load data when tab active or vehicle selected
+  useEffect(() => {
+    if (activeTab === 'bouncie') {
+      fetchBouncieVehicles();
+    }
+  }, [activeTab, fetchBouncieVehicles]);
+
+  useEffect(() => {
+    if (activeTab === 'bouncie' && bouncieSelected) {
+      fetchBouncineSummary();
+      fetchBouncieTrips();
+    }
+  }, [activeTab, bouncieSelected, fetchBouncineSummary, fetchBouncieTrips]);
+
+  // Bouncie: sync
+  const handleBouncieSync = async () => {
+    setBouncineSyncing(true);
+    try {
+      await fetch('/api/truck/bouncie/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'all' }),
+      });
+      await fetchBouncieVehicles();
+      if (bouncieSelected) {
+        await fetchBouncineSummary();
+        await fetchBouncieTrips();
+      }
+    } catch {
+      setError('Failed to sync Bouncie data');
+    } finally {
+      setBouncineSyncing(false);
+    }
+  };
 
   const fetchMileage = useCallback(async () => {
     setMileageLoading(true);
@@ -151,6 +303,7 @@ export default function TruckPage() {
     if (activeTab === 'mileage') fetchMileage();
     else if (activeTab === 'gas') fetchGas();
     else if (activeTab === 'maintenance') fetchMaintenance();
+    // bouncie tab is handled by its own useEffect above
   }, [activeTab, fetchMileage, fetchGas, fetchMaintenance]);
 
   // Mileage summary
@@ -169,6 +322,7 @@ export default function TruckPage() {
   const upcomingCount = upcomingMaintenance.length;
 
   const tabs = [
+    { id: 'bouncie' as Tab, label: 'GPS Live', icon: Satellite },
     { id: 'inventory' as Tab, label: 'Inventory', icon: Package },
     { id: 'mileage' as Tab, label: 'Mileage', icon: Gauge },
     { id: 'gas' as Tab, label: 'Gas', icon: Fuel },
@@ -275,16 +429,26 @@ export default function TruckPage() {
           </h1>
           <p className="text-gray-600 text-xs sm:text-sm">Track mileage, gas, and maintenance</p>
         </div>
-        <a
-          href="https://www.bouncie.com/my-car"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
-        >
-          <MapPin className="w-3.5 h-3.5" />
-          GPS Tracking
-          <ExternalLink className="w-3 h-3" />
-        </a>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleBouncieSync}
+            disabled={bouncineSyncing || bouncieConfigured === false}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-50"
+          >
+            {bouncineSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            Sync Bouncie
+          </button>
+          <a
+            href="https://www.bouncie.com/my-car"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            Bouncie App
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
       </div>
 
       {error && (
@@ -325,6 +489,394 @@ export default function TruckPage() {
             className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-black"
           />
         </div>
+      )}
+
+      {/* Bouncie GPS Live Tab */}
+      {activeTab === 'bouncie' && (
+        <>
+          {bouncieLoading && (
+            <div className="text-center py-12">
+              <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-3" />
+              <p className="text-gray-500 text-sm">Loading Bouncie data...</p>
+            </div>
+          )}
+
+          {!bouncieLoading && bouncieConfigured === false && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-8">
+                  <Satellite className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Connect Your Bouncie Device</h3>
+                  <p className="text-gray-600 text-sm mb-4 max-w-md mx-auto">
+                    Link your Bouncie GPS tracker to see real-time mileage, fuel data, and vehicle diagnostics right here.
+                  </p>
+                  {bouncieAuthUrl ? (
+                    <a
+                      href={bouncieAuthUrl}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
+                    >
+                      <Satellite className="w-4 h-4" />
+                      Connect Bouncie Account
+                    </a>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      Set <code className="bg-gray-100 px-1.5 py-0.5 rounded">BOUNCIE_CLIENT_ID</code> in your environment to get started.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {!bouncieLoading && bouncieConfigured && bouncieVehicles.length === 0 && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-8">
+                  <Truck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Vehicles Found</h3>
+                  <p className="text-gray-600 text-sm mb-4">Click &ldquo;Sync Bouncie&rdquo; to pull your vehicles from the Bouncie API.</p>
+                  <Button onClick={handleBouncieSync} isLoading={bouncineSyncing}>
+                    <RefreshCw className="w-4 h-4 mr-1" /> Sync Now
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {!bouncieLoading && bouncieConfigured && bouncieVehicles.length > 0 && (
+            <>
+              {/* Vehicle selector (if multiple) */}
+              {bouncieVehicles.length > 1 && (
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600">Vehicle:</label>
+                  <select
+                    value={bouncieSelected}
+                    onChange={(e) => setBouncieSelected(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900"
+                  >
+                    {bouncieVehicles.map((v) => (
+                      <option key={v.bouncie_id} value={v.bouncie_id}>
+                        {v.nickname || `${v.year || ''} ${v.make || ''} ${v.model || ''}`.trim() || v.bouncie_id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Vehicle info card */}
+              {(() => {
+                const v = bouncieVehicles.find(v => v.bouncie_id === bouncieSelected);
+                if (!v) return null;
+                return (
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h3 className="font-bold text-gray-900">
+                            {v.nickname || `${v.year || ''} ${v.make || ''} ${v.model || ''}`.trim()}
+                          </h3>
+                          {v.vin && <p className="text-xs text-gray-400 font-mono mt-0.5">VIN: {v.vin}</p>}
+                        </div>
+                        <div className={`px-2.5 py-1 rounded-full text-xs font-bold ${v.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                          {v.status === 'active' ? 'Active' : 'Inactive'}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Navigation className="w-3.5 h-3.5 text-blue-500" />
+                            <span className="text-[10px] text-gray-500 uppercase">Odometer</span>
+                          </div>
+                          <p className="text-sm font-bold text-gray-900">
+                            {v.odometer ? `${Math.round(v.odometer).toLocaleString()} mi` : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Fuel className="w-3.5 h-3.5 text-amber-500" />
+                            <span className="text-[10px] text-gray-500 uppercase">Fuel Level</span>
+                          </div>
+                          <p className="text-sm font-bold text-gray-900">
+                            {v.fuel_level != null ? `${Math.round(v.fuel_level)}%` : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Battery className="w-3.5 h-3.5 text-green-500" />
+                            <span className="text-[10px] text-gray-500 uppercase">Battery</span>
+                          </div>
+                          <p className="text-sm font-bold text-gray-900">
+                            {v.battery_voltage ? `${v.battery_voltage.toFixed(1)}V` : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <MapPin className="w-3.5 h-3.5 text-red-500" />
+                            <span className="text-[10px] text-gray-500 uppercase">Last Seen</span>
+                          </div>
+                          <p className="text-sm font-bold text-gray-900">
+                            {v.last_location_at
+                              ? new Date(v.last_location_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                              : 'N/A'}
+                          </p>
+                          {v.last_lat != null && v.last_lng != null && (
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${v.last_lat},${v.last_lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 mt-1 text-[11px] text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              <Navigation className="w-3 h-3" />
+                              {v.last_lat.toFixed(4)}, {v.last_lng.toFixed(4)}
+                              <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      {v.synced_at && (
+                        <p className="text-[10px] text-gray-400 mt-2 text-right">
+                          Last synced: {new Date(v.synced_at).toLocaleString()}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
+              {/* Live Map */}
+              {(() => {
+                const v = bouncieVehicles.find(v => v.bouncie_id === bouncieSelected);
+                if (!v || v.last_lat == null || v.last_lng == null) return null;
+                const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+                const lat = v.last_lat;
+                const lng = v.last_lng;
+                return (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-red-500" />
+                        Live Location
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      {apiKey ? (
+                        <iframe
+                          className="w-full h-64 md:h-96 rounded-lg border-0"
+                          loading="lazy"
+                          allowFullScreen
+                          referrerPolicy="no-referrer-when-downgrade"
+                          src={`https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${lat},${lng}&zoom=15`}
+                        />
+                      ) : (
+                        <div className="w-full h-64 md:h-96 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+                          Map unavailable — API key not configured
+                        </div>
+                      )}
+                      <div className="flex gap-3 mt-3">
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1"
+                        >
+                          <Button className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 rounded-lg">
+                            <Navigation className="w-4 h-4" />
+                            Open in Google Maps
+                          </Button>
+                        </a>
+                        <a
+                          href={`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1"
+                        >
+                          <Button className="w-full flex items-center justify-center gap-2 bg-[#33ccff] hover:bg-[#28b8e8] text-white text-sm py-2 rounded-lg">
+                            <ExternalLink className="w-4 h-4" />
+                            Open in Waze
+                          </Button>
+                        </a>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
+              {/* Monthly summary */}
+              {bouncineSummary && (
+                <>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <Card>
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Gauge className="w-4 h-4 text-blue-500" />
+                          <p className="text-xs font-medium text-gray-500">Miles This Month</p>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900">{bouncineSummary.total_miles.toLocaleString()}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Fuel className="w-4 h-4 text-amber-500" />
+                          <p className="text-xs font-medium text-gray-500">Fuel Used</p>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900">{bouncineSummary.total_fuel_gallons} gal</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Activity className="w-4 h-4 text-emerald-500" />
+                          <p className="text-xs font-medium text-gray-500">Avg MPG</p>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900">{bouncineSummary.avg_mpg}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Zap className="w-4 h-4 text-orange-500" />
+                          <p className="text-xs font-medium text-gray-500">Drive Hours</p>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900">{bouncineSummary.total_drive_hours}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Driving behavior */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <Card>
+                      <CardContent className="pt-4 pb-4 text-center">
+                        <p className="text-xs font-medium text-gray-500">Trips</p>
+                        <p className="text-xl font-bold text-gray-900 mt-1">{bouncineSummary.trip_count}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4 pb-4 text-center">
+                        <p className="text-xs font-medium text-gray-500">Hard Brakes</p>
+                        <p className={`text-xl font-bold mt-1 ${bouncineSummary.hard_brakes > 10 ? 'text-red-600' : 'text-gray-900'}`}>
+                          {bouncineSummary.hard_brakes}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4 pb-4 text-center">
+                        <p className="text-xs font-medium text-gray-500">Rapid Accels</p>
+                        <p className={`text-xl font-bold mt-1 ${bouncineSummary.rapid_accels > 10 ? 'text-orange-600' : 'text-gray-900'}`}>
+                          {bouncineSummary.rapid_accels}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* DTC alert */}
+                  {bouncineSummary.active_dtcs > 0 && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-red-700">
+                          {bouncineSummary.active_dtcs} Active Diagnostic Code{bouncineSummary.active_dtcs > 1 ? 's' : ''}
+                        </p>
+                        <p className="text-xs text-red-600">Check engine light or other DTCs detected</p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Recent trips */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Navigation className="w-5 h-5 text-blue-500" />
+                    Recent Trips (Last 7 Days)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {bouncieTrips.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">No trips recorded in the last 7 days</p>
+                  ) : (
+                    <>
+                      {/* Mobile card layout */}
+                      <div className="sm:hidden space-y-3">
+                        {bouncieTrips.slice(0, 20).map((trip) => (
+                          <div key={trip.id} className="p-3 bg-gray-50 rounded-lg">
+                            <div className="flex justify-between items-start">
+                              <p className="font-medium text-sm text-gray-900">
+                                {trip.start_time
+                                  ? new Date(trip.start_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                                  : 'Unknown'}
+                              </p>
+                              <span className="text-sm font-bold text-blue-600">
+                                {trip.distance_miles ? `${trip.distance_miles.toFixed(1)} mi` : '-'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                              {trip.duration_minutes && (
+                                <span>{Math.round(trip.duration_minutes)} min</span>
+                              )}
+                              {trip.avg_speed_mph && (
+                                <span>Avg {Math.round(trip.avg_speed_mph)} mph</span>
+                              )}
+                              {trip.mpg && (
+                                <span>{trip.mpg.toFixed(1)} mpg</span>
+                              )}
+                            </div>
+                            {trip.start_address && (
+                              <p className="text-[11px] text-gray-400 mt-1 truncate">{trip.start_address}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Desktop table */}
+                      <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="text-left text-sm text-gray-500 border-b">
+                              <th className="pb-3 font-medium">Date/Time</th>
+                              <th className="pb-3 font-medium">Distance</th>
+                              <th className="pb-3 font-medium">Duration</th>
+                              <th className="pb-3 font-medium">Avg Speed</th>
+                              <th className="pb-3 font-medium">MPG</th>
+                              <th className="pb-3 font-medium">From</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bouncieTrips.slice(0, 30).map((trip) => (
+                              <tr key={trip.id} className="border-b last:border-0">
+                                <td className="py-3 text-gray-900 text-sm">
+                                  {trip.start_time
+                                    ? new Date(trip.start_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                                    : '-'}
+                                </td>
+                                <td className="py-3 font-medium text-blue-600">
+                                  {trip.distance_miles ? `${trip.distance_miles.toFixed(1)} mi` : '-'}
+                                </td>
+                                <td className="py-3 text-gray-600">
+                                  {trip.duration_minutes ? `${Math.round(trip.duration_minutes)} min` : '-'}
+                                </td>
+                                <td className="py-3 text-gray-600">
+                                  {trip.avg_speed_mph ? `${Math.round(trip.avg_speed_mph)} mph` : '-'}
+                                </td>
+                                <td className="py-3 text-gray-600">
+                                  {trip.mpg ? trip.mpg.toFixed(1) : '-'}
+                                </td>
+                                <td className="py-3 text-gray-500 text-sm max-w-[200px] truncate">
+                                  {trip.start_address || '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </>
       )}
 
       {/* Inventory Tab */}

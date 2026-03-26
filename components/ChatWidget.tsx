@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { MessageCircle, Send, X, Phone } from 'lucide-react';
 
 interface ChatMessage {
@@ -8,14 +9,24 @@ interface ChatMessage {
   content: string;
 }
 
-const API_URL = 'https://customer-service-aiorchestrator-production.up.railway.app/api/chat';
+const QUICK_REPLIES = [
+  'Schedule Service',
+  'Get a Price Quote',
+  'Emergency Repair',
+  'Membership Info',
+];
 
 export default function ChatWidget() {
+  const pathname = usePathname();
+
+  // Hide on admin, portal, login, and onboarding pages
+  const hidden = pathname.startsWith('/admin') || pathname.startsWith('/portal') || pathname.startsWith('/login') || pathname.startsWith('/onboarding');
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: "Hi! I'm Alex from Harden HVAC. How can I help you today?",
+      content: "Hi! I'm Alex from Harden HVAC & Refrigeration. How can I help you today?",
     },
   ]);
   const [input, setInput] = useState('');
@@ -23,7 +34,6 @@ export default function ChatWidget() {
   const [phone, setPhone] = useState('');
   const [phoneCollected, setPhoneCollected] = useState(false);
   const [showPhonePrompt, setShowPhonePrompt] = useState(true);
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -31,56 +41,101 @@ export default function ChatWidget() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
+  // Only auto-focus on desktop (not mobile — prevents keyboard from popping up)
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      inputRef.current.focus();
+      const isMobile = window.innerWidth < 640;
+      if (!isMobile) {
+        inputRef.current.focus();
+      }
     }
   }, [isOpen]);
 
-  const sendMessage = async (messageText: string) => {
+  // Lock body scroll when chat is open on mobile
+  useEffect(() => {
+    const isMobile = window.innerWidth < 640;
+    if (isOpen && isMobile) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    } else {
+      document.body.style.overflow = '';
+    }
+  }, [isOpen]);
+
+  // Listen for 'open-chat' custom event from other components
+  useEffect(() => {
+    const handleOpenChat = () => setIsOpen(true);
+    window.addEventListener('open-chat', handleOpenChat);
+    return () => window.removeEventListener('open-chat', handleOpenChat);
+  }, []);
+
+  const sendMessage = useCallback(async (messageText: string) => {
     if (!messageText.trim() || isLoading) return;
 
     const userMessage: ChatMessage = { role: 'user', content: messageText.trim() };
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
 
+    // Add a placeholder for streaming assistant response
+    setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
     try {
-      const res = await fetch(API_URL, {
+      const res = await fetch('/api/customer-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: messageText.trim(),
-          session_id: sessionId || undefined,
+          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
           phone: phone || undefined,
-          name: undefined,
         }),
       });
 
       if (!res.ok) throw new Error('API error');
 
-      const data = await res.json();
-      if (data.session_id) setSessionId(data.session_id);
-      const assistantContent =
-        data?.reply || data?.response || data?.message || data?.text || "Sorry, I couldn't process that. Please try again or call us at (910) 546-6485.";
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No reader');
 
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: assistantContent },
-      ]);
+      const decoder = new TextDecoder();
+      let fullContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        fullContent += chunk;
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: 'assistant', content: fullContent };
+          return updated;
+        });
+      }
+
+      // If we got no content from streaming, set a fallback
+      if (!fullContent) {
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: 'assistant',
+            content: "Sorry, I couldn't process that. Please call us at (956) 669-9093 for help.",
+          };
+          return updated;
+        });
+      }
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
           role: 'assistant',
-          content:
-            "I'm having trouble connecting right now. Please call us directly at (910) 546-6485 for immediate help.",
-        },
-      ]);
+          content: "I'm having trouble connecting right now. Please call us directly at (956) 669-9093 for immediate help.",
+        };
+        return updated;
+      });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isLoading, messages, phone]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,13 +154,18 @@ export default function ChatWidget() {
     setShowPhonePrompt(false);
   };
 
+  const userMessageCount = messages.filter(m => m.role === 'user').length;
+  const showQuickReplies = userMessageCount === 0 && !isLoading;
+
+  if (hidden) return null;
+
   return (
     <>
       {/* Floating button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-[#1e40af] px-5 py-3 text-white shadow-lg transition-all hover:bg-blue-800 hover:shadow-xl active:scale-95"
+          className="fixed bottom-6 right-4 sm:right-6 z-50 flex items-center gap-2 rounded-full bg-[#1e40af] px-5 py-3 text-white shadow-lg transition-all hover:bg-blue-800 hover:shadow-xl active:scale-95"
         >
           <MessageCircle className="h-5 w-5" />
           <span className="text-sm font-medium">Chat with Alex</span>
@@ -114,7 +174,7 @@ export default function ChatWidget() {
 
       {/* Chat panel */}
       {isOpen && (
-        <div className="fixed bottom-0 right-0 z-50 flex h-[min(600px,100dvh)] w-full flex-col overflow-hidden bg-white shadow-2xl sm:bottom-6 sm:right-6 sm:h-[520px] sm:w-[380px] sm:rounded-2xl">
+        <div className="fixed bottom-0 right-0 z-50 flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-2xl sm:bottom-6 sm:right-6 sm:h-[520px] sm:w-[380px] sm:rounded-2xl">
           {/* Header */}
           <div className="flex items-center justify-between bg-[#1e40af] px-4 py-3 text-white">
             <div className="flex items-center gap-2">
@@ -123,7 +183,10 @@ export default function ChatWidget() {
               </div>
               <div>
                 <p className="text-sm font-semibold leading-tight">Alex</p>
-                <p className="text-xs leading-tight text-blue-200">Harden HVAC Assistant</p>
+                <div className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                  <p className="text-[11px] leading-tight text-blue-200">Online now</p>
+                </div>
               </div>
             </div>
             <button
@@ -143,20 +206,23 @@ export default function ChatWidget() {
                   key={i}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                      msg.role === 'user'
-                        ? 'rounded-br-md bg-[#1e40af] text-white'
-                        : 'rounded-bl-md bg-white text-gray-800 shadow-sm ring-1 ring-gray-100'
-                    }`}
-                  >
-                    {msg.content}
-                  </div>
+                  {/* Skip empty assistant placeholders */}
+                  {(msg.content || msg.role === 'user') && (
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                        msg.role === 'user'
+                          ? 'rounded-br-md bg-[#1e40af] text-white'
+                          : 'rounded-bl-md bg-white text-gray-800 shadow-sm ring-1 ring-gray-100'
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
+                  )}
                 </div>
               ))}
 
-              {/* Typing indicator */}
-              {isLoading && (
+              {/* Typing indicator — only when streaming hasn't started */}
+              {isLoading && messages[messages.length - 1]?.content === '' && (
                 <div className="flex justify-start">
                   <div className="rounded-2xl rounded-bl-md bg-white px-4 py-3 shadow-sm ring-1 ring-gray-100">
                     <div className="flex items-center gap-1">
@@ -165,6 +231,21 @@ export default function ChatWidget() {
                       <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:300ms]" />
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Quick reply chips */}
+              {showQuickReplies && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {QUICK_REPLIES.map((text) => (
+                    <button
+                      key={text}
+                      onClick={() => sendMessage(text)}
+                      className="rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100 active:scale-95"
+                    >
+                      {text}
+                    </button>
+                  ))}
                 </div>
               )}
 

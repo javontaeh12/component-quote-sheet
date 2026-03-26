@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 
 function createServiceClient() {
@@ -10,6 +11,12 @@ function createServiceClient() {
 
 export async function GET(request: NextRequest) {
   try {
+    const authClient = await createServerSupabaseClient();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const supabase = createServiceClient();
     const { searchParams } = new URL(request.url);
     const agent = searchParams.get('agent');

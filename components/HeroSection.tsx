@@ -1,6 +1,7 @@
+'use client';
+
 import Image from 'next/image';
-import Link from 'next/link';
-import { PhoneIcon, ShieldIcon, StarIcon, ClockIcon, CheckIcon } from './icons';
+import { PhoneIcon, ShieldIcon, StarIcon, ClockIcon, CheckIcon, MessageCircleIcon } from './icons';
 
 export default function HeroSection() {
   return (
@@ -29,12 +30,13 @@ export default function HeroSection() {
 
             {/* CTA buttons */}
             <div className="flex flex-col sm:flex-row gap-3 mb-8">
-              <Link
-                href="/request"
-                className="inline-flex items-center justify-center rounded-full bg-[var(--ember)] px-7 py-3.5 text-sm font-bold text-white hover:bg-[var(--ember-dark)] transition-all shadow-lg shadow-[var(--ember)]/30 hover:shadow-xl hover:-translate-y-0.5 uppercase tracking-wider"
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('open-chat'))}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--ember)] px-7 py-3.5 text-sm font-bold text-white hover:bg-[var(--ember-dark)] transition-all shadow-lg shadow-[var(--ember)]/30 hover:shadow-xl hover:-translate-y-0.5 uppercase tracking-wider"
               >
-                Book Service Now
-              </Link>
+                <MessageCircleIcon className="w-4 h-4" />
+                Chat with Alex
+              </button>
               <a
                 href="tel:9105466485"
                 className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-white/25 px-7 py-3.5 text-sm font-bold text-white hover:bg-white/10 transition-all uppercase tracking-wider"

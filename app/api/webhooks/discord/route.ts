@@ -120,6 +120,52 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // CSR booking approve/deny buttons
+    if (action === 'approvebooking' || action === 'denybooking') {
+      const bookingId = token; // token is actually the booking ID here
+      const bookingAction = action === 'approvebooking' ? 'approve' : 'deny';
+
+      after(async () => {
+        try {
+          const baseUrl = process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : 'https://hardenhvacr.com';
+
+          const res = await fetch(`${baseUrl}/api/csr/approve-booking`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ booking_id: bookingId, action: bookingAction }),
+          });
+
+          const result = await res.json();
+          const label = bookingAction === 'approve'
+            ? `Approved — invoice sent${result.invoice_sent ? '' : ' (no email on file)'}`
+            : 'Denied — customer notified';
+
+          await editInteractionResponse(interaction.token, applicationId, {
+            components: [{
+              type: 1,
+              components: [{
+                type: 2,
+                style: bookingAction === 'approve' ? 3 : 4,
+                label,
+                custom_id: `resolved_${bookingId}`,
+                disabled: true,
+              }],
+            }],
+          });
+        } catch (err) {
+          console.error('[discord] Booking action error:', err);
+          await editInteractionResponse(interaction.token, applicationId, {
+            content: 'Failed to process booking action. Try from the admin portal.',
+            components: [],
+          });
+        }
+      });
+
+      return NextResponse.json({ type: DEFERRED_UPDATE });
+    }
+
     // Approve, Reschedule, Cancel -> deferred update, then process
     after(async () => {
       await processButtonAction(action, token, interaction.token, applicationId);

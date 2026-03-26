@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   sendTechEnRoute,
@@ -6,7 +7,7 @@ import {
   sendServiceConfirmation,
 } from '@/lib/dispatch-emails';
 
-// Use service role client for API routes — middleware already verified auth
+// Use service role client for API routes — auth verified via getUser() check
 function createServiceClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,9 +17,29 @@ function createServiceClient() {
 
 export async function GET(request: NextRequest) {
   try {
+    const authClient = await createServerSupabaseClient();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Fetch user's profile to verify group access
+    const { data: profile } = await authClient
+      .from('profiles')
+      .select('group_id')
+      .eq('id', user.id)
+      .single();
+
     const supabase = createServiceClient();
     const { searchParams } = new URL(request.url);
     const group_id = searchParams.get('group_id');
+
+    // Verify user belongs to the requested group
+    const profileGroup = profile?.group_id;
+    if (group_id && group_id !== profileGroup) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     const status = searchParams.get('status');
     const tech_id = searchParams.get('tech_id');
     const unassigned = searchParams.get('unassigned');
@@ -65,8 +86,28 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const authClient = await createServerSupabaseClient();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Fetch user's profile to verify group access
+    const { data: profile } = await authClient
+      .from('profiles')
+      .select('group_id')
+      .eq('id', user.id)
+      .single();
+
     const supabase = createServiceClient();
     const body = await request.json();
+
+    // Verify user belongs to the requested group
+    const profileGroup = profile?.group_id;
+    const requestedGroup = body.group_id;
+    if (requestedGroup && requestedGroup !== profileGroup) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
 
     const { data: inserted, error: insertError } = await supabase
       .from('work_orders')
@@ -105,9 +146,29 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const authClient = await createServerSupabaseClient();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Fetch user's profile to verify group access
+    const { data: profile } = await authClient
+      .from('profiles')
+      .select('group_id')
+      .eq('id', user.id)
+      .single();
+
     const supabase = createServiceClient();
     const body = await request.json();
     const { id, ...updates } = body;
+
+    // Verify user belongs to the requested group
+    const profileGroup = profile?.group_id;
+    const requestedGroup = body.group_id;
+    if (requestedGroup && requestedGroup !== profileGroup) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
 
     // If completing, also deduct parts from inventory
     if (updates.status === 'completed' && updates.parts_used?.length) {
@@ -146,27 +207,26 @@ export async function PUT(request: NextRequest) {
       profiles = techData;
     }
 
-    // Trigger CSR auto-call when tech goes en_route with GPS
+    // Trigger CSR auto-call when tech goes en_route with GPS (direct import, no Railway)
     if (updates.status === 'en_route' && (updates.tech_lat || updates.tech_lng)) {
-      const csrUrl = process.env.CSR_ORCHESTRATOR_URL;
-      if (csrUrl) {
-        const customerData = updated.customers as { full_name?: string; phone?: string; address?: string } | null;
-        if (customerData?.phone) {
-          fetch(`${csrUrl}/api/dispatch/notify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              customer_phone: customerData.phone,
-              customer_name: customerData.full_name || null,
-              customer_address: customerData.address || null,
-              tech_name: profiles?.full_name || 'Your technician',
-              tech_lat: updates.tech_lat,
-              tech_lng: updates.tech_lng,
-              work_order_id: id,
-            }),
-          }).catch((err: unknown) => console.error('CSR en-route notify failed:', err));
-        }
+      const customerData = updated.customers as { full_name?: string; phone?: string; address?: string } | null;
+      if (customerData?.phone) {
+        import('@/lib/csr/agents/gps-eta').then(({ calculateETA, triggerEnRouteCall }) => {
+          calculateETA(updates.tech_lat, updates.tech_lng, customerData.address || 'Tallahassee, FL').then(eta => {
+            const now = new Date();
+            const arrivalTime = new Date(now.getTime() + eta.duration_seconds * 1000);
+            const etaTime = arrivalTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' });
+            triggerEnRouteCall(customerData.phone!, customerData.full_name || null, profiles?.full_name || 'Your technician', eta.duration_text, etaTime, id);
+          });
+        }).catch((err: unknown) => console.error('CSR en-route notify failed:', err));
       }
+    }
+
+    // Auto-invoice on work order completion
+    if (updates.status === 'completed') {
+      import('@/lib/csr/invoice').then(({ generateInvoice }) => {
+        generateInvoice(id).catch((err: unknown) => console.error('Auto-invoice failed:', err));
+      }).catch((err: unknown) => console.error('Invoice import failed:', err));
     }
 
     // Send status-change emails (async, non-blocking)
@@ -230,6 +290,12 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const authClient = await createServerSupabaseClient();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const supabase = createServiceClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

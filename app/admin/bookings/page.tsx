@@ -19,6 +19,7 @@ import {
   Calendar,
   List,
   Wrench,
+  Ban,
 } from 'lucide-react';
 
 interface Booking {
@@ -71,6 +72,7 @@ export default function BookingsPage() {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [linkedBookingIds, setLinkedBookingIds] = useState<Set<string>>(new Set());
   const [creatingWO, setCreatingWO] = useState<string | null>(null);
+  const [blockedDates, setBlockedDates] = useState<Set<string>>(new Set());
 
   // Add booking form state
   const [newBooking, setNewBooking] = useState({
@@ -84,7 +86,10 @@ export default function BookingsPage() {
   });
 
   useEffect(() => {
-    if (!authLoading) fetchBookings();
+    if (!authLoading) {
+      fetchBookings();
+      fetchBlockedDates();
+    }
   }, [authLoading]);
 
   const fetchBookings = async () => {
@@ -155,6 +160,38 @@ export default function BookingsPage() {
       });
     } catch (err) {
       console.error('Failed to add booking:', err);
+    }
+  };
+
+  const fetchBlockedDates = async () => {
+    try {
+      const res = await fetch('/api/blocked-dates');
+      if (res.ok) {
+        const data = await res.json();
+        setBlockedDates(new Set(data.map((d: { date: string }) => d.date)));
+      }
+    } catch (err) {
+      console.error('Failed to fetch blocked dates:', err);
+    }
+  };
+
+  const toggleBlockedDate = async (dateStr: string) => {
+    if (blockedDates.has(dateStr)) {
+      // Unblock
+      const res = await fetch(`/api/blocked-dates?date=${dateStr}`, { method: 'DELETE' });
+      if (res.ok) {
+        setBlockedDates(prev => { const next = new Set(prev); next.delete(dateStr); return next; });
+      }
+    } else {
+      // Block
+      const res = await fetch('/api/blocked-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: dateStr, reason: 'Blocked by admin' }),
+      });
+      if (res.ok) {
+        setBlockedDates(prev => new Set(prev).add(dateStr));
+      }
     }
   };
 
@@ -492,39 +529,60 @@ export default function BookingsPage() {
                   new Date().getDate() === day &&
                   new Date().getMonth() === calendarDate.getMonth() &&
                   new Date().getFullYear() === calendarDate.getFullYear();
+                const dateStr = day
+                  ? `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                  : '';
+                const isBlocked = day ? blockedDates.has(dateStr) : false;
 
                 return (
                   <div
                     key={idx}
-                    className={`bg-white min-h-[80px] sm:min-h-[100px] p-1 sm:p-2 ${
-                      !day ? 'bg-gray-50' : ''
+                    className={`min-h-[80px] sm:min-h-[100px] p-1 sm:p-2 ${
+                      !day ? 'bg-gray-50' : isBlocked ? 'bg-red-50' : 'bg-white'
                     }`}
                   >
                     {day && (
                       <>
-                        <span
-                          className={`text-sm font-medium ${
-                            isToday
-                              ? 'bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center'
-                              : 'text-gray-700'
-                          }`}
-                        >
-                          {day}
-                        </span>
-                        <div className="mt-1 space-y-0.5">
-                          {dayBookings.slice(0, 3).map((b) => (
-                            <div
-                              key={b.id}
-                              className={`text-[10px] sm:text-xs px-1 py-0.5 rounded truncate cursor-pointer ${STATUS_COLORS[b.status]}`}
-                              onClick={() => { setSelectedBooking(b); setIsDetailOpen(true); }}
-                            >
-                              {b.name}
-                            </div>
-                          ))}
-                          {dayBookings.length > 3 && (
-                            <p className="text-[10px] text-gray-500">+{dayBookings.length - 3} more</p>
-                          )}
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-sm font-medium ${
+                              isToday
+                                ? 'bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center'
+                                : isBlocked ? 'text-red-400' : 'text-gray-700'
+                            }`}
+                          >
+                            {day}
+                          </span>
+                          <button
+                            onClick={() => toggleBlockedDate(dateStr)}
+                            className={`p-0.5 rounded transition-colors ${
+                              isBlocked
+                                ? 'text-red-500 hover:text-red-700 hover:bg-red-100'
+                                : 'text-gray-300 hover:text-red-500 hover:bg-red-50'
+                            }`}
+                            title={isBlocked ? 'Unblock this day' : 'Block this day'}
+                          >
+                            <Ban className="w-3 h-3" />
+                          </button>
                         </div>
+                        {isBlocked ? (
+                          <p className="text-[10px] text-red-400 font-medium mt-1">Blocked</p>
+                        ) : (
+                          <div className="mt-1 space-y-0.5">
+                            {dayBookings.slice(0, 3).map((b) => (
+                              <div
+                                key={b.id}
+                                className={`text-[10px] sm:text-xs px-1 py-0.5 rounded truncate cursor-pointer ${STATUS_COLORS[b.status]}`}
+                                onClick={() => { setSelectedBooking(b); setIsDetailOpen(true); }}
+                              >
+                                {b.name}
+                              </div>
+                            ))}
+                            {dayBookings.length > 3 && (
+                              <p className="text-[10px] text-gray-500">+{dayBookings.length - 3} more</p>
+                            )}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

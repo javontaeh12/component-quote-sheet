@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useMemo, Fragment } from 'react';
-import { createClient } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { Card, CardContent, Input, Select } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
@@ -41,18 +40,29 @@ interface CallSession {
 }
 
 const INTENT_COLORS: Record<string, string> = {
-  booking: 'bg-blue-100 text-blue-700',
+  // CSR pipeline intent names
+  book_service: 'bg-blue-100 text-blue-700',
+  get_quote: 'bg-indigo-100 text-indigo-700',
+  check_status: 'bg-teal-100 text-teal-700',
   emergency: 'bg-red-100 text-red-700',
-  inquiry: 'bg-purple-100 text-purple-700',
+  general_question: 'bg-purple-100 text-purple-700',
   complaint: 'bg-orange-100 text-orange-700',
   cancel: 'bg-gray-100 text-gray-700',
   reschedule: 'bg-amber-100 text-amber-700',
+  // Legacy names (backwards compat)
+  booking: 'bg-blue-100 text-blue-700',
+  inquiry: 'bg-purple-100 text-purple-700',
   followup: 'bg-teal-100 text-teal-700',
   estimate: 'bg-indigo-100 text-indigo-700',
   maintenance: 'bg-green-100 text-green-700',
 };
 
 const URGENCY_COLORS: Record<string, string> = {
+  routine: 'bg-green-100 text-green-700',
+  soon: 'bg-yellow-100 text-yellow-700',
+  urgent: 'bg-orange-100 text-orange-700',
+  emergency: 'bg-red-100 text-red-700',
+  // Legacy names
   low: 'bg-green-100 text-green-700',
   medium: 'bg-yellow-100 text-yellow-700',
   high: 'bg-orange-100 text-orange-700',
@@ -60,8 +70,13 @@ const URGENCY_COLORS: Record<string, string> = {
 };
 
 const OUTCOME_COLORS: Record<string, string> = {
+  // CSR pipeline outcomes
+  proposed: 'bg-green-100 text-green-700',
   booked: 'bg-green-100 text-green-700',
   escalated: 'bg-red-100 text-red-700',
+  answered: 'bg-blue-100 text-blue-700',
+  pending: 'bg-yellow-100 text-yellow-700',
+  // Legacy outcomes
   resolved: 'bg-blue-100 text-blue-700',
   voicemail: 'bg-gray-100 text-gray-700',
   dropped: 'bg-gray-100 text-gray-500',
@@ -72,15 +87,14 @@ const OUTCOME_COLORS: Record<string, string> = {
 
 const INTENT_OPTIONS = [
   { value: '', label: 'All Intents' },
-  { value: 'booking', label: 'Booking' },
+  { value: 'book_service', label: 'Book Service' },
+  { value: 'get_quote', label: 'Get Quote' },
+  { value: 'check_status', label: 'Check Status' },
   { value: 'emergency', label: 'Emergency' },
-  { value: 'inquiry', label: 'Inquiry' },
+  { value: 'general_question', label: 'General Question' },
   { value: 'complaint', label: 'Complaint' },
   { value: 'cancel', label: 'Cancel' },
   { value: 'reschedule', label: 'Reschedule' },
-  { value: 'followup', label: 'Follow-up' },
-  { value: 'estimate', label: 'Estimate' },
-  { value: 'maintenance', label: 'Maintenance' },
 ];
 
 function formatDuration(seconds: number | null): string {
@@ -133,15 +147,14 @@ export default function CallsPage() {
 
   const fetchCalls = async () => {
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('call_sessions')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-      setCalls(data || []);
+      const res = await fetch('/api/call-sessions');
+      if (!res.ok) throw new Error('Failed to fetch');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setCalls(data);
+      } else {
+        throw new Error(data.error || 'Invalid response');
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);

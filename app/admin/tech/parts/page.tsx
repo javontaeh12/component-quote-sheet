@@ -71,6 +71,7 @@ export default function PartsStorePage() {
   const pathname = usePathname();
   const lookupHref = pathname.startsWith('/admin/tech') ? '/admin/tech/parts/lookup' : '/admin/parts-store/lookup';
   const scanHref = pathname.startsWith('/admin/tech') ? '/admin/tech/parts/scan' : '/admin/parts-store/scan';
+  const searchHref = pathname.startsWith('/admin/tech') ? '/admin/tech/parts/search' : '/admin/parts-store/search';
   const [parts, setParts] = useState<SupplierPart[]>([]);
   const [markupRules, setMarkupRules] = useState<MarkupRule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -358,6 +359,13 @@ export default function PartsStorePage() {
           >
             <Cpu className="w-4 h-4" />
             Parts Lookup
+          </Link>
+          <Link
+            href={searchHref}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
+          >
+            <Search className="w-4 h-4" />
+            Search Suppliers
           </Link>
           <button
             onClick={() => setShowMarkupSettings(true)}

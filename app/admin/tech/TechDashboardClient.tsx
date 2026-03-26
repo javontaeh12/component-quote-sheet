@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MapPin, Play, Calendar, Wrench, CheckCircle2, DollarSign, ChevronDown, ChevronUp, Clock, Sparkles } from 'lucide-react';
+import { MapPin, Play, Calendar, Wrench, CheckCircle2, DollarSign, ChevronDown, ChevronUp, Clock, Sparkles, Phone } from 'lucide-react';
 import Link from 'next/link';
 
 interface WorkOrder {
@@ -204,6 +204,15 @@ export default function TechDashboardClient({ jobs, firstName }: TechDashboardCl
               </p>
             )}
             <div className="flex gap-2">
+              {nextJob.customers?.phone && (
+                <a
+                  href={`tel:${nextJob.customers.phone}`}
+                  className="flex items-center justify-center gap-1.5 flex-1 py-2.5 rounded-lg border border-border text-sm font-medium text-navy hover:bg-ice"
+                >
+                  <Phone className="w-4 h-4" />
+                  Call
+                </a>
+              )}
               {nextJob.customers?.address && (
                 <a
                   href={`https://maps.google.com/?q=${encodeURIComponent(nextJob.customers.address)}`}
@@ -211,7 +220,7 @@ export default function TechDashboardClient({ jobs, firstName }: TechDashboardCl
                   rel="noopener noreferrer"
                   className="flex-1 text-center py-2.5 rounded-lg border border-border text-sm font-medium text-navy hover:bg-ice"
                 >
-                  Open in Maps
+                  Maps
                 </a>
               )}
               <button

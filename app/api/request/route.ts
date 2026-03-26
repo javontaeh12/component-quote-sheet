@@ -8,7 +8,7 @@ const supabase = createClient(
 );
 
 const getResend = () => new Resend(process.env.RESEND_API_KEY);
-const OWNER_EMAIL = 'Javontaedharden@gmail.com';
+const OWNER_EMAIL = process.env.ADMIN_EMAIL || 'Javontaedharden@gmail.com';
 
 function urgencyLabel(val: string) {
   const map: Record<string, string> = {

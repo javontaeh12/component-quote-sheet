@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 
 const getResend = () => new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = 'Harden HVAC <onboarding@resend.dev>';
+const FROM_EMAIL = 'Harden HVAC <noreply@hardenhvacr.com>';
 const OWNER_EMAIL = 'Javontaedharden@gmail.com';
 const INBOUND_DOMAIN = process.env.RESEND_INBOUND_DOMAIN || 'inbound.hardenhvacr.com';
 

@@ -16,21 +16,24 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
 
-    // Verify Svix webhook signature
+    // Verify Svix webhook signature (mandatory)
     const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const wh = new Webhook(webhookSecret);
-      const headers = {
-        'svix-id': request.headers.get('svix-id') || '',
-        'svix-timestamp': request.headers.get('svix-timestamp') || '',
-        'svix-signature': request.headers.get('svix-signature') || '',
-      };
-      try {
-        wh.verify(body, headers);
-      } catch {
-        console.error('Webhook signature verification failed');
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-      }
+    if (!webhookSecret) {
+      console.error('RESEND_WEBHOOK_SECRET is not configured');
+      return NextResponse.json({ error: 'Webhook verification not configured' }, { status: 500 });
+    }
+
+    const wh = new Webhook(webhookSecret);
+    const headers = {
+      'svix-id': request.headers.get('svix-id') || '',
+      'svix-timestamp': request.headers.get('svix-timestamp') || '',
+      'svix-signature': request.headers.get('svix-signature') || '',
+    };
+    try {
+      wh.verify(body, headers);
+    } catch {
+      console.error('Webhook signature verification failed');
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
     const payload = JSON.parse(body);

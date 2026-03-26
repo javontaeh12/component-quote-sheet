@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { createCalendarEvent, deleteCalendarEvent } from '@/lib/csr/integrations/google-calendar';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -9,10 +10,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Fetch user's profile to verify group access
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('group_id')
+      .eq('id', user.id)
+      .single();
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const search = searchParams.get('search');
     const group_id = searchParams.get('group_id');
+
+    // Verify user belongs to the requested group
+    const profileGroup = profile?.group_id;
+    const requestedGroup = group_id;
+    if (requestedGroup && requestedGroup !== profileGroup) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
 
     let query = supabase.from('bookings').select('*').order('start_time', { ascending: false });
 
@@ -38,7 +53,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Fetch user's profile to verify group access
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('group_id')
+      .eq('id', user.id)
+      .single();
+
     const body = await request.json();
+
+    // Verify user belongs to the requested group
+    const profileGroup = profile?.group_id;
+    const requestedGroup = body.group_id;
+    if (requestedGroup && requestedGroup !== profileGroup) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
 
     const { data, error } = await supabase
       .from('bookings')
@@ -47,6 +76,32 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // After successful insert, sync to Google Calendar
+    try {
+      const startDate = data.start_time.split('T')[0]; // YYYY-MM-DD
+      const startHour = new Date(data.start_time).getHours();
+      const timeFrame = startHour < 12 ? '8 AM - 12 PM' : '12 PM - 5 PM';
+
+      const eventId = await createCalendarEvent({
+        summary: `${data.service_type} - ${data.name}`,
+        description: data.notes || data.service_type,
+        startDate,
+        timeFrame,
+        customerName: data.name,
+        customerPhone: data.contact || '',
+      });
+
+      if (eventId) {
+        await supabase
+          .from('bookings')
+          .update({ google_event_id: eventId })
+          .eq('id', data.id);
+        data.google_event_id = eventId;
+      }
+    } catch (calErr) {
+      console.error('Google Calendar sync failed (non-blocking):', calErr);
+    }
 
     return NextResponse.json(data);
   } catch (error) {
@@ -66,6 +121,13 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, ...updates } = body;
 
+    // Fetch the existing booking to check for old google_event_id and start_time
+    const { data: oldBooking } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', id)
+      .single();
+
     const { data, error } = await supabase
       .from('bookings')
       .update(updates)
@@ -74,6 +136,40 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // If start_time changed, delete old calendar event and create a new one
+    if (updates.start_time && oldBooking && updates.start_time !== oldBooking.start_time) {
+      try {
+        // Delete old event if it exists
+        if (oldBooking.google_event_id) {
+          await deleteCalendarEvent(oldBooking.google_event_id);
+        }
+
+        // Create new event with updated time
+        const startDate = data.start_time.split('T')[0];
+        const startHour = new Date(data.start_time).getHours();
+        const timeFrame = startHour < 12 ? '8 AM - 12 PM' : '12 PM - 5 PM';
+
+        const eventId = await createCalendarEvent({
+          summary: `${data.service_type} - ${data.name}`,
+          description: data.notes || data.service_type,
+          startDate,
+          timeFrame,
+          customerName: data.name,
+          customerPhone: data.contact || '',
+        });
+
+        if (eventId) {
+          await supabase
+            .from('bookings')
+            .update({ google_event_id: eventId })
+            .eq('id', data.id);
+          data.google_event_id = eventId;
+        }
+      } catch (calErr) {
+        console.error('Google Calendar sync failed on update (non-blocking):', calErr);
+      }
+    }
 
     return NextResponse.json(data);
   } catch (error) {
