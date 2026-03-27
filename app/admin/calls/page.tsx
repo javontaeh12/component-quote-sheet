@@ -3,6 +3,11 @@
 import { useEffect, useState, useMemo, Fragment } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Card, CardContent, Input, Select } from '@/components/ui';
+import { Badge } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { useToast } from '@/hooks/useToast';
+import { CALL_INTENT, CALL_OUTCOME, URGENCY_LEVELS } from '@/lib/status';
+import type { BadgeVariant } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import {
@@ -39,51 +44,88 @@ interface CallSession {
   created_at: string;
 }
 
-const INTENT_COLORS: Record<string, string> = {
-  // CSR pipeline intent names
-  book_service: 'bg-blue-100 text-blue-700',
-  get_quote: 'bg-indigo-100 text-indigo-700',
-  check_status: 'bg-teal-100 text-teal-700',
-  emergency: 'bg-red-100 text-red-700',
-  general_question: 'bg-purple-100 text-purple-700',
-  complaint: 'bg-orange-100 text-orange-700',
-  cancel: 'bg-gray-100 text-gray-700',
-  reschedule: 'bg-amber-100 text-amber-700',
-  // Legacy names (backwards compat)
-  booking: 'bg-blue-100 text-blue-700',
-  inquiry: 'bg-purple-100 text-purple-700',
-  followup: 'bg-teal-100 text-teal-700',
-  estimate: 'bg-indigo-100 text-indigo-700',
-  maintenance: 'bg-green-100 text-green-700',
-};
+/* ---------- Intent badge variant mapping ---------- */
+function getIntentVariant(intent: string): BadgeVariant {
+  // Check centralized status config first
+  const config = CALL_INTENT[intent];
+  if (config) return config.variant as BadgeVariant;
 
-const URGENCY_COLORS: Record<string, string> = {
-  routine: 'bg-green-100 text-green-700',
-  soon: 'bg-yellow-100 text-yellow-700',
-  urgent: 'bg-orange-100 text-orange-700',
-  emergency: 'bg-red-100 text-red-700',
-  // Legacy names
-  low: 'bg-green-100 text-green-700',
-  medium: 'bg-yellow-100 text-yellow-700',
-  high: 'bg-orange-100 text-orange-700',
-  critical: 'bg-red-100 text-red-700',
-};
+  // Fallback mapping for CSR pipeline names
+  const map: Record<string, BadgeVariant> = {
+    book_service: 'info',
+    get_quote: 'premium',
+    check_status: 'info',
+    emergency: 'danger',
+    general_question: 'default',
+    complaint: 'danger',
+    cancel: 'default',
+    reschedule: 'warning',
+    // Legacy
+    booking: 'info',
+    inquiry: 'default',
+    followup: 'info',
+    estimate: 'premium',
+    maintenance: 'success',
+  };
+  return map[intent] || 'default';
+}
 
-const OUTCOME_COLORS: Record<string, string> = {
-  // CSR pipeline outcomes
-  proposed: 'bg-green-100 text-green-700',
-  booked: 'bg-green-100 text-green-700',
-  escalated: 'bg-red-100 text-red-700',
-  answered: 'bg-blue-100 text-blue-700',
-  pending: 'bg-yellow-100 text-yellow-700',
-  // Legacy outcomes
-  resolved: 'bg-blue-100 text-blue-700',
-  voicemail: 'bg-gray-100 text-gray-700',
-  dropped: 'bg-gray-100 text-gray-500',
-  transferred: 'bg-amber-100 text-amber-700',
-  callback_scheduled: 'bg-purple-100 text-purple-700',
-  no_action: 'bg-gray-100 text-gray-500',
-};
+function getIntentLabel(intent: string): string {
+  const config = CALL_INTENT[intent];
+  if (config) return config.label;
+  return intent.replace(/_/g, ' ');
+}
+
+/* ---------- Urgency badge variant mapping ---------- */
+function getUrgencyVariant(urgency: string): BadgeVariant {
+  const config = URGENCY_LEVELS[urgency];
+  if (config) return config.variant as BadgeVariant;
+
+  const map: Record<string, BadgeVariant> = {
+    routine: 'default',
+    soon: 'info',
+    urgent: 'warning',
+    emergency: 'danger',
+    low: 'default',
+    medium: 'warning',
+    high: 'danger',
+    critical: 'danger',
+  };
+  return map[urgency] || 'default';
+}
+
+function getUrgencyLabel(urgency: string): string {
+  const config = URGENCY_LEVELS[urgency];
+  if (config) return config.label;
+  return urgency.replace(/_/g, ' ');
+}
+
+/* ---------- Outcome badge variant mapping ---------- */
+function getOutcomeVariant(outcome: string): BadgeVariant {
+  const config = CALL_OUTCOME[outcome];
+  if (config) return config.variant as BadgeVariant;
+
+  const map: Record<string, BadgeVariant> = {
+    proposed: 'success',
+    booked: 'success',
+    escalated: 'danger',
+    answered: 'info',
+    pending: 'default',
+    resolved: 'success',
+    voicemail: 'default',
+    dropped: 'default',
+    transferred: 'info',
+    callback_scheduled: 'warning',
+    no_action: 'default',
+  };
+  return map[outcome] || 'default';
+}
+
+function getOutcomeLabel(outcome: string): string {
+  const config = CALL_OUTCOME[outcome];
+  if (config) return config.label;
+  return outcome.replace(/_/g, ' ');
+}
 
 const INTENT_OPTIONS = [
   { value: '', label: 'All Intents' },
@@ -132,6 +174,7 @@ function formatPhone(phone: string | null): string {
 
 export default function CallsPage() {
   const { isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [calls, setCalls] = useState<CallSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -152,12 +195,16 @@ export default function CallsPage() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setCalls(data);
+        if (data.length > 0) {
+          toast.success('Calls loaded', `${data.length} call session${data.length === 1 ? '' : 's'} found`);
+        }
       } else {
         throw new Error(data.error || 'Invalid response');
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
+      toast.error('Failed to load calls', message);
     } finally {
       setIsLoading(false);
     }
@@ -221,53 +268,63 @@ export default function CallsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Headphones className="w-6 h-6 text-blue-600" />
+          <h1 className="text-2xl font-bold text-[#0a1f3f] flex items-center gap-2">
+            <Headphones className="w-6 h-6 text-[#e55b2b]" />
             AI Call Transcripts
           </h1>
-          <p className="text-gray-600 mt-1">Review AI CSR call sessions, transcripts, and outcomes</p>
+          <p className="text-[#4a6580] mt-1">Review AI CSR call sessions, transcripts, and outcomes</p>
         </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="bg-white rounded-xl border border-[#c8d8ea] p-4">
           <div className="flex items-center gap-2 mb-1">
-            <Phone className="w-4 h-4 text-gray-500" />
-            <span className="text-xs font-bold text-gray-500 uppercase">Total Calls</span>
+            <div className="w-7 h-7 rounded-lg bg-[#e55b2b]/10 flex items-center justify-center">
+              <Phone className="w-4 h-4 text-[#e55b2b]" />
+            </div>
+            <span className="text-xs font-bold text-[#4a6580] uppercase">Total Calls</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{stats.totalCalls}</p>
+          <p className="text-2xl font-bold text-[#0a1f3f]">{stats.totalCalls}</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="bg-white rounded-xl border border-[#c8d8ea] p-4">
           <div className="flex items-center gap-2 mb-1">
-            <Clock className="w-4 h-4 text-gray-500" />
-            <span className="text-xs font-bold text-gray-500 uppercase">Avg Duration</span>
+            <div className="w-7 h-7 rounded-lg bg-[#dceaf8] flex items-center justify-center">
+              <Clock className="w-4 h-4 text-[#4a6580]" />
+            </div>
+            <span className="text-xs font-bold text-[#4a6580] uppercase">Avg Duration</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{formatDuration(stats.avgDuration)}</p>
+          <p className="text-2xl font-bold text-[#0a1f3f]">{formatDuration(stats.avgDuration)}</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="bg-white rounded-xl border border-[#c8d8ea] p-4">
           <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="w-4 h-4 text-gray-500" />
-            <span className="text-xs font-bold text-gray-500 uppercase">Avg Confidence</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-emerald-600" />
+            </div>
+            <span className="text-xs font-bold text-[#4a6580] uppercase">Avg Confidence</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{(stats.avgConfidence * 100).toFixed(0)}%</p>
+          <p className="text-2xl font-bold text-[#0a1f3f]">{(stats.avgConfidence * 100).toFixed(0)}%</p>
         </div>
         <div className="bg-white rounded-xl border border-red-200 p-4">
           <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle className="w-4 h-4 text-red-500" />
+            <div className="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4 text-red-500" />
+            </div>
             <span className="text-xs font-bold text-red-500 uppercase">Escalated</span>
           </div>
           <p className="text-2xl font-bold text-red-700">{stats.escalated}</p>
         </div>
         <div className="bg-white rounded-xl border border-amber-200 p-4">
           <div className="flex items-center gap-2 mb-1">
-            <DollarSign className="w-4 h-4 text-amber-600" />
+            <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
+              <DollarSign className="w-4 h-4 text-amber-600" />
+            </div>
             <span className="text-xs font-bold text-amber-600 uppercase">Total Cost</span>
           </div>
           <p className="text-2xl font-bold text-amber-700">{formatAiCost(stats.totalCost)}</p>
           <div className="flex gap-3 mt-1">
-            <span className="text-[10px] text-gray-500">AI: {formatAiCost(stats.totalAiCost)}</span>
-            <span className="text-[10px] text-gray-500">Vapi: {formatAiCost(stats.totalVapiCost)}</span>
+            <span className="text-[10px] text-[#4a6580]">AI: {formatAiCost(stats.totalAiCost)}</span>
+            <span className="text-[10px] text-[#4a6580]">Vapi: {formatAiCost(stats.totalVapiCost)}</span>
           </div>
         </div>
       </div>
@@ -275,7 +332,7 @@ export default function CallsPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a6580]" />
           <Input
             placeholder="Search by phone, service type, or transcript..."
             value={search}
@@ -290,14 +347,14 @@ export default function CallsPage() {
           className="w-full sm:w-44"
         />
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-400 shrink-0 hidden sm:block" />
+          <Filter className="w-4 h-4 text-[#4a6580] shrink-0 hidden sm:block" />
           <Input
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
             className="w-full sm:w-40"
           />
-          <span className="text-gray-400 text-sm">to</span>
+          <span className="text-[#4a6580] text-sm">to</span>
           <Input
             type="date"
             value={dateTo}
@@ -310,52 +367,54 @@ export default function CallsPage() {
       {/* Calls List */}
       {filteredCalls.length === 0 ? (
         <Card>
-          <CardContent className="p-12 text-center">
-            <Phone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No call sessions found</h3>
-            <p className="text-gray-600">
-              {search || intentFilter || dateFrom || dateTo
-                ? 'Try adjusting your filters'
-                : 'Call sessions will appear here as the AI CSR handles calls'}
-            </p>
+          <CardContent className="p-0">
+            <EmptyState
+              icon={<Phone className="w-8 h-8" />}
+              title="No call sessions found"
+              description={
+                search || intentFilter || dateFrom || dateTo
+                  ? 'Try adjusting your filters'
+                  : 'Call sessions will appear here as the AI CSR handles calls'
+              }
+            />
           </CardContent>
         </Card>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-[#c8d8ea] overflow-hidden">
           {/* Mobile card layout */}
-          <div className="sm:hidden divide-y divide-gray-200">
+          <div className="sm:hidden divide-y divide-[#c8d8ea]">
             {filteredCalls.map((call) => {
               const isExpanded = expandedId === call.id;
               return (
                 <div key={call.id}>
                   <button
                     onClick={() => setExpandedId(isExpanded ? null : call.id)}
-                    className="w-full p-4 text-left hover:bg-gray-50 transition-colors"
+                    className="w-full p-4 text-left hover:bg-[#0a1f3f]/5 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900">{formatPhone(call.caller_phone)}</p>
+                        <p className="font-medium text-[#0a1f3f]">{formatPhone(call.caller_phone)}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           {call.intent && (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${INTENT_COLORS[call.intent] || 'bg-gray-100 text-gray-700'}`}>
-                              {call.intent}
-                            </span>
+                            <Badge variant={getIntentVariant(call.intent)}>
+                              {getIntentLabel(call.intent)}
+                            </Badge>
                           )}
                           {call.outcome && (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${OUTCOME_COLORS[call.outcome] || 'bg-gray-100 text-gray-700'}`}>
-                              {call.outcome.replace(/_/g, ' ')}
-                            </span>
+                            <Badge variant={getOutcomeVariant(call.outcome)}>
+                              {getOutcomeLabel(call.outcome)}
+                            </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-[#4a6580] mt-1">
                           {formatDate(call.created_at)} &middot; {formatDuration(call.duration_seconds)}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         {isExpanded ? (
-                          <ChevronDown className="w-4 h-4 text-gray-400" />
+                          <ChevronDown className="w-4 h-4 text-[#4a6580]" />
                         ) : (
-                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                          <ChevronRight className="w-4 h-4 text-[#4a6580]" />
                         )}
                       </div>
                     </div>
@@ -363,43 +422,43 @@ export default function CallsPage() {
 
                   {isExpanded && (
                     <div className="px-4 pb-4">
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      <div className="bg-[#dceaf8]/30 rounded-lg p-4 space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                           {call.service_type && (
                             <div>
-                              <span className="text-xs font-bold text-gray-400 uppercase">Service</span>
-                              <p className="text-sm text-gray-700">{call.service_type}</p>
+                              <span className="text-xs font-bold text-[#4a6580] uppercase">Service</span>
+                              <p className="text-sm text-[#0a1f3f]">{call.service_type}</p>
                             </div>
                           )}
                           {call.urgency && (
                             <div>
-                              <span className="text-xs font-bold text-gray-400 uppercase">Urgency</span>
-                              <p>
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${URGENCY_COLORS[call.urgency] || 'bg-gray-100 text-gray-700'}`}>
-                                  {call.urgency}
-                                </span>
+                              <span className="text-xs font-bold text-[#4a6580] uppercase">Urgency</span>
+                              <p className="mt-0.5">
+                                <Badge variant={getUrgencyVariant(call.urgency)}>
+                                  {getUrgencyLabel(call.urgency)}
+                                </Badge>
                               </p>
                             </div>
                           )}
                           {call.confidence !== null && (
                             <div>
-                              <span className="text-xs font-bold text-gray-400 uppercase">Confidence</span>
-                              <p className="text-sm text-gray-700 font-medium">{(Number(call.confidence) * 100).toFixed(0)}%</p>
+                              <span className="text-xs font-bold text-[#4a6580] uppercase">Confidence</span>
+                              <p className="text-sm text-[#0a1f3f] font-medium">{(Number(call.confidence) * 100).toFixed(0)}%</p>
                             </div>
                           )}
                           {(call.ai_cost !== null || call.duration_seconds) && (
                             <div>
-                              <span className="text-xs font-bold text-gray-400 uppercase">Cost</span>
-                              <p className="text-sm text-gray-700 font-mono">{formatAiCost((Number(call.ai_cost) || 0) + estimateVapiCost(call.duration_seconds))}</p>
-                              <p className="text-[10px] text-gray-400">AI: {formatAiCost(call.ai_cost)} + Vapi: {formatAiCost(estimateVapiCost(call.duration_seconds))}</p>
+                              <span className="text-xs font-bold text-[#4a6580] uppercase">Cost</span>
+                              <p className="text-sm text-[#0a1f3f] font-mono">{formatAiCost((Number(call.ai_cost) || 0) + estimateVapiCost(call.duration_seconds))}</p>
+                              <p className="text-[10px] text-[#4a6580]">AI: {formatAiCost(call.ai_cost)} + Vapi: {formatAiCost(estimateVapiCost(call.duration_seconds))}</p>
                             </div>
                           )}
                         </div>
 
                         {call.transcript && (
                           <div>
-                            <span className="text-xs font-bold text-gray-400 uppercase">Transcript Preview</span>
-                            <p className="text-sm text-gray-700 mt-1 line-clamp-4 whitespace-pre-wrap">{call.transcript}</p>
+                            <span className="text-xs font-bold text-[#4a6580] uppercase">Transcript Preview</span>
+                            <p className="text-sm text-[#0a1f3f] mt-1 line-clamp-4 whitespace-pre-wrap">{call.transcript}</p>
                           </div>
                         )}
 
@@ -412,7 +471,7 @@ export default function CallsPage() {
 
                         <Link
                           href={`/admin/calls/${call.id}`}
-                          className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700"
+                          className="inline-flex items-center text-sm font-medium text-[#e55b2b] hover:text-[#e55b2b]/80"
                         >
                           View Full Details &rarr;
                         </Link>
@@ -428,7 +487,7 @@ export default function CallsPage() {
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-left text-sm text-gray-500 border-b bg-gray-50">
+                <tr className="text-left text-sm text-[#4a6580] border-b bg-[#dceaf8]/50">
                   <th className="px-4 py-3 font-medium">Date/Time</th>
                   <th className="px-4 py-3 font-medium">Caller</th>
                   <th className="px-4 py-3 font-medium">Intent</th>
@@ -441,18 +500,18 @@ export default function CallsPage() {
                   <th className="px-4 py-3 font-medium w-8"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-[#c8d8ea]">
                 {filteredCalls.map((call) => {
                   const isExpanded = expandedId === call.id;
                   return (
                     <Fragment key={call.id}>
                       <tr
-                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                        className="hover:bg-[#0a1f3f]/5 cursor-pointer transition-colors"
                         onClick={() => setExpandedId(isExpanded ? null : call.id)}
                       >
                         <td className="px-4 py-3">
-                          <div className="text-sm text-gray-900">{formatDate(call.created_at)}</div>
-                          <div className="text-xs text-gray-400">
+                          <div className="text-sm text-[#0a1f3f]">{formatDate(call.created_at)}</div>
+                          <div className="text-xs text-[#4a6580]">
                             {new Date(call.created_at).toLocaleTimeString('en-US', {
                               hour: 'numeric',
                               minute: '2-digit',
@@ -460,15 +519,15 @@ export default function CallsPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm font-medium text-gray-900">{formatPhone(call.caller_phone)}</span>
+                          <span className="text-sm font-medium text-[#0a1f3f]">{formatPhone(call.caller_phone)}</span>
                         </td>
                         <td className="px-4 py-3">
                           {call.intent ? (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${INTENT_COLORS[call.intent] || 'bg-gray-100 text-gray-700'}`}>
-                              {call.intent}
-                            </span>
+                            <Badge variant={getIntentVariant(call.intent)}>
+                              {getIntentLabel(call.intent)}
+                            </Badge>
                           ) : (
-                            <span className="text-xs text-gray-400">-</span>
+                            <span className="text-xs text-[#4a6580]">-</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
@@ -478,83 +537,83 @@ export default function CallsPage() {
                                 <div
                                   className={`h-1.5 rounded-full ${
                                     Number(call.confidence) >= 0.8
-                                      ? 'bg-green-500'
+                                      ? 'bg-emerald-500'
                                       : Number(call.confidence) >= 0.5
-                                        ? 'bg-yellow-500'
+                                        ? 'bg-amber-500'
                                         : 'bg-red-500'
                                   }`}
                                   style={{ width: `${Number(call.confidence) * 100}%` }}
                                 />
                               </div>
-                              <span className="text-xs text-gray-600 font-medium">{(Number(call.confidence) * 100).toFixed(0)}%</span>
+                              <span className="text-xs text-[#4a6580] font-medium">{(Number(call.confidence) * 100).toFixed(0)}%</span>
                             </div>
                           ) : (
-                            <span className="text-xs text-gray-400">-</span>
+                            <span className="text-xs text-[#4a6580]">-</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
                           {call.urgency ? (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${URGENCY_COLORS[call.urgency] || 'bg-gray-100 text-gray-700'}`}>
-                              {call.urgency}
-                            </span>
+                            <Badge variant={getUrgencyVariant(call.urgency)}>
+                              {getUrgencyLabel(call.urgency)}
+                            </Badge>
                           ) : (
-                            <span className="text-xs text-gray-400">-</span>
+                            <span className="text-xs text-[#4a6580]">-</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm text-gray-600">{call.service_type || '-'}</span>
+                          <span className="text-sm text-[#4a6580]">{call.service_type || '-'}</span>
                         </td>
                         <td className="px-4 py-3">
                           {call.outcome ? (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${OUTCOME_COLORS[call.outcome] || 'bg-gray-100 text-gray-700'}`}>
-                              {call.outcome.replace(/_/g, ' ')}
-                            </span>
+                            <Badge variant={getOutcomeVariant(call.outcome)}>
+                              {getOutcomeLabel(call.outcome)}
+                            </Badge>
                           ) : (
-                            <span className="text-xs text-gray-400">-</span>
+                            <span className="text-xs text-[#4a6580]">-</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm text-gray-600">{formatDuration(call.duration_seconds)}</span>
+                          <span className="text-sm text-[#4a6580]">{formatDuration(call.duration_seconds)}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm text-gray-600 font-mono">{formatAiCost((Number(call.ai_cost) || 0) + estimateVapiCost(call.duration_seconds))}</span>
+                          <span className="text-sm text-[#4a6580] font-mono">{formatAiCost((Number(call.ai_cost) || 0) + estimateVapiCost(call.duration_seconds))}</span>
                         </td>
                         <td className="px-4 py-3">
                           {isExpanded ? (
-                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                            <ChevronDown className="w-4 h-4 text-[#4a6580]" />
                           ) : (
-                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                            <ChevronRight className="w-4 h-4 text-[#4a6580]" />
                           )}
                         </td>
                       </tr>
 
                       {isExpanded && (
                         <tr>
-                          <td colSpan={10} className="px-4 pb-4 bg-gray-50/50">
-                            <div className="bg-white rounded-lg border border-gray-200 p-5 mt-1 space-y-4">
+                          <td colSpan={10} className="px-4 pb-4 bg-[#dceaf8]/20">
+                            <div className="bg-white rounded-lg border border-[#c8d8ea] p-5 mt-1 space-y-4">
                               {/* Call metadata */}
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 {call.ai_model && (
                                   <div>
-                                    <span className="text-xs font-bold text-gray-400 uppercase">AI Model</span>
-                                    <p className="text-sm text-gray-700 font-mono mt-0.5">{call.ai_model}</p>
+                                    <span className="text-xs font-bold text-[#4a6580] uppercase">AI Model</span>
+                                    <p className="text-sm text-[#0a1f3f] font-mono mt-0.5">{call.ai_model}</p>
                                   </div>
                                 )}
                                 {call.vapi_call_id && (
                                   <div>
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Call ID</span>
-                                    <p className="text-sm text-gray-500 font-mono mt-0.5 truncate">{call.vapi_call_id}</p>
+                                    <span className="text-xs font-bold text-[#4a6580] uppercase">Call ID</span>
+                                    <p className="text-sm text-[#4a6580] font-mono mt-0.5 truncate">{call.vapi_call_id}</p>
                                   </div>
                                 )}
                                 {call.recording_url && (
                                   <div>
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Recording</span>
+                                    <span className="text-xs font-bold text-[#4a6580] uppercase">Recording</span>
                                     <p className="mt-0.5">
                                       <a
                                         href={call.recording_url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                        className="text-sm text-[#e55b2b] hover:text-[#e55b2b]/80 font-medium"
                                         onClick={(e) => e.stopPropagation()}
                                       >
                                         Listen &rarr;
@@ -567,8 +626,8 @@ export default function CallsPage() {
                               {/* Transcript preview */}
                               {call.transcript && (
                                 <div>
-                                  <span className="text-xs font-bold text-gray-400 uppercase">Transcript Preview</span>
-                                  <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap line-clamp-6 bg-gray-50 rounded-lg p-3 font-mono">
+                                  <span className="text-xs font-bold text-[#4a6580] uppercase">Transcript Preview</span>
+                                  <p className="text-sm text-[#0a1f3f] mt-1 whitespace-pre-wrap line-clamp-6 bg-[#dceaf8]/30 rounded-lg p-3 font-mono">
                                     {call.transcript}
                                   </p>
                                 </div>
@@ -588,12 +647,12 @@ export default function CallsPage() {
                               {/* Extracted info preview */}
                               {call.extracted_info && Object.keys(call.extracted_info).length > 0 && (
                                 <div>
-                                  <span className="text-xs font-bold text-gray-400 uppercase">Extracted Info</span>
+                                  <span className="text-xs font-bold text-[#4a6580] uppercase">Extracted Info</span>
                                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
                                     {Object.entries(call.extracted_info).slice(0, 6).map(([key, value]) => (
-                                      <div key={key} className="bg-gray-50 rounded px-2 py-1.5">
-                                        <span className="text-[10px] text-gray-400 uppercase">{key.replace(/_/g, ' ')}</span>
-                                        <p className="text-xs text-gray-700 truncate">{String(value)}</p>
+                                      <div key={key} className="bg-[#dceaf8]/30 rounded px-2 py-1.5">
+                                        <span className="text-[10px] text-[#4a6580] uppercase">{key.replace(/_/g, ' ')}</span>
+                                        <p className="text-xs text-[#0a1f3f] truncate">{String(value)}</p>
                                       </div>
                                     ))}
                                   </div>
@@ -602,7 +661,7 @@ export default function CallsPage() {
 
                               <Link
                                 href={`/admin/calls/${call.id}`}
-                                className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700"
+                                className="inline-flex items-center text-sm font-medium text-[#e55b2b] hover:text-[#e55b2b]/80"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 View Full Details &rarr;
@@ -622,4 +681,3 @@ export default function CallsPage() {
     </div>
   );
 }
-

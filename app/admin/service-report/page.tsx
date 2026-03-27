@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import { Card, CardContent, Button, Input } from '@/components/ui';
+import { Button, Input } from '@/components/ui';
+import { Badge } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { useToast } from '@/hooks/useToast';
+import type { BadgeVariant } from '@/components/ui/Badge';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { ServiceReportBuilder } from '@/components/ServiceReportBuilder';
 import {
@@ -14,10 +18,10 @@ import {
   CheckCircle2,
   Clock,
   Eye,
-  Copy,
   Trash2,
   Edit3,
   Link2,
+  Loader2,
 } from 'lucide-react';
 
 interface ServiceReportRow {
@@ -33,15 +37,28 @@ interface ServiceReportRow {
   customers?: { full_name: string } | null;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: typeof Clock }> = {
-  draft: { label: 'Draft', color: 'text-gray-700', bg: 'bg-gray-100', icon: Edit3 },
-  in_progress: { label: 'In Progress', color: 'text-blue-700', bg: 'bg-blue-100', icon: Clock },
-  completed: { label: 'Completed', color: 'text-green-700', bg: 'bg-green-100', icon: CheckCircle2 },
-  sent: { label: 'Sent', color: 'text-purple-700', bg: 'bg-purple-100', icon: Send },
+/* ---------- Status config using Badge variants ---------- */
+
+interface ReportStatusConfig {
+  label: string;
+  variant: BadgeVariant;
+  icon: typeof Clock;
+  cardBg: string;
+  cardBorder: string;
+  iconColor: string;
+  activeBg: string;
+}
+
+const STATUS_CONFIG: Record<string, ReportStatusConfig> = {
+  draft: { label: 'Draft', variant: 'default', icon: Edit3, cardBg: 'bg-[#0a1f3f]/5', cardBorder: 'border-[#4a6580]/20', iconColor: 'text-[#4a6580]', activeBg: 'bg-[#0a1f3f]/10' },
+  in_progress: { label: 'In Progress', variant: 'info', icon: Clock, cardBg: 'bg-[#42a5f5]/5', cardBorder: 'border-[#42a5f5]/20', iconColor: 'text-[#42a5f5]', activeBg: 'bg-[#42a5f5]/10' },
+  completed: { label: 'Completed', variant: 'success', icon: CheckCircle2, cardBg: 'bg-emerald-50', cardBorder: 'border-emerald-200', iconColor: 'text-emerald-600', activeBg: 'bg-emerald-100' },
+  sent: { label: 'Sent', variant: 'premium', icon: Send, cardBg: 'bg-[#f5a623]/5', cardBorder: 'border-[#f5a623]/20', iconColor: 'text-[#f5a623]', activeBg: 'bg-[#f5a623]/10' },
 };
 
 export default function ServiceReportPage() {
-  const { groupId, profile, isLoading: authLoading } = useAuth();
+  const { groupId, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [reports, setReports] = useState<ServiceReportRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -77,12 +94,14 @@ export default function ServiceReportPage() {
     await supabase.from('service_report_media').delete().eq('service_report_id', id);
     await supabase.from('service_reports').delete().eq('id', id);
     setReports(reports.filter((r) => r.id !== id));
+    toast.success('Report deleted', 'The service report has been removed');
   };
 
   const copyShareLink = (token: string, id: string) => {
     const url = `${window.location.origin}/report/${token}`;
     navigator.clipboard.writeText(url);
     setCopiedId(id);
+    toast.success('Link copied', 'Share link copied to clipboard');
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -90,6 +109,7 @@ export default function ServiceReportPage() {
     const supabase = createClient();
     await supabase.from('service_reports').update({ status: 'sent', updated_at: new Date().toISOString() } as Record<string, unknown>).eq('id', id);
     setReports(reports.map((r) => (r.id === id ? { ...r, status: 'sent' } : r)));
+    toast.success('Report sent', 'Status updated to Sent');
   };
 
   const filtered = reports.filter((r) => {
@@ -129,64 +149,73 @@ export default function ServiceReportPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Service Reports</h1>
-          <p className="text-sm text-gray-500 mt-1">Build and share professional service reports</p>
+          <h1 className="text-2xl font-bold text-[#0a1f3f]">Service Reports</h1>
+          <p className="text-sm text-[#4a6580] mt-1">Build and share professional service reports</p>
         </div>
-        <Button onClick={() => setIsBuilderOpen(true)}>
+        <Button onClick={() => setIsBuilderOpen(true)} className="shadow-sm">
           <Plus className="w-4 h-4 mr-2" /> New Report
         </Button>
       </div>
 
       {/* Status Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {Object.entries(STATUS_CONFIG).map(([key, config]) => {
           const Icon = config.icon;
+          const isActive = statusFilter === key;
           return (
             <button
               key={key}
-              onClick={() => setStatusFilter(statusFilter === key ? '' : key)}
-              className={`p-3 rounded-xl border text-left transition-colors ${
-                statusFilter === key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'
+              onClick={() => setStatusFilter(isActive ? '' : key)}
+              className={`relative p-4 rounded-xl border text-left transition-all duration-200 shadow-sm hover:shadow-md ${
+                isActive
+                  ? `${config.activeBg} ${config.cardBorder} ring-2 ring-[#e55b2b]/30`
+                  : `${config.cardBg} ${config.cardBorder} hover:border-[#c8d8ea]`
               }`}
             >
-              <div className="flex items-center gap-2 mb-1">
-                <Icon className={`w-4 h-4 ${config.color}`} />
-                <span className="text-sm font-medium text-gray-700">{config.label}</span>
+              <div className={`inline-flex items-center justify-center w-9 h-9 rounded-lg mb-3 ${isActive ? 'bg-white/80' : 'bg-white/60'}`}>
+                <Icon className={`w-5 h-5 ${isActive ? 'text-[#e55b2b]' : config.iconColor}`} />
               </div>
-              <p className="text-xl font-bold text-gray-900">{statusCounts[key] || 0}</p>
+              <p className="text-2xl font-bold text-[#0a1f3f] leading-none mb-1">{statusCounts[key] || 0}</p>
+              <p className={`text-sm font-medium ${isActive ? 'text-[#e55b2b]' : 'text-[#4a6580]'}`}>{config.label}</p>
             </button>
           );
         })}
       </div>
 
       {/* Search */}
-      <div className="mb-4">
+      <div className="mb-6">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a6580]" />
           <Input
             placeholder="Search by customer or equipment..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="!pl-10"
+            className="!pl-10 !border-[#c8d8ea] focus:!ring-[#e55b2b] focus:!border-[#e55b2b]"
           />
         </div>
       </div>
 
       {/* Reports List */}
       {isLoading ? (
-        <div className="text-center py-12 text-gray-500">Loading...</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-12">
-          <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">{search || statusFilter ? 'No reports match your filters' : 'No service reports yet'}</p>
-          {!search && !statusFilter && (
-            <Button className="mt-4" onClick={() => setIsBuilderOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" /> Create Your First Report
-            </Button>
-          )}
+        <div className="flex flex-col items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 text-[#0a1f3f] animate-spin mb-3" />
+          <p className="text-sm text-[#4a6580]">Loading reports...</p>
         </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={<FileText className="w-8 h-8" />}
+          title={search || statusFilter ? 'No reports match your filters' : 'No service reports yet'}
+          description={search || statusFilter ? 'Try adjusting your search or filter criteria' : 'Create your first professional service report to get started'}
+          action={
+            !search && !statusFilter ? (
+              <Button onClick={() => setIsBuilderOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" /> Create Your First Report
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="space-y-3">
           {filtered.map((report) => {
@@ -194,49 +223,49 @@ export default function ServiceReportPage() {
             const Icon = config.icon;
             const total = getRecommendedTotal(report.repair_options);
             return (
-              <Card key={report.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="!py-3">
-                  <div className="flex items-start justify-between gap-3">
+              <div key={report.id} className="bg-white rounded-xl border border-[#c8d8ea] shadow-sm hover:shadow-md transition-all duration-200 group">
+                <div className="px-4 sm:px-5 py-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium text-gray-900 truncate">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <h3 className="font-semibold text-[#0a1f3f] truncate">
                           {report.customers?.full_name || report.customer_name || 'No Customer'}
                         </h3>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.color}`}>
-                          <Icon className="w-3 h-3" /> {config.label}
-                        </span>
+                        <Badge variant={config.variant} icon={<Icon className="w-3 h-3" />}>
+                          {config.label}
+                        </Badge>
                       </div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#4a6580]">
                         {report.equipment_info?.equipment_type && (
-                          <span>{report.equipment_info.equipment_type}{report.equipment_info.make ? ` - ${report.equipment_info.make}` : ''}</span>
+                          <span className="text-[#4a6580]">{report.equipment_info.equipment_type}{report.equipment_info.make ? ` - ${report.equipment_info.make}` : ''}</span>
                         )}
                         <span>{formatDate(report.service_date || report.created_at)}</span>
-                        {total !== null && <span className="font-medium text-gray-700">{formatCurrency(total)}</span>}
+                        {total !== null && <span className="font-semibold text-[#0a1f3f]">{formatCurrency(total)}</span>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="flex items-center gap-1 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
                       {report.share_token && (
                         <>
                           <a
                             href={`/report/${report.share_token}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-[#4a6580] hover:text-[#0a1f3f] hover:bg-[#dceaf8] rounded-lg transition-colors"
                             title="View Report"
                           >
                             <Eye className="w-4 h-4" />
                           </a>
                           <button
                             onClick={() => copyShareLink(report.share_token!, report.id)}
-                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-[#4a6580] hover:text-[#e55b2b] hover:bg-[#e55b2b]/10 rounded-lg transition-colors"
                             title="Copy Link"
                           >
-                            {copiedId === report.id ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Link2 className="w-4 h-4" />}
+                            {copiedId === report.id ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Link2 className="w-4 h-4" />}
                           </button>
                           {report.status === 'completed' && (
                             <button
                               onClick={() => markAsSent(report.id)}
-                              className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                              className="p-2 text-[#4a6580] hover:text-[#f5a623] hover:bg-[#f5a623]/10 rounded-lg transition-colors"
                               title="Mark as Sent"
                             >
                               <Send className="w-4 h-4" />
@@ -246,22 +275,22 @@ export default function ServiceReportPage() {
                       )}
                       <button
                         onClick={() => setEditingReportId(report.id)}
-                        className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-2 text-[#4a6580] hover:text-[#e55b2b] hover:bg-[#e55b2b]/10 rounded-lg transition-colors"
                         title={report.status === 'draft' ? 'Resume' : 'Edit'}
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => deleteReport(report.id)}
-                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-[#4a6580] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>

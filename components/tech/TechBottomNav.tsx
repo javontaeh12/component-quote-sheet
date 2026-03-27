@@ -29,7 +29,7 @@ export default function TechBottomNav() {
   }, [pathname]);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-navy border-t border-navy-light pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a1f3f] border-t border-[#122e5c] pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around h-14">
         {navItems.map((item) => {
           const isActive = item.exact
@@ -44,21 +44,34 @@ export default function TechBottomNav() {
                 if (!isActive) setLoadingHref(item.href);
               }}
               className={cn(
-                'flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors',
+                'relative flex flex-col items-center justify-center flex-1 h-full transition-all duration-200',
                 isActive
-                  ? 'text-ember'
+                  ? 'text-[#e55b2b]'
                   : isLoading
-                    ? 'text-ember/60'
-                    : 'text-steel active:text-gray-300'
+                    ? 'text-[#e55b2b]/60'
+                    : 'text-white/50 active:text-white/70'
               )}
             >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <item.icon className={cn('w-5 h-5', isActive && 'stroke-[2.5]')} />
+              {/* Ember bar indicator above active icon */}
+              {isActive && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[#e55b2b]" />
               )}
-              <span className="text-[10px] font-medium leading-tight mt-0.5">
-                {isLoading ? 'Loading...' : item.label}
+
+              {/* Active pill background */}
+              <span
+                className={cn(
+                  'flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-full transition-colors duration-200',
+                  isActive && 'bg-white/10'
+                )}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <item.icon className={cn('w-6 h-6', isActive && 'stroke-[2.5]')} />
+                )}
+                <span className="text-[10px] font-medium leading-tight">
+                  {isLoading ? 'Loading...' : item.label}
+                </span>
               </span>
             </Link>
           );

@@ -4,6 +4,11 @@ import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Modal } from '@/components/ui';
+import { Badge } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Tabs } from '@/components/ui/Tabs';
+import { useToast } from '@/hooks/useToast';
+import { BOOKING_STATUS } from '@/lib/status';
 import { formatDate } from '@/lib/utils';
 import {
   CalendarCheck,
@@ -44,13 +49,6 @@ const STATUS_OPTIONS = [
   { value: 'no-show', label: 'No-Show' },
 ];
 
-const STATUS_COLORS: Record<string, string> = {
-  scheduled: 'bg-blue-100 text-blue-700',
-  completed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-gray-100 text-gray-700',
-  'no-show': 'bg-red-100 text-red-700',
-};
-
 const STATUS_ICONS: Record<string, typeof Clock> = {
   scheduled: Clock,
   completed: CheckCircle2,
@@ -58,8 +56,28 @@ const STATUS_ICONS: Record<string, typeof Clock> = {
   'no-show': AlertCircle,
 };
 
+const STATUS_ICON_BG: Record<string, string> = {
+  scheduled: 'bg-[#c8d8ea]/60',
+  completed: 'bg-emerald-100',
+  cancelled: 'bg-gray-200',
+  'no-show': 'bg-red-100',
+};
+
+/** Map a booking DB status key to a Badge variant */
+function bookingBadgeVariant(status: string) {
+  const cfg = BOOKING_STATUS[status];
+  return cfg?.variant ?? 'default';
+}
+
+/** Get display label for a booking status */
+function bookingLabel(status: string) {
+  const cfg = BOOKING_STATUS[status];
+  return cfg?.label ?? status;
+}
+
 export default function BookingsPage() {
   const { groupId, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,8 +176,10 @@ export default function BookingsPage() {
         notes: '',
         status: 'scheduled',
       });
+      toast.success('Booking created', `${data.name} has been scheduled.`);
     } catch (err) {
       console.error('Failed to add booking:', err);
+      toast.error('Failed to create booking', err instanceof Error ? err.message : 'Unknown error');
     }
   };
 
@@ -208,9 +228,16 @@ export default function BookingsPage() {
       if (error) throw error;
       setBookings(bookings.map((b) => (b.id === id ? data : b)));
       if (selectedBooking?.id === id) setSelectedBooking(data);
+      toast.success('Status updated', `Booking marked as ${bookingLabel(status)}.`);
     } catch (err) {
       console.error('Failed to update booking:', err);
+      toast.error('Update failed', 'Could not update the booking status.');
     }
+  };
+
+  const handleCancelBooking = async (id: string) => {
+    await handleUpdateStatus(id, 'cancelled');
+    toast.info('Booking cancelled');
   };
 
   const createWOFromBooking = async (booking: Booking) => {
@@ -281,6 +308,22 @@ export default function BookingsPage() {
     return counts;
   }, [bookings]);
 
+  // Tabs for status filter (pills)
+  const statusTabs = useMemo(() => [
+    { value: '', label: 'All', count: bookings.length },
+    ...STATUS_OPTIONS.filter((s) => s.value).map((s) => ({
+      value: s.value,
+      label: s.label,
+      count: statusCounts[s.value] ?? 0,
+    })),
+  ], [bookings.length, statusCounts]);
+
+  // Tabs for view mode (boxed)
+  const viewTabs = [
+    { value: 'list', label: 'List', icon: <List className="w-4 h-4" /> },
+    { value: 'calendar', label: 'Calendar', icon: <Calendar className="w-4 h-4" /> },
+  ];
+
   if (isLoading || authLoading) {
     return (
       <div className="animate-pulse space-y-4">
@@ -309,29 +352,17 @@ export default function BookingsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
-          <p className="text-gray-600 mt-1">Manage service bookings and appointments</p>
+          <h1 className="text-2xl font-bold text-[#0a1f3f]">Bookings</h1>
+          <p className="text-[#4a6580] mt-1">Manage service bookings and appointments</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-md transition-colors ${
-                viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'
-              }`}
-            >
-              <List className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('calendar')}
-              className={`p-1.5 rounded-md transition-colors ${
-                viewMode === 'calendar' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'
-              }`}
-            >
-              <Calendar className="w-4 h-4" />
-            </button>
-          </div>
-          <Button onClick={() => setIsAddOpen(true)}>
+          <Tabs
+            tabs={viewTabs}
+            value={viewMode}
+            onChange={(v) => setViewMode(v as 'list' | 'calendar')}
+            variant="boxed"
+          />
+          <Button onClick={() => setIsAddOpen(true)} className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white">
             <Plus className="w-4 h-4 mr-2" />
             New Booking
           </Button>
@@ -343,15 +374,15 @@ export default function BookingsPage() {
         {Object.entries(statusCounts).map(([status, count]) => {
           const Icon = STATUS_ICONS[status];
           return (
-            <Card key={status} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setStatusFilter(statusFilter === status ? '' : status)}>
+            <Card key={status} className="cursor-pointer hover:shadow-md transition-shadow bg-white rounded-xl border border-[#c8d8ea]" onClick={() => setStatusFilter(statusFilter === status ? '' : status)}>
               <CardContent className="pt-4 pb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-gray-500 capitalize">{status === 'no-show' ? 'No-Show' : status}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{count}</p>
+                    <p className="text-xs font-medium text-[#4a6580] capitalize">{bookingLabel(status)}</p>
+                    <p className="text-2xl font-bold text-[#0a1f3f] mt-1">{count}</p>
                   </div>
-                  <div className={`p-2 rounded-lg ${STATUS_COLORS[status]}`}>
-                    <Icon className="w-5 h-5" />
+                  <div className={`p-2 rounded-lg ${STATUS_ICON_BG[status]}`}>
+                    <Icon className="w-5 h-5 text-[#0a1f3f]" />
                   </div>
                 </div>
               </CardContent>
@@ -360,10 +391,18 @@ export default function BookingsPage() {
         })}
       </div>
 
-      {/* Filters */}
+      {/* Status filter pills */}
+      <Tabs
+        tabs={statusTabs}
+        value={statusFilter}
+        onChange={setStatusFilter}
+        variant="pills"
+      />
+
+      {/* Search */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a6580]" />
           <Input
             placeholder="Search by name or contact..."
             value={search}
@@ -371,30 +410,30 @@ export default function BookingsPage() {
             className="pl-10"
           />
         </div>
-        <Select
-          options={STATUS_OPTIONS}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full sm:w-44"
-        />
       </div>
 
       {/* List View */}
       {viewMode === 'list' && (
-        <Card>
+        <Card className="bg-white rounded-xl border border-[#c8d8ea]">
           <CardContent className="p-0">
             {filteredBookings.length === 0 ? (
-              <div className="p-12 text-center">
-                <CalendarCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
-                <p className="text-gray-600">
-                  {search || statusFilter ? 'Try adjusting your filters' : 'Create your first booking to get started'}
-                </p>
-              </div>
+              <EmptyState
+                icon={<CalendarCheck className="w-8 h-8" />}
+                title="No bookings found"
+                description={search || statusFilter ? 'Try adjusting your filters' : 'Create your first booking to get started'}
+                action={
+                  !search && !statusFilter ? (
+                    <Button onClick={() => setIsAddOpen(true)} className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white">
+                      <Plus className="w-4 h-4 mr-2" />
+                      New Booking
+                    </Button>
+                  ) : undefined
+                }
+              />
             ) : (
               <>
                 {/* Mobile card layout */}
-                <div className="sm:hidden divide-y divide-gray-200">
+                <div className="sm:hidden divide-y divide-[#c8d8ea]">
                   {filteredBookings.map((booking) => (
                     <div
                       key={booking.id}
@@ -403,26 +442,25 @@ export default function BookingsPage() {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-gray-900 truncate">{booking.name}</p>
-                          <p className="text-sm text-gray-500 mt-0.5">{booking.service_type}</p>
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="font-medium text-[#0a1f3f] truncate">{booking.name}</p>
+                          <p className="text-sm text-[#4a6580] mt-0.5">{booking.service_type}</p>
+                          <p className="text-xs text-[#4a6580]/70 mt-1">
                             {formatDate(booking.start_time)} at {formatTime(booking.start_time)}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-1.5">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[booking.status]}`}>
-                            {booking.status === 'no-show' ? 'No-Show' : booking.status}
-                          </span>
+                          <Badge variant={bookingBadgeVariant(booking.status)}>
+                            {bookingLabel(booking.status)}
+                          </Badge>
                           {linkedBookingIds.has(booking.id) ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                              <CheckCircle2 className="w-3 h-3" />
+                            <Badge variant="success" icon={<CheckCircle2 className="w-3 h-3" />}>
                               WO Created
-                            </span>
+                            </Badge>
                           ) : (
                             <button
                               onClick={(e) => { e.stopPropagation(); createWOFromBooking(booking); }}
                               disabled={creatingWO === booking.id}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#e55b2b]/10 text-[#e55b2b] hover:bg-[#e55b2b]/20 transition-colors disabled:opacity-50"
                             >
                               <Wrench className="w-3 h-3" />
                               {creatingWO === booking.id ? 'Creating...' : 'Create WO'}
@@ -438,7 +476,7 @@ export default function BookingsPage() {
                 <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="text-left text-sm text-gray-500 border-b bg-gray-50">
+                      <tr className="text-left text-sm text-[#4a6580] border-b border-[#c8d8ea] bg-gray-50">
                         <th className="px-6 py-3 font-medium">Customer</th>
                         <th className="px-6 py-3 font-medium">Contact</th>
                         <th className="px-6 py-3 font-medium">Service</th>
@@ -448,32 +486,31 @@ export default function BookingsPage() {
                         <th className="px-6 py-3 font-medium">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-[#c8d8ea]">
                       {filteredBookings.map((booking) => (
                         <tr key={booking.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 font-medium text-gray-900">{booking.name}</td>
-                          <td className="px-6 py-4 text-gray-600">{booking.contact}</td>
-                          <td className="px-6 py-4 text-gray-600">{booking.service_type}</td>
-                          <td className="px-6 py-4 text-gray-600">
+                          <td className="px-6 py-4 font-medium text-[#0a1f3f]">{booking.name}</td>
+                          <td className="px-6 py-4 text-[#4a6580]">{booking.contact}</td>
+                          <td className="px-6 py-4 text-[#4a6580]">{booking.service_type}</td>
+                          <td className="px-6 py-4 text-[#4a6580]">
                             <div>{formatDate(booking.start_time)}</div>
-                            <div className="text-xs text-gray-400">{formatTime(booking.start_time)}</div>
+                            <div className="text-xs text-[#4a6580]/70">{formatTime(booking.start_time)}</div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[booking.status]}`}>
-                              {booking.status === 'no-show' ? 'No-Show' : booking.status}
-                            </span>
+                            <Badge variant={bookingBadgeVariant(booking.status)}>
+                              {bookingLabel(booking.status)}
+                            </Badge>
                           </td>
                           <td className="px-6 py-4">
                             {linkedBookingIds.has(booking.id) ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                <CheckCircle2 className="w-3 h-3" />
+                              <Badge variant="success" icon={<CheckCircle2 className="w-3 h-3" />}>
                                 WO Created
-                              </span>
+                              </Badge>
                             ) : (
                               <button
                                 onClick={() => createWOFromBooking(booking)}
                                 disabled={creatingWO === booking.id}
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-[#e55b2b]/10 text-[#e55b2b] hover:bg-[#e55b2b]/20 transition-colors disabled:opacity-50"
                               >
                                 <Wrench className="w-3 h-3" />
                                 {creatingWO === booking.id ? 'Creating...' : 'Create WO'}
@@ -483,7 +520,7 @@ export default function BookingsPage() {
                           <td className="px-6 py-4">
                             <button
                               onClick={() => { setSelectedBooking(booking); setIsDetailOpen(true); }}
-                              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                              className="text-[#e55b2b] hover:text-[#e55b2b]/80 text-sm font-medium"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
@@ -501,24 +538,24 @@ export default function BookingsPage() {
 
       {/* Calendar View */}
       {viewMode === 'calendar' && (
-        <Card>
+        <Card className="bg-white rounded-xl border border-[#c8d8ea]">
           <CardHeader>
             <div className="flex items-center justify-between">
               <button onClick={() => navigateMonth(-1)} className="p-1 hover:bg-gray-100 rounded">
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-5 h-5 text-[#4a6580]" />
               </button>
-              <CardTitle>
+              <CardTitle className="text-[#0a1f3f]">
                 {calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </CardTitle>
               <button onClick={() => navigateMonth(1)} className="p-1 hover:bg-gray-100 rounded">
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-5 h-5 text-[#4a6580]" />
               </button>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+            <div className="grid grid-cols-7 gap-px bg-[#c8d8ea] rounded-lg overflow-hidden">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                <div key={day} className="bg-gray-50 p-2 text-center text-xs font-medium text-gray-500">
+                <div key={day} className="bg-gray-50 p-2 text-center text-xs font-medium text-[#4a6580]">
                   {day}
                 </div>
               ))}
@@ -547,8 +584,8 @@ export default function BookingsPage() {
                           <span
                             className={`text-sm font-medium ${
                               isToday
-                                ? 'bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center'
-                                : isBlocked ? 'text-red-400' : 'text-gray-700'
+                                ? 'bg-[#e55b2b] text-white w-6 h-6 rounded-full flex items-center justify-center'
+                                : isBlocked ? 'text-red-400' : 'text-[#0a1f3f]'
                             }`}
                           >
                             {day}
@@ -572,14 +609,14 @@ export default function BookingsPage() {
                             {dayBookings.slice(0, 3).map((b) => (
                               <div
                                 key={b.id}
-                                className={`text-[10px] sm:text-xs px-1 py-0.5 rounded truncate cursor-pointer ${STATUS_COLORS[b.status]}`}
+                                className="text-[10px] sm:text-xs px-1 py-0.5 rounded truncate cursor-pointer bg-[#e55b2b]/10 text-[#e55b2b] hover:bg-[#e55b2b]/20"
                                 onClick={() => { setSelectedBooking(b); setIsDetailOpen(true); }}
                               >
                                 {b.name}
                               </div>
                             ))}
                             {dayBookings.length > 3 && (
-                              <p className="text-[10px] text-gray-500">+{dayBookings.length - 3} more</p>
+                              <p className="text-[10px] text-[#4a6580]">+{dayBookings.length - 3} more</p>
                             )}
                           </div>
                         )}
@@ -603,39 +640,39 @@ export default function BookingsPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Customer Name</p>
-                <p className="font-medium text-gray-900">{selectedBooking.name}</p>
+                <p className="text-sm text-[#4a6580]">Customer Name</p>
+                <p className="font-medium text-[#0a1f3f]">{selectedBooking.name}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Contact</p>
-                <p className="font-medium text-gray-900">{selectedBooking.contact}</p>
+                <p className="text-sm text-[#4a6580]">Contact</p>
+                <p className="font-medium text-[#0a1f3f]">{selectedBooking.contact}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Service Type</p>
-                <p className="font-medium text-gray-900">{selectedBooking.service_type}</p>
+                <p className="text-sm text-[#4a6580]">Service Type</p>
+                <p className="font-medium text-[#0a1f3f]">{selectedBooking.service_type}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Date/Time</p>
-                <p className="font-medium text-gray-900">
+                <p className="text-sm text-[#4a6580]">Date/Time</p>
+                <p className="font-medium text-[#0a1f3f]">
                   {formatDate(selectedBooking.start_time)} at {formatTime(selectedBooking.start_time)}
                 </p>
               </div>
               <div className="col-span-2">
-                <p className="text-sm text-gray-500">Status</p>
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[selectedBooking.status]}`}>
-                  {selectedBooking.status === 'no-show' ? 'No-Show' : selectedBooking.status}
-                </span>
+                <p className="text-sm text-[#4a6580]">Status</p>
+                <Badge variant={bookingBadgeVariant(selectedBooking.status)} size="md">
+                  {bookingLabel(selectedBooking.status)}
+                </Badge>
               </div>
               {selectedBooking.notes && (
                 <div className="col-span-2">
-                  <p className="text-sm text-gray-500">Notes</p>
-                  <p className="text-gray-700 text-sm mt-1">{selectedBooking.notes}</p>
+                  <p className="text-sm text-[#4a6580]">Notes</p>
+                  <p className="text-[#4a6580] text-sm mt-1">{selectedBooking.notes}</p>
                 </div>
               )}
             </div>
 
-            <div className="border-t pt-4">
-              <p className="text-sm font-medium text-gray-700 mb-2">Update Status</p>
+            <div className="border-t border-[#c8d8ea] pt-4">
+              <p className="text-sm font-medium text-[#0a1f3f] mb-2">Update Status</p>
               <div className="flex flex-wrap gap-2">
                 {['scheduled', 'completed', 'cancelled', 'no-show'].map((status) => (
                   <Button
@@ -643,20 +680,20 @@ export default function BookingsPage() {
                     size="sm"
                     variant={selectedBooking.status === status ? 'primary' : 'outline'}
                     onClick={() => handleUpdateStatus(selectedBooking.id, status)}
+                    className={selectedBooking.status === status ? 'bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white border-[#e55b2b]' : ''}
                   >
-                    {status === 'no-show' ? 'No-Show' : status.charAt(0).toUpperCase() + status.slice(1)}
+                    {bookingLabel(status)}
                   </Button>
                 ))}
               </div>
             </div>
 
-            <div className="border-t pt-4">
-              <p className="text-sm font-medium text-gray-700 mb-2">Work Order</p>
+            <div className="border-t border-[#c8d8ea] pt-4">
+              <p className="text-sm font-medium text-[#0a1f3f] mb-2">Work Order</p>
               {linkedBookingIds.has(selectedBooking.id) ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-700">
-                  <CheckCircle2 className="w-4 h-4" />
+                <Badge variant="success" size="md" icon={<CheckCircle2 className="w-4 h-4" />}>
                   Work Order Created
-                </span>
+                </Badge>
               ) : (
                 <Button
                   size="sm"
@@ -715,20 +752,20 @@ export default function BookingsPage() {
             onChange={(e) => setNewBooking({ ...newBooking, end_time: e.target.value })}
           />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Notes</label>
             <textarea
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="block w-full rounded-lg border border-[#c8d8ea] px-3 py-2 text-black placeholder-[#4a6580]/50 focus:border-[#e55b2b] focus:outline-none focus:ring-1 focus:ring-[#e55b2b]"
               rows={3}
               placeholder="Any additional notes..."
               value={newBooking.notes}
               onChange={(e) => setNewBooking({ ...newBooking, notes: e.target.value })}
             />
           </div>
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#c8d8ea]">
             <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">Create Booking</Button>
+            <Button type="submit" className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white">Create Booking</Button>
           </div>
         </form>
       </Modal>

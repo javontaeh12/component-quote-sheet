@@ -5,6 +5,10 @@
   --foreground: #0a1628;
   --navy: #0a1f3f;
   --navy-light: #122e5c;
+  --navy-900: #061529;
+  --navy-800: #0a1f3f;
+  --navy-700: #122e5c;
+  --navy-600: #1a3d6d;
   --steel: #4a6580;
   --ice: #dceaf8;
   --accent: #42a5f5;
@@ -13,7 +17,13 @@
   --gold: #f5a623;
   --ember: #e55b2b;
   --ember-dark: #c4411a;
+  --ember-light: #fef0eb;
+  --gold-light: #fef9ee;
   --border: #c8d8ea;
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --info: #2563eb;
 }
 
 @theme inline {
@@ -29,7 +39,17 @@
   --color-gold: var(--gold);
   --color-ember: var(--ember);
   --color-ember-dark: var(--ember-dark);
+  --color-ember-light: var(--ember-light);
+  --color-gold-light: var(--gold-light);
   --color-border: var(--border);
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-navy-600: var(--navy-600);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
 }
 
 html {

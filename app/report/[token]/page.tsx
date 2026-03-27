@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { ServiceReportPreview } from '@/components/ServiceReportPreview';
+import { FileX } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,30 +48,35 @@ export default async function PublicReportPage({
 
   if (!result) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Report Not Found</h1>
-          <p className="text-gray-500">This report link may be invalid or has expired.</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#f0f5fb] px-4">
+        <div className="bg-white rounded-xl shadow-lg border border-[#c8d8ea] p-8 max-w-md w-full text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#e55b2b]/10 mb-5">
+            <FileX className="w-8 h-8 text-[#e55b2b]" />
+          </div>
+          <h1 className="text-xl font-bold text-[#0a1f3f] mb-2">Report Not Found</h1>
+          <p className="text-sm text-[#4a6580]">This report link may be invalid or has expired. Please contact your service provider for assistance.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 px-4">
-      <ServiceReportPreview
-        report={result.report}
-        media={result.media}
-        groupName={result.groupName}
-        showActions={true}
-      />
+    <div className="min-h-screen bg-[#f0f5fb] py-6 sm:py-10 px-4">
+      <div className="max-w-4xl mx-auto">
+        <ServiceReportPreview
+          report={result.report}
+          media={result.media}
+          groupName={result.groupName}
+          showActions={true}
+        />
+      </div>
 
       {/* Print styles */}
       <style>{`
         @media print {
           body { background: white !important; }
           .print\\:hidden { display: none !important; }
-          .print\\:bg-blue-600 { background-color: #2563eb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print\\:bg-blue-600, .print\\:bg-navy { background-color: #0a1f3f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .print\\:text-white { color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
       `}</style>

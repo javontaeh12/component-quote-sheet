@@ -7,6 +7,8 @@ import StatusProgressBar from '@/components/tech/StatusProgressBar';
 import PhotoCapture from '@/components/tech/PhotoCapture';
 import PartsLogger from '@/components/tech/PartsLogger';
 import SignaturePad from '@/components/tech/SignaturePad';
+import { Tabs } from '@/components/ui/Tabs';
+import { useToast } from '@/hooks/useToast';
 import { Phone, MapPin, ArrowLeft, FileText, Camera, Package, PenLine, MessageSquare, Receipt, DollarSign, CheckCircle2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -27,16 +29,17 @@ interface WorkOrder {
 }
 
 const tabs = [
-  { key: 'photos', label: 'Photos', icon: Camera },
-  { key: 'parts', label: 'Parts', icon: Package },
-  { key: 'notes', label: 'Notes', icon: MessageSquare },
-  { key: 'signature', label: 'Signature', icon: PenLine },
+  { value: 'photos', label: 'Photos', icon: <Camera className="w-3.5 h-3.5" /> },
+  { value: 'parts', label: 'Parts', icon: <Package className="w-3.5 h-3.5" /> },
+  { value: 'notes', label: 'Notes', icon: <MessageSquare className="w-3.5 h-3.5" /> },
+  { value: 'signature', label: 'Signature', icon: <PenLine className="w-3.5 h-3.5" /> },
 ];
 
 export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const { groupId, profile } = useAuth();
+  const { toast } = useToast();
   const [job, setJob] = useState<WorkOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('photos');
@@ -152,6 +155,12 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     if (res.ok) {
       const updated = await res.json();
       setJob(updated as WorkOrder);
+      const statusLabels: Record<string, string> = {
+        en_route: 'En Route',
+        in_progress: 'On Site',
+        completed: 'Completed',
+      };
+      toast.success('Status Updated', `Job moved to ${statusLabels[nextStatus] || nextStatus}`);
     }
     setSaving(false);
   };
@@ -184,6 +193,14 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       setJob({ ...job, notes: updatedNotes });
       setNoteText('');
       fetch(`/api/drafts?work_order_id=${id}&draft_type=notes`, { method: 'DELETE' }).catch(() => {});
+      toast.success('Note Saved', 'Your note has been added to this job.');
+    }
+  };
+
+  const handlePhotosChange = (newPhotos: string[]) => {
+    setPhotos(newPhotos);
+    if (newPhotos.length > photos.length) {
+      toast.success('Photo Uploaded', 'Photo has been saved to this job.');
     }
   };
 
@@ -203,6 +220,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     if (!job) return;
     if (!job.signature_url) {
       setActiveTab('signature');
+      toast.warning('Signature Required', 'Please collect a signature before completing the job.');
       return;
     }
 
@@ -221,6 +239,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     if (res.ok) {
       setJob({ ...job, status: 'completed', completed_at: new Date().toISOString() });
       setJustCompleted(true);
+      toast.success('Job Completed', 'Great work! The job has been marked as completed.');
       setTimeout(() => {
         completedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
@@ -231,7 +250,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   if (loading) {
     return (
       <div className="pt-12 flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[#e55b2b] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -239,8 +258,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   if (!job) {
     return (
       <div className="pt-12 text-center">
-        <p className="text-gray-500">Job not found</p>
-        <Link href="/admin/tech/jobs" className="text-blue-600 text-sm mt-2 inline-block">
+        <p className="text-[#4a6580]">Job not found</p>
+        <Link href="/admin/tech/jobs" className="text-[#e55b2b] text-sm mt-2 inline-block hover:underline">
           Back to Jobs
         </Link>
       </div>
@@ -250,7 +269,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   return (
     <div className="pt-4 pb-6 space-y-4 w-full overflow-x-hidden">
       {/* Back button */}
-      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-steel active:text-navy transition-colors">
+      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-[#4a6580] active:text-[#0a1f3f] transition-colors">
         <ArrowLeft className="w-4 h-4" />
         Back
       </button>
@@ -263,67 +282,74 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       />
 
       {/* Customer card */}
-      <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
-        <h2 className="font-semibold text-navy">{job.customers?.full_name || 'Unknown Customer'}</h2>
-        <p className="text-sm text-gray-500">{job.description}</p>
-        <div className="grid grid-cols-4 gap-2 pt-1">
-          {job.customers?.phone && (
-            <a
-              href={`tel:${job.customers.phone}`}
-              className="flex items-center justify-center gap-1 px-2 py-2 rounded-lg bg-green-50 text-green-700 text-xs font-medium active:bg-green-100 transition-colors"
+      <div className="rounded-xl overflow-hidden border border-[#c8d8ea]">
+        {/* Navy gradient header */}
+        <div className="bg-gradient-to-r from-[#0a1f3f] to-[#122e5c] px-4 py-3">
+          <h2 className="font-semibold text-white">{job.customers?.full_name || 'Unknown Customer'}</h2>
+          <p className="text-sm text-white/70">{job.description}</p>
+        </div>
+        {/* Action buttons */}
+        <div className="bg-white px-4 py-3">
+          <div className="grid grid-cols-4 gap-2">
+            {job.customers?.phone && (
+              <a
+                href={`tel:${job.customers.phone}`}
+                className="flex flex-col items-center gap-1.5"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#e55b2b]/10 text-[#e55b2b] flex items-center justify-center">
+                  <Phone className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-medium text-[#4a6580]">Call</span>
+              </a>
+            )}
+            {job.customers?.address && (
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent(job.customers.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center gap-1.5"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#e55b2b]/10 text-[#e55b2b] flex items-center justify-center">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-medium text-[#4a6580]">Maps</span>
+              </a>
+            )}
+            <Link
+              href={`/admin/tech/jobs/${job.id}/quote`}
+              className="flex flex-col items-center gap-1.5"
             >
-              <Phone className="w-3.5 h-3.5 flex-shrink-0" />
-              Call
-            </a>
-          )}
-          {job.customers?.address && (
-            <a
-              href={`https://maps.google.com/?q=${encodeURIComponent(job.customers.address)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1 px-2 py-2 rounded-lg bg-accent-light text-accent text-xs font-medium active:bg-blue-100 transition-colors"
+              <div className="w-10 h-10 rounded-full bg-[#e55b2b]/10 text-[#e55b2b] flex items-center justify-center">
+                <Receipt className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] font-medium text-[#4a6580]">Quote</span>
+            </Link>
+            <Link
+              href={`/admin/tech/report/${job.id}`}
+              className="flex flex-col items-center gap-1.5"
             >
-              <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-              Maps
-            </a>
-          )}
-          <Link
-            href={`/admin/tech/report/${job.id}`}
-            className="flex items-center justify-center gap-1 px-2 py-2 rounded-lg bg-purple-50 text-purple-700 text-xs font-medium active:bg-purple-100 transition-colors"
-          >
-            <FileText className="w-3.5 h-3.5 flex-shrink-0" />
-            Report
-          </Link>
-          <Link
-            href={`/admin/tech/jobs/${job.id}/quote`}
-            className="flex items-center justify-center gap-1 px-2 py-2 rounded-lg bg-ember/10 text-ember text-xs font-medium active:bg-ember/20 transition-colors"
-          >
-            <Receipt className="w-3.5 h-3.5 flex-shrink-0" />
-            Quote
-          </Link>
+              <div className="w-10 h-10 rounded-full bg-[#e55b2b]/10 text-[#e55b2b] flex items-center justify-center">
+                <FileText className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] font-medium text-[#4a6580]">Report</span>
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-gray-100 rounded-lg p-1">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs font-medium transition-all ${
-              activeTab === tab.key ? 'bg-white shadow-sm text-navy scale-[1.02]' : 'text-steel active:text-navy'
-            }`}
-          >
-            <tab.icon className="w-3.5 h-3.5" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={tabs}
+        value={activeTab}
+        onChange={setActiveTab}
+        variant="underline"
+        fullWidth
+      />
 
       {/* Tab content */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="bg-white rounded-xl border border-[#c8d8ea] p-4">
         {activeTab === 'photos' && (
-          <PhotoCapture workOrderId={job.id} photos={photos} onPhotosChange={setPhotos} />
+          <PhotoCapture workOrderId={job.id} photos={photos} onPhotosChange={handlePhotosChange} />
         )}
         {activeTab === 'parts' && groupId && (
           <PartsLogger
@@ -334,11 +360,11 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         )}
         {activeTab === 'notes' && (
           <div className="space-y-3">
-            <p className="text-xs text-gray-400 italic">Notes are visible to techs and office only, not the customer.</p>
+            <p className="text-xs text-[#4a6580]/70 italic">Notes are visible to techs and office only, not the customer.</p>
             {job.notes && (
-              <div className="bg-gray-50 rounded-lg p-3 max-h-48 overflow-y-auto">
+              <div className="bg-[#f0f6fc] rounded-lg p-3 max-h-48 overflow-y-auto">
                 {job.notes.split('\n').map((line, i) => (
-                  <p key={i} className="text-sm text-gray-700 mb-1">{line}</p>
+                  <p key={i} className="text-sm text-[#0a1f3f]/80 mb-1">{line}</p>
                 ))}
               </div>
             )}
@@ -348,13 +374,13 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 placeholder="Add a note..."
-                className="flex-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2.5 rounded-lg border border-[#c8d8ea] text-sm focus:outline-none focus:border-[#e55b2b] focus:ring-1 focus:ring-[#e55b2b]"
                 onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
               />
               <button
                 onClick={handleAddNote}
                 disabled={!noteText.trim()}
-                className="px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-40 active:bg-blue-700 transition-colors"
+                className="px-4 py-2.5 rounded-lg bg-[#e55b2b] text-white text-sm font-medium disabled:opacity-40 hover:bg-[#d14e22] active:bg-[#c04520] transition-colors"
               >
                 Add
               </button>
@@ -374,7 +400,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       {['in_progress', 'completed'].includes(job.status) && (
         <Link
           href={`/admin/tech/jobs/${job.id}/payment`}
-          className="w-full py-3 rounded-xl bg-accent text-white font-semibold active:bg-accent-dark flex items-center justify-center gap-2 transition-colors"
+          className="w-full py-3 rounded-xl bg-[#e55b2b] text-white font-semibold active:bg-[#c04520] flex items-center justify-center gap-2 transition-colors"
         >
           <DollarSign className="w-5 h-5" />
           Collect Payment
@@ -386,7 +412,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         <button
           onClick={handleCompleteJob}
           disabled={saving}
-          className="w-full py-3 rounded-xl bg-green-600 text-white font-semibold active:bg-green-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+          className="w-full py-3 rounded-xl bg-emerald-600 text-white font-semibold active:bg-emerald-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
         >
           {saving ? (
             <>
@@ -401,21 +427,21 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       {justCompleted && (
         <div
           ref={completedRef}
-          className="bg-green-50 border border-green-200 rounded-xl p-6 text-center animate-[slideUp_0.3s_ease-out]"
+          className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center animate-[slideUp_0.3s_ease-out]"
         >
-          <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-green-800 mb-1">Job Completed!</h3>
-          <p className="text-sm text-green-600 mb-4">Great work. The job has been marked as completed.</p>
+          <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+          <h3 className="text-lg font-bold text-emerald-800 mb-1">Job Completed!</h3>
+          <p className="text-sm text-emerald-600 mb-4">Great work. The job has been marked as completed.</p>
           <div className="flex gap-3">
             <Link
               href={`/admin/tech/jobs/${job.id}/complete`}
-              className="flex-1 py-2.5 rounded-lg bg-green-600 text-white text-sm font-semibold active:bg-green-700 transition-colors text-center"
+              className="flex-1 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold active:bg-emerald-700 transition-colors text-center"
             >
               View Summary
             </Link>
             <Link
               href="/admin/tech/jobs"
-              className="flex-1 py-2.5 rounded-lg bg-white border border-green-300 text-green-700 text-sm font-semibold active:bg-green-50 transition-colors text-center"
+              className="flex-1 py-2.5 rounded-lg bg-white border border-emerald-300 text-emerald-700 text-sm font-semibold active:bg-emerald-50 transition-colors text-center"
             >
               Back to Jobs
             </Link>

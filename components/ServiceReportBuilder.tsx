@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase';
 import { useAuth } from './AuthProvider';
-import { Button, Input, Card, CardContent } from './ui';
+import { Button, Input, Card, CardContent, Badge, EmptyState } from './ui';
 import { formatCurrency } from '@/lib/utils';
 import {
   HVAC_BRANDS,
@@ -44,6 +44,8 @@ import {
   Wrench,
   CalendarCheck,
   Cpu,
+  Crown,
+  ImageIcon,
 } from 'lucide-react';
 import type {
   ServiceReportMedia,
@@ -106,9 +108,17 @@ const STEPS = [
 
 type EquipmentSubTab = 'info' | 'problem' | 'health';
 
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 function createDefaultUnit(): ServiceUnit {
   return {
-    id: crypto.randomUUID(),
+    id: generateId(),
     equipment_info: { ...EMPTY_EQUIPMENT_INFO },
     warranty_info: { ...EMPTY_WARRANTY_INFO },
     problem_found: '',
@@ -726,7 +736,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
     setSaving(true);
     const supabase = createClient();
     const formData = getFormData();
-    const shareToken = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+    const shareToken = generateId().replace(/-/g, '').substring(0, 16);
 
     if (savedReportId) {
       await supabase
@@ -1188,14 +1198,14 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
     const selectedCustomer = customers.find(c => c.id === customerId);
     return (
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-navy">Job Summary</h3>
+        <h3 className="text-lg font-semibold text-[#0a1f3f]">Job Summary</h3>
 
         <div>
-          <label className="block text-sm font-medium text-navy mb-1">Customer</label>
+          <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Customer</label>
           <select
             value={customerId}
             onChange={(e) => handleCustomerChange(e.target.value)}
-            className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            className="block w-full rounded-lg border border-[#c8d8ea] px-3 py-2 text-black focus:border-[#e55b2b] focus:outline-none focus:ring-1 focus:ring-[#e55b2b]"
           >
             <option value="">Select customer...</option>
             {customers.map((c) => (
@@ -1205,10 +1215,10 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         </div>
 
         {selectedCustomer && (
-          <div className="bg-accent-light border border-accent/20 rounded-lg p-3 text-sm space-y-1">
-            <p className="text-navy"><span className="text-accent font-medium">Customer:</span> {selectedCustomer.full_name}</p>
-            {selectedCustomer.phone && <p className="text-navy/80"><span className="text-accent font-medium">Phone:</span> {selectedCustomer.phone}</p>}
-            {selectedCustomer.address && <p className="text-navy/80"><span className="text-accent font-medium">Address:</span> {selectedCustomer.address}</p>}
+          <div className="bg-gradient-to-r from-[#0a1f3f] to-[#122e5c] rounded-xl p-4 text-sm space-y-1.5 shadow-md">
+            <p className="text-white font-semibold text-base">{selectedCustomer.full_name}</p>
+            {selectedCustomer.phone && <p className="text-white/70 text-sm">{selectedCustomer.phone}</p>}
+            {selectedCustomer.address && <p className="text-white/70 text-sm">{selectedCustomer.address}</p>}
           </div>
         )}
 
@@ -1220,34 +1230,34 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         />
 
         <div>
-          <label className="block text-sm font-medium text-navy mb-1">Tech Notes (internal)</label>
+          <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Tech Notes (internal)</label>
           <textarea
             value={techNotes}
             onChange={(e) => setTechNotes(e.target.value)}
             rows={4}
             placeholder="Internal notes for your team..."
-            className="block w-full rounded-lg border border-border px-3 py-2 text-black placeholder-gray-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            className="block w-full rounded-lg border border-[#c8d8ea] px-3 py-2 text-black placeholder-gray-400 focus:border-[#e55b2b] focus:outline-none focus:ring-1 focus:ring-[#e55b2b]"
           />
         </div>
 
         {/* Units overview */}
-        <div className="border-t border-border pt-4">
-          <h4 className="text-sm font-medium text-navy mb-2 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-accent" /> Units on this Job
+        <div className="bg-white border border-[#c8d8ea] rounded-xl p-4 shadow-sm">
+          <h4 className="text-sm font-semibold text-[#0a1f3f] mb-3 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-[#e55b2b]" /> Units on this Job
           </h4>
           <div className="space-y-2">
             {units.map((u, idx) => (
-              <div key={u.id} className="flex items-center justify-between p-3 bg-ice rounded-lg">
+              <div key={u.id} className="flex items-center justify-between p-3 bg-[#dceaf8]/50 rounded-lg border border-[#c8d8ea]/50">
                 <div>
-                  <p className="text-sm font-medium text-navy">Unit {idx + 1}</p>
-                  <p className="text-xs text-steel">
+                  <p className="text-sm font-medium text-[#0a1f3f]">Unit {idx + 1}</p>
+                  <p className="text-xs text-[#4a6580]">
                     {u.equipment_info.equipment_type || 'No type'} {u.equipment_info.make ? `- ${u.equipment_info.make}` : ''} {u.equipment_info.model || ''}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => { setActiveUnitIdx(idx); navigateToStep(2); }}
-                  className="text-xs text-accent font-medium hover:underline"
+                  className="text-xs text-[#e55b2b] font-medium hover:underline"
                 >
                   Edit
                 </button>
@@ -1272,12 +1282,12 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
           type="button"
           onClick={() => tagCameraRef.current?.click()}
           disabled={scanningTag}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-sm transition-colors disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-[#f5a623] bg-[#fef9ee] hover:bg-[#f5a623]/20 text-[#0a1f3f] font-bold text-sm transition-colors disabled:opacity-50 shadow-sm"
         >
           {scanningTag ? (
-            <><span className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" /> Reading Data Tag...</>
+            <><span className="w-4 h-4 border-2 border-[#f5a623] border-t-transparent rounded-full animate-spin" /> Reading Data Tag...</>
           ) : (
-            <><Camera className="w-5 h-5" /> Scan Data Tag</>
+            <><Sparkles className="w-5 h-5 text-[#f5a623]" /> Scan Data Tag</>
           )}
         </button>
         <input ref={tagCameraRef} type="file" accept="image/*" capture="environment" onChange={handleScanTag} className="hidden" />
@@ -1285,11 +1295,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         {/* Existing equipment selector */}
         {filteredEquipment.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-navy mb-1">Load from Profile (optional)</label>
+            <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Load from Profile (optional)</label>
             <select
               value={equipmentId}
               onChange={(e) => handleEquipmentSelect(e.target.value)}
-              className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              className="block w-full rounded-lg border border-[#c8d8ea] px-3 py-2 text-black focus:border-[#e55b2b] focus:outline-none focus:ring-1 focus:ring-[#e55b2b]"
             >
               <option value="">Select or enter manually...</option>
               {filteredEquipment.map((eq) => (
@@ -1301,14 +1311,14 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-3 bg-white border border-[#c8d8ea] rounded-xl p-4 shadow-sm">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-navy mb-1">Equipment Type</label>
+              <label className="block text-xs font-medium text-[#0a1f3f] mb-1">Equipment Type</label>
               <select
                 value={equipmentInfo.equipment_type}
                 onChange={(e) => setEquipmentInfo({ ...equipmentInfo, equipment_type: e.target.value })}
-                className="block w-full rounded-lg border border-border px-3 py-2.5 text-sm text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                className="block w-full rounded-lg border border-[#c8d8ea] px-3 py-2.5 text-sm text-black focus:border-[#e55b2b] focus:outline-none focus:ring-1 focus:ring-[#e55b2b]"
               >
                 <option value="">Select type...</option>
                 {EQUIPMENT_TYPES.map((t) => (
@@ -1365,11 +1375,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-navy mb-1">Refrigerant Type</label>
+            <label className="block text-xs font-medium text-[#0a1f3f] mb-1">Refrigerant Type</label>
             <select
               value={equipmentInfo.refrigerant_type}
               onChange={(e) => setEquipmentInfo({ ...equipmentInfo, refrigerant_type: e.target.value })}
-              className="block w-full rounded-lg border border-border px-3 py-2.5 text-sm text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              className="block w-full rounded-lg border border-[#c8d8ea] px-3 py-2.5 text-sm text-black focus:border-[#e55b2b] focus:outline-none focus:ring-1 focus:ring-[#e55b2b]"
             >
               <option value="">Select refrigerant...</option>
               {REFRIGERANT_TYPES.map((r) => (
@@ -1602,10 +1612,10 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         )}
 
         {/* Warranty section inline */}
-        <div className="border-t border-border pt-4 space-y-4">
-          <h4 className="text-base font-semibold text-navy">Warranty</h4>
+        <div className="border-t border-[#c8d8ea] pt-4 space-y-4">
+          <h4 className="text-base font-semibold text-[#0a1f3f]">Warranty</h4>
           <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-navy">Has Warranty?</label>
+            <label className="text-sm font-medium text-[#0a1f3f]">Has Warranty?</label>
             <button
               type="button"
               onClick={() => setWarrantyInfo({ ...warrantyInfo, has_warranty: !warrantyInfo.has_warranty })}
@@ -1623,11 +1633,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-navy mb-1">Warranty Type</label>
+                  <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Warranty Type</label>
                   <select
                     value={warrantyInfo.warranty_type}
                     onChange={(e) => setWarrantyInfo({ ...warrantyInfo, warranty_type: e.target.value })}
-                    className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    className="block w-full rounded-lg border border-[#c8d8ea] px-3 py-2 text-black focus:border-[#e55b2b] focus:outline-none focus:ring-1 focus:ring-[#e55b2b]"
                   >
                     <option value="">Select type...</option>
                     <option value="manufacturer">Manufacturer</option>
@@ -1645,7 +1655,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
 
               {/* Warranty Lookup Links */}
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-navy">Warranty Lookup</label>
+                <label className="block text-sm font-medium text-[#0a1f3f]">Warranty Lookup</label>
                 <div className="flex flex-wrap gap-2">
                   {WARRANTY_LINKS.map(link => (
                     <a key={link.brand} href={link.url} target="_blank" rel="noopener noreferrer"
@@ -1725,7 +1735,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         </div>
 
         {/* Sub-tab bar */}
-        <div className="flex gap-1 bg-ice p-1 rounded-lg">
+        <div className="flex gap-1 bg-[#dceaf8] p-1 rounded-lg">
           {subTabs.map(tab => (
             <button
               key={tab.id}
@@ -1733,8 +1743,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
               onClick={() => setEquipmentSubTab(tab.id)}
               className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 equipmentSubTab === tab.id
-                  ? 'bg-white text-accent shadow-sm'
-                  : 'text-steel hover:text-navy'
+                  ? 'bg-white text-[#0a1f3f] shadow-sm border-l-2 border-l-[#e55b2b]'
+                  : 'text-[#4a6580] hover:text-[#0a1f3f]'
               }`}
             >
               {tab.label}
@@ -1752,21 +1762,21 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
 
   const renderProblemFound = () => (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-navy">Problem Found</h3>
+      <h3 className="text-lg font-semibold text-[#0a1f3f]">Problem Found</h3>
 
       <div>
-        <label className="block text-sm font-medium text-navy mb-1">Description</label>
+        <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Description</label>
         <textarea
           value={problemFound}
           onChange={(e) => setProblemFound(e.target.value)}
           rows={8}
           placeholder="Describe the problem found during inspection..."
-          className="block w-full rounded-lg border border-border px-3 py-2 text-black placeholder-gray-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent min-h-[200px]"
+          className="block w-full rounded-lg border border-[#c8d8ea] px-3 py-2 text-black placeholder-gray-400 focus:border-[#e55b2b] focus:outline-none focus:ring-1 focus:ring-[#e55b2b] min-h-[200px]"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-navy mb-2">Secondary Problems</label>
+        <label className="block text-sm font-medium text-[#0a1f3f] mb-2">Secondary Problems</label>
         <div className="flex flex-wrap gap-2">
           {SECONDARY_PROBLEMS.map((problem) => (
             <button
@@ -1786,7 +1796,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-navy mb-2">Severity Level</label>
+        <label className="block text-sm font-medium text-[#0a1f3f] mb-2">Severity Level</label>
         <div className="flex flex-wrap gap-2">
           {(['low', 'medium', 'high', 'critical'] as const).map((sev) => {
             const colors: Record<string, string> = {
@@ -1818,7 +1828,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-navy mb-2">Symptoms</label>
+        <label className="block text-sm font-medium text-[#0a1f3f] mb-2">Symptoms</label>
         <div className="flex flex-wrap gap-2">
           {SYMPTOM_OPTIONS.map((symptom) => (
             <button
@@ -1838,7 +1848,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-navy mb-2">Areas Affected</label>
+        <label className="block text-sm font-medium text-[#0a1f3f] mb-2">Areas Affected</label>
         {problemDetails.areas_affected.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2">
             {problemDetails.areas_affected.map(area => (
@@ -1882,8 +1892,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
 
     return (
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-navy">System Health</h3>
-        <p className="text-sm text-steel">Rate each component of the {eqType || 'system'}</p>
+        <h3 className="text-lg font-semibold text-[#0a1f3f]">System Health</h3>
+        <p className="text-sm text-[#4a6580]">Rate each component of the {eqType || 'system'}</p>
 
         <input
           ref={healthMediaInputRef}
@@ -1907,10 +1917,10 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
           const extras = healthExtras[comp.key] || {};
 
           return (
-            <div key={comp.key} className="border border-border/50 rounded-lg p-3 space-y-2">
+            <div key={comp.key} className="border border-[#c8d8ea] rounded-xl p-3 space-y-2 bg-white shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-navy">{comp.label}</span>
-                <span className="text-xs text-steel/60">
+                <span className="text-sm font-medium text-[#0a1f3f]">{comp.label}</span>
+                <span className="text-xs text-[#4a6580]/60">
                   {isRefrigerantCharge(comp.key)
                     ? (extras.charge_status as string || 'Not rated')
                     : healthRatings[comp.key]
@@ -1919,23 +1929,52 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                 </span>
               </div>
 
-              {/* Rating buttons -- skip for refrigerant charge (has its own UI) */}
+              {/* Rating buttons -- gauge-style segments */}
               {!isRefrigerantCharge(comp.key) && (
-                <div className="flex gap-1">
-                  {HEALTH_RATINGS.slice().reverse().map(rating => (
-                    <button
-                      key={rating.value}
-                      type="button"
-                      onClick={() => setHealthRatings(prev => ({ ...prev, [comp.key]: rating.value }))}
-                      className={`flex-1 py-2 rounded text-xs font-medium transition-colors ${
-                        healthRatings[comp.key] === rating.value
-                          ? `${rating.color} text-white`
-                          : 'bg-ice text-steel hover:bg-ice/80'
-                      }`}
-                    >
-                      {rating.value}
-                    </button>
-                  ))}
+                <div>
+                  <div className="flex gap-0.5">
+                    {HEALTH_RATINGS.slice().reverse().map((rating, rIdx) => {
+                      const gaugeColors: Record<number, { active: string; bar: string }> = {
+                        1: { active: 'bg-red-500 text-white', bar: 'bg-red-500' },
+                        2: { active: 'bg-orange-500 text-white', bar: 'bg-orange-500' },
+                        3: { active: 'bg-yellow-500 text-white', bar: 'bg-yellow-500' },
+                        4: { active: 'bg-green-400 text-white', bar: 'bg-green-400' },
+                        5: { active: 'bg-green-600 text-white', bar: 'bg-green-600' },
+                      };
+                      const isFirst = rIdx === 0;
+                      const isLastR = rIdx === HEALTH_RATINGS.length - 1;
+                      const isRated = healthRatings[comp.key] === rating.value;
+                      return (
+                        <button
+                          key={rating.value}
+                          type="button"
+                          onClick={() => setHealthRatings(prev => ({ ...prev, [comp.key]: rating.value }))}
+                          className={`flex-1 py-2.5 text-xs font-bold transition-all ${
+                            isFirst ? 'rounded-l-full' : ''
+                          } ${isLastR ? 'rounded-r-full' : ''} ${
+                            isRated
+                              ? gaugeColors[rating.value].active
+                              : 'bg-[#dceaf8] text-[#4a6580] hover:bg-[#c8d8ea]'
+                          }`}
+                        >
+                          {rating.value}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Health bar indicator */}
+                  {healthRatings[comp.key] && (
+                    <div className="mt-1.5 h-1 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          healthRatings[comp.key] >= 4 ? 'bg-green-500' :
+                          healthRatings[comp.key] === 3 ? 'bg-yellow-500' :
+                          healthRatings[comp.key] === 2 ? 'bg-orange-500' : 'bg-red-500'
+                        }`}
+                        style={{ width: `${(healthRatings[comp.key] / 5) * 100}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2124,39 +2163,60 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
 
   const renderStep5 = () => (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-navy">Other Uploads</h3>
+      <h3 className="text-lg font-semibold text-[#0a1f3f]">Photos & Videos</h3>
 
-      <div className="flex flex-wrap gap-3">
-        <Button variant="outline" onClick={() => cameraInputRef.current?.click()}>
-          <Camera className="w-4 h-4 mr-2" /> Take Photo
-        </Button>
-        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-          <Upload className="w-4 h-4 mr-2" /> Upload Files
-        </Button>
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={(e) => handleFileSelect(e, 'photo')}
-        />
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            const files = Array.from(e.target.files || []);
-            files.forEach((f) => {
-              const type = f.type.startsWith('video') ? 'video' : 'photo';
-              setPendingFiles((prev) => [...prev, { file: f, caption: '', type }]);
-            });
-            e.target.value = '';
-          }}
-        />
+      <div className="grid grid-cols-1 gap-3">
+        <button
+          type="button"
+          onClick={() => cameraInputRef.current?.click()}
+          className="flex items-center gap-3 w-full px-4 py-4 rounded-xl border-2 border-[#c8d8ea] bg-white hover:bg-[#dceaf8]/50 transition-colors shadow-sm"
+        >
+          <div className="w-10 h-10 rounded-full bg-[#e55b2b]/10 flex items-center justify-center flex-shrink-0">
+            <Camera className="w-5 h-5 text-[#e55b2b]" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-[#0a1f3f]">Take Photo</p>
+            <p className="text-xs text-[#4a6580]">Use camera to capture</p>
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-3 w-full px-4 py-4 rounded-xl border-2 border-[#c8d8ea] bg-white hover:bg-[#dceaf8]/50 transition-colors shadow-sm"
+        >
+          <div className="w-10 h-10 rounded-full bg-[#42a5f5]/10 flex items-center justify-center flex-shrink-0">
+            <Upload className="w-5 h-5 text-[#42a5f5]" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-[#0a1f3f]">Upload Files</p>
+            <p className="text-xs text-[#4a6580]">Select from gallery</p>
+          </div>
+        </button>
       </div>
+
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => handleFileSelect(e, 'photo')}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          files.forEach((f) => {
+            const type = f.type.startsWith('video') ? 'video' : 'photo';
+            setPendingFiles((prev) => [...prev, { file: f, caption: '', type }]);
+          });
+          e.target.value = '';
+        }}
+      />
 
       {/* Pending uploads */}
       {pendingFiles.length > 0 && (
@@ -2200,24 +2260,24 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       {/* Uploaded media */}
       {media.length > 0 && (
         <div className="space-y-3">
-          <h4 className="text-sm font-medium text-navy">Uploaded ({media.length})</h4>
+          <h4 className="text-sm font-semibold text-[#0a1f3f]">Uploaded ({media.length})</h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {media.map((m) => (
-              <div key={m.id} className="relative group">
+              <div key={m.id} className="relative group rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 {m.type === 'photo' ? (
-                  <img src={m.url} alt={m.caption || ''} className="w-full h-32 object-cover rounded-lg" />
+                  <img src={m.url} alt={m.caption || ''} className="w-full h-32 object-cover" />
                 ) : (
-                  <video src={m.url} className="w-full h-32 object-cover rounded-lg" />
+                  <video src={m.url} className="w-full h-32 object-cover" />
                 )}
                 <button
                   type="button"
                   onClick={() => deleteMedia(m.id, m.url)}
-                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1.5 right-1.5 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow"
                 >
                   <X className="w-3 h-3" />
                 </button>
                 {m.caption && (
-                  <p className="text-xs text-steel mt-1 truncate">{m.caption}</p>
+                  <p className="text-xs text-[#4a6580] mt-1 truncate px-1">{m.caption}</p>
                 )}
               </div>
             ))}
@@ -2226,7 +2286,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       )}
 
       {media.length === 0 && pendingFiles.length === 0 && (
-        <p className="text-sm text-steel text-center py-8">No photos or videos yet. Use the buttons above to capture or upload.</p>
+        <EmptyState
+          icon={<ImageIcon className="w-8 h-8" />}
+          title="No Photos Yet"
+          description="Use the buttons above to capture photos or upload files from your gallery."
+        />
       )}
     </div>
   );
@@ -2318,31 +2382,39 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
 
   const renderUpgrades = () => (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-navy">Upgrades & Add-ons</h3>
+      <h3 className="text-lg font-semibold text-[#0a1f3f]">Upgrades & Add-ons</h3>
 
       {/* Upgrade Catalog */}
       <div className="space-y-2">
-        <p className="text-sm text-steel">Recommended upgrades for this service:</p>
+        <p className="text-sm text-[#4a6580]">Recommended upgrades for this service:</p>
         <div className="space-y-2">
           {UPGRADE_CATALOG.filter(cat => !upgrades.some(u => u.name === cat.name)).map(cat => {
-            const priorityColors: Record<string, string> = {
-              low: 'border-l-green-400',
-              medium: 'border-l-yellow-400',
-              high: 'border-l-red-400',
-            };
             const hasFlyer = !!UPGRADE_FLYERS[cat.name];
+            const IconComp = UPGRADE_FLYERS[cat.name]?.icon;
             return (
               <div
                 key={cat.name}
-                className={`p-3 rounded-lg border border-border ${priorityColors[cat.priority]} border-l-4`}
+                className="p-3 rounded-xl border border-[#c8d8ea] bg-white shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex justify-between items-start">
-                  <span className="text-sm font-medium text-navy">{cat.name}</span>
-                  <span className="text-sm font-bold text-accent ml-2">{formatCurrency(cat.price)}</span>
+                  <div className="flex items-center gap-2">
+                    {IconComp && (
+                      <div className="w-8 h-8 rounded-lg bg-[#e55b2b]/10 flex items-center justify-center flex-shrink-0">
+                        <IconComp className="w-4 h-4 text-[#e55b2b]" />
+                      </div>
+                    )}
+                    <span className="text-sm font-semibold text-[#0a1f3f]">{cat.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 ml-2">
+                    <Badge variant={cat.priority === 'high' ? 'danger' : cat.priority === 'medium' ? 'warning' : 'success'} size="sm">
+                      {cat.priority}
+                    </Badge>
+                    <span className="text-sm font-bold text-[#e55b2b]">{formatCurrency(cat.price)}</span>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1 mt-1.5">
+                <div className="flex flex-wrap gap-1 mt-1.5 ml-10">
                   {cat.benefits.slice(0, 2).map(b => (
-                    <span key={b} className="text-[10px] px-1.5 py-0.5 bg-ice text-steel rounded">{b}</span>
+                    <span key={b} className="text-[10px] px-1.5 py-0.5 bg-[#dceaf8] text-[#4a6580] rounded">{b}</span>
                   ))}
                 </div>
                 <div className="flex gap-2 mt-2.5">
@@ -2350,7 +2422,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                     <button
                       type="button"
                       onClick={() => setFlyerProduct(cat.name)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-accent/30 text-accent text-xs font-semibold hover:bg-accent/5 active:bg-accent/10 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-[#0a1f3f]/20 text-[#0a1f3f] text-xs font-semibold hover:bg-[#0a1f3f]/5 active:bg-[#0a1f3f]/10 transition-colors"
                     >
                       <Info className="w-3.5 h-3.5" />
                       Learn More
@@ -2359,7 +2431,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                   <button
                     type="button"
                     onClick={() => setUpgrades([...upgrades, { ...cat, benefits: [...cat.benefits] }])}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-accent text-white text-xs font-semibold active:bg-accent/90 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-[#e55b2b] hover:bg-[#d14d1f] text-white text-xs font-semibold transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Add to Service
@@ -2371,15 +2443,15 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         </div>
       </div>
 
-      <div className="border-t border-border pt-4 flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-navy">Added Upgrades ({upgrades.length})</h4>
+      <div className="border-t border-[#c8d8ea] pt-4 flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-[#0a1f3f]">Added Upgrades ({upgrades.length})</h4>
         <Button size="sm" variant="outline" onClick={addUpgrade}>
           <Plus className="w-4 h-4 mr-1" /> Custom
         </Button>
       </div>
 
       {upgrades.length === 0 && (
-        <p className="text-sm text-steel text-center py-4">No upgrades added yet. Tap a suggestion above or add a custom one.</p>
+        <p className="text-sm text-[#4a6580] text-center py-4">No upgrades added yet. Tap a suggestion above or add a custom one.</p>
       )}
 
       {upgrades.map((upg, idx) => (
@@ -2404,11 +2476,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                 onChange={(e) => updateUpgrade(idx, { price: e.target.value === '' ? 0 : Number(e.target.value) })}
               />
               <div>
-                <label className="block text-sm font-medium text-navy mb-1">Priority</label>
+                <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Priority</label>
                 <select
                   value={upg.priority}
                   onChange={(e) => updateUpgrade(idx, { priority: e.target.value as 'low' | 'medium' | 'high' })}
-                  className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="block w-full rounded-lg border border-[#c8d8ea] px-3 py-2 text-black focus:border-[#e55b2b] focus:outline-none focus:ring-1 focus:ring-[#e55b2b]"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -2453,36 +2525,45 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
   const renderStep7 = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-navy">Quote Options</h3>
-        <Button size="sm" variant="outline" onClick={addQuoteOption}>
-          <Plus className="w-4 h-4 mr-1" /> Add Option
-        </Button>
+        <h3 className="text-lg font-semibold text-[#0a1f3f]">Quote Options</h3>
+        <button
+          type="button"
+          onClick={addQuoteOption}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 border-dashed border-[#c8d8ea] text-[#4a6580] text-sm font-medium hover:border-[#e55b2b] hover:text-[#e55b2b] transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Add Option
+        </button>
       </div>
 
       {quoteOptions.map((opt, optIdx) => {
         const isExpanded = expandedOption === optIdx;
         return (
-          <Card key={optIdx}>
+          <div key={optIdx} className={`rounded-xl border-2 overflow-hidden transition-all shadow-sm ${
+            opt.is_recommended ? 'border-[#f5a623]' : 'border-[#c8d8ea]'
+          }`}>
+            {opt.is_recommended && (
+              <div className="bg-[#fef9ee] px-4 py-1.5 flex items-center gap-1.5 border-b border-[#f5a623]/30">
+                <Crown className="w-3.5 h-3.5 text-[#f5a623]" />
+                <span className="text-[10px] font-bold text-[#f5a623] uppercase tracking-wider">Best Value</span>
+              </div>
+            )}
             <CardContent className="p-0">
               {/* Option header */}
               <button
                 type="button"
                 onClick={() => setExpandedOption(isExpanded ? null : optIdx)}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-ice transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#dceaf8]/30 transition-colors"
               >
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-                  selectedOptionIdx === optIdx ? 'bg-green-100 text-green-700' : 'bg-accent-light text-accent'
+                <span className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                  selectedOptionIdx === optIdx ? 'bg-green-500 text-white' : 'bg-[#0a1f3f] text-white'
                 }`}>
                   {opt.label}
                 </span>
                 <div className="flex-1 text-left min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-navy truncate">{opt.name || 'Unnamed Option'}</span>
-                    {opt.is_recommended && (
-                      <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded flex-shrink-0">Recommended</span>
-                    )}
+                    <span className="text-sm font-medium text-[#0a1f3f] truncate">{opt.name || 'Unnamed Option'}</span>
                   </div>
-                  <span className="text-sm text-steel">{formatCurrency(opt.subtotal)}</span>
+                  <span className="text-sm font-bold text-[#e55b2b]">{formatCurrency(opt.subtotal)}</span>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {quoteOptions.length > 1 && (
@@ -2500,7 +2581,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
 
               {/* Option body */}
               {isExpanded && (
-                <div className="px-4 pb-4 space-y-4 border-t border-border/50">
+                <div className="px-4 pb-4 space-y-4 border-t border-[#c8d8ea]/50">
                   <div className="pt-3 flex flex-wrap items-center gap-3">
                     <div className="flex-1 min-w-[200px]">
                       <Input
@@ -2520,19 +2601,19 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                           setQuoteOptions(updated);
                         }
                       }}
-                      className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex items-center gap-1.5 ${
                         opt.is_recommended
-                          ? 'bg-green-100 text-green-700 border-green-300'
-                          : 'bg-white text-steel border-border hover:bg-ice'
+                          ? 'bg-[#fef9ee] text-[#f5a623] border-[#f5a623]'
+                          : 'bg-white text-[#4a6580] border-[#c8d8ea] hover:bg-[#dceaf8]'
                       }`}
                     >
-                      {opt.is_recommended ? '✓ Recommended' : 'Set Recommended'}
+                      {opt.is_recommended ? <><Crown className="w-3 h-3" /> Recommended</> : 'Set Recommended'}
                     </button>
                   </div>
 
                   {/* Items */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-navy">Items</label>
+                    <label className="text-sm font-medium text-[#0a1f3f]">Items</label>
                     {opt.items.map((item, itemIdx) => (
                       <div key={itemIdx} className="flex flex-wrap gap-2 items-end">
                         <div className="flex-1 min-w-[150px]">
@@ -2546,7 +2627,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                           <select
                             value={item.category}
                             onChange={(e) => updateQuoteItem(optIdx, itemIdx, 'category', e.target.value)}
-                            className="block w-full rounded-lg border border-border px-2 py-2 text-sm text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                            className="block w-full rounded-lg border border-[#c8d8ea] px-2 py-2 text-sm text-black focus:border-[#e55b2b] focus:outline-none focus:ring-1 focus:ring-[#e55b2b]"
                           >
                             {QUOTE_ITEM_CATEGORIES.map(cat => (
                               <option key={cat.key} value={cat.key}>{cat.label}</option>
@@ -2584,43 +2665,44 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                     </Button>
                   </div>
 
-                  <div className="flex justify-end text-lg font-bold text-navy pt-2 border-t border-border/50">
-                    Subtotal: {formatCurrency(opt.subtotal)}
+                  <div className="flex justify-end text-lg font-bold pt-2 border-t border-[#c8d8ea]/50">
+                    <span className="text-[#4a6580] text-sm mr-2">Subtotal:</span>
+                    <span className="text-[#e55b2b]">{formatCurrency(opt.subtotal)}</span>
                   </div>
                 </div>
               )}
             </CardContent>
-          </Card>
+          </div>
         );
       })}
 
       {/* Customer Selection */}
-      <div className="border-t border-border pt-4">
-        <h4 className="text-sm font-medium text-navy mb-3">Which option does the customer want?</h4>
+      <div className="border-t border-[#c8d8ea] pt-4">
+        <h4 className="text-sm font-semibold text-[#0a1f3f] mb-3">Which option does the customer want?</h4>
         <div className="space-y-2">
           {quoteOptions.map((opt, idx) => (
             <button
               key={idx}
               type="button"
               onClick={() => setSelectedOptionIdx(idx)}
-              className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${
+              className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
                 selectedOptionIdx === idx
-                  ? 'border-green-500 bg-green-50'
-                  : 'border-border hover:border-border bg-white'
+                  ? 'border-[#e55b2b] bg-[#fef0eb] shadow-md'
+                  : 'border-[#c8d8ea] hover:border-[#4a6580] bg-white'
               }`}
             >
               <div className="flex items-center gap-3">
-                <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-                  selectedOptionIdx === idx ? 'bg-green-500 text-white' : 'bg-ice text-steel'
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                  selectedOptionIdx === idx ? 'bg-[#e55b2b] text-white' : 'bg-[#dceaf8] text-[#4a6580]'
                 }`}>
                   {selectedOptionIdx === idx ? <Check className="w-4 h-4" /> : opt.label}
                 </span>
-                <span className="text-sm font-medium text-navy">{opt.name || 'Unnamed Option'}</span>
+                <span className="text-sm font-medium text-[#0a1f3f]">{opt.name || 'Unnamed Option'}</span>
                 {opt.is_recommended && (
-                  <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">Recommended</span>
+                  <Badge variant="premium" size="sm" icon={<Crown className="w-3 h-3" />}>Recommended</Badge>
                 )}
               </div>
-              <span className="text-sm font-bold text-navy">{formatCurrency(opt.subtotal)}</span>
+              <span className="text-sm font-bold text-[#0a1f3f]">{formatCurrency(opt.subtotal)}</span>
             </button>
           ))}
         </div>
@@ -2632,15 +2714,15 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
   const renderAISummary = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-navy flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-amber-500" /> Customer Summary
+        <h3 className="text-lg font-semibold text-[#0a1f3f] flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-[#f5a623]" /> Customer Summary
         </h3>
         {aiSummary && (
           <button
             type="button"
             onClick={generateAISummary}
             disabled={generatingSummary}
-            className="text-sm text-accent hover:underline flex items-center gap-1"
+            className="text-sm text-[#e55b2b] hover:underline flex items-center gap-1"
           >
             <Sparkles className="w-3 h-3" /> Regenerate
           </button>
@@ -2649,15 +2731,13 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
 
       {/* Loading State */}
       {generatingSummary && (
-        <Card>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center py-12 gap-4">
-              <div className="w-10 h-10 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
-              <p className="text-sm text-steel font-medium">Generating customer summary...</p>
-              <p className="text-xs text-steel/60">AI is reviewing your notes and creating a clear explanation</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-[#fef9ee] border-l-4 border-[#f5a623] rounded-xl p-6">
+          <div className="flex flex-col items-center justify-center py-8 gap-4">
+            <div className="w-10 h-10 border-4 border-[#f5a623]/30 border-t-[#f5a623] rounded-full animate-spin" />
+            <p className="text-sm text-[#0a1f3f] font-medium">Generating customer summary...</p>
+            <p className="text-xs text-[#4a6580]">AI is reviewing your notes and creating a clear explanation</p>
+          </div>
+        </div>
       )}
 
       {/* Error State */}
@@ -2678,29 +2758,25 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       {aiSummary && !generatingSummary && (
         <>
           {/* Findings */}
-          <Card>
-            <CardContent>
-              <h4 className="font-semibold text-navy mb-2 flex items-center gap-2">
-                <Info className="w-4 h-4 text-accent" /> What We Found
-              </h4>
-              <p className="text-sm text-navy/80 leading-relaxed">{aiSummary.findings_summary}</p>
-            </CardContent>
-          </Card>
+          <div className="bg-[#fef9ee] border-l-4 border-[#f5a623] rounded-xl p-4">
+            <h4 className="font-semibold text-[#0a1f3f] mb-2 flex items-center gap-2">
+              <Info className="w-4 h-4 text-[#f5a623]" /> What We Found
+            </h4>
+            <p className="text-sm text-[#0a1f3f]/80 leading-relaxed">{aiSummary.findings_summary}</p>
+          </div>
 
           {/* Urgency */}
-          <Card>
-            <CardContent>
-              <h4 className="font-semibold text-navy mb-2 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-500" /> Why This Matters
-              </h4>
-              <p className="text-sm text-navy/80 leading-relaxed">{aiSummary.urgency_explanation}</p>
-            </CardContent>
-          </Card>
+          <div className="bg-[#fef9ee] border-l-4 border-[#f5a623] rounded-xl p-4">
+            <h4 className="font-semibold text-[#0a1f3f] mb-2 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-[#f5a623]" /> Why This Matters
+            </h4>
+            <p className="text-sm text-[#0a1f3f]/80 leading-relaxed">{aiSummary.urgency_explanation}</p>
+          </div>
 
           {/* Options for Customer Selection */}
           <div className="space-y-3">
-            <h4 className="font-semibold text-navy">Your Options</h4>
-            <p className="text-xs text-steel">Tap an option to select it</p>
+            <h4 className="font-semibold text-[#0a1f3f]">Your Options</h4>
+            <p className="text-xs text-[#4a6580]">Tap an option to select it</p>
 
             {aiSummary.options_breakdown.map((opt, idx) => {
               const matchingQuoteOpt = quoteOptions.find(q => q.label === opt.label);
@@ -2717,26 +2793,32 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                   }}
                   className={`w-full text-left rounded-xl border-2 p-4 transition-all ${
                     isSelected
-                      ? 'border-green-500 bg-green-50 shadow-md'
-                      : 'border-border hover:border-accent/40 hover:shadow-sm'
+                      ? 'border-[#e55b2b] bg-[#fef0eb] shadow-md'
+                      : isRecommended
+                      ? 'border-[#f5a623] hover:shadow-md'
+                      : 'border-[#c8d8ea] hover:border-[#4a6580] hover:shadow-sm'
                   }`}
                 >
+                  {/* Recommended banner */}
+                  {isRecommended && !isSelected && (
+                    <div className="flex items-center gap-1.5 mb-2 -mt-1">
+                      <Crown className="w-3.5 h-3.5 text-[#f5a623]" />
+                      <span className="text-[10px] font-bold text-[#f5a623] uppercase tracking-wider">Recommended</span>
+                    </div>
+                  )}
                   {/* Option Header */}
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                        isSelected ? 'bg-green-500 text-white' : 'bg-navy/10 text-navy'
+                      <span className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm ${
+                        isSelected ? 'bg-[#e55b2b] text-white' : 'bg-[#0a1f3f]/10 text-[#0a1f3f]'
                       }`}>
                         {isSelected ? <Check className="w-4 h-4" /> : opt.label}
                       </span>
                       <div>
-                        <span className="font-semibold text-navy">{opt.name}</span>
-                        {isRecommended && (
-                          <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 uppercase">Recommended</span>
-                        )}
+                        <span className="font-semibold text-[#0a1f3f]">{opt.name}</span>
                       </div>
                     </div>
-                    <span className="text-lg font-bold text-navy">{formatCurrency(opt.total)}</span>
+                    <span className="text-lg font-bold text-[#0a1f3f]">{formatCurrency(opt.total)}</span>
                   </div>
 
                   {/* AI Description */}
@@ -2778,14 +2860,12 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
           </div>
 
           {/* Recommendation */}
-          <Card>
-            <CardContent>
-              <h4 className="font-semibold text-navy mb-2 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-green-600" /> Our Recommendation
-              </h4>
-              <p className="text-sm text-navy/80 leading-relaxed">{aiSummary.recommendation}</p>
-            </CardContent>
-          </Card>
+          <div className="bg-[#fef9ee] border-l-4 border-[#f5a623] rounded-xl p-4">
+            <h4 className="font-semibold text-[#0a1f3f] mb-2 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#059669]" /> Our Recommendation
+            </h4>
+            <p className="text-sm text-[#0a1f3f]/80 leading-relaxed">{aiSummary.recommendation}</p>
+          </div>
         </>
       )}
     </div>
@@ -2801,16 +2881,29 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
 
     return (
       <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-navy">Final Confirmation</h3>
+        <h3 className="text-lg font-semibold text-[#0a1f3f]">Final Confirmation</h3>
+
+        {/* Amount Summary Header */}
+        {selectedOpt && (
+          <div className="bg-gradient-to-r from-[#0a1f3f] to-[#122e5c] rounded-xl p-5 text-white shadow-lg">
+            <p className="text-sm text-white/60 mb-1">Total Amount Due</p>
+            <p className="text-3xl font-bold">{formatCurrency(total)}</p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-white/50">Option {selectedOpt.label}:</span>
+              <span className="text-sm text-white/80">{selectedOpt.name || 'Selected Option'}</span>
+              <button type="button" onClick={() => navigateToStep(6)} className="ml-auto text-xs text-[#f5a623] hover:underline">Change</button>
+            </div>
+          </div>
+        )}
 
         {/* AI Summary Recap */}
         {aiSummary && (
           <Card>
             <CardContent>
-              <h4 className="font-medium text-navy mb-2 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-accent" /> Service Summary
+              <h4 className="font-medium text-[#0a1f3f] mb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#e55b2b]" /> Service Summary
               </h4>
-              <p className="text-sm text-navy/70 leading-relaxed">{aiSummary.findings_summary}</p>
+              <p className="text-sm text-[#0a1f3f]/70 leading-relaxed">{aiSummary.findings_summary}</p>
             </CardContent>
           </Card>
         )}
@@ -2819,43 +2912,32 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         {selectedOpt && (
           <Card>
             <CardContent>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">
-                  <Check className="w-4 h-4" />
-                </span>
-                <div>
-                  <h4 className="font-semibold text-navy">{selectedOpt.name || 'Selected Option'}</h4>
-                  <p className="text-xs text-steel">Option {selectedOpt.label}</p>
-                </div>
-                <button type="button" onClick={() => navigateToStep(6)} className="ml-auto text-sm text-accent hover:underline">Change</button>
-              </div>
-
               <div className="space-y-2 mb-4">
                 {selectedOpt.items.filter(i => i.description.trim()).map((item, i) => (
                   <div key={i} className="flex justify-between text-sm">
-                    <span className="text-navy/80">
+                    <span className="text-[#0a1f3f]/80">
                       {item.description}
                       {item.category === 'upgrade' && (
                         <span className="ml-1 px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-medium">Upgrade</span>
                       )}
                     </span>
-                    <span className="font-medium text-navy">{formatCurrency(item.total)}</span>
+                    <span className="font-medium text-[#0a1f3f]">{formatCurrency(item.total)}</span>
                   </div>
                 ))}
               </div>
 
-              <div className="border-t border-border/50 pt-3 space-y-1.5">
+              <div className="border-t border-[#c8d8ea]/50 pt-3 space-y-1.5">
                 <div className="flex justify-between text-sm">
-                  <span className="text-steel">Subtotal</span>
-                  <span className="text-navy">{formatCurrency(subtotal)}</span>
+                  <span className="text-[#4a6580]">Subtotal</span>
+                  <span className="text-[#0a1f3f]">{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-steel">Tax (7.5%)</span>
-                  <span className="text-navy">{formatCurrency(tax)}</span>
+                  <span className="text-[#4a6580]">Tax (7.5%)</span>
+                  <span className="text-[#0a1f3f]">{formatCurrency(tax)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-1">
-                  <span className="text-navy">Total</span>
-                  <span className="text-navy">{formatCurrency(total)}</span>
+                  <span className="text-[#0a1f3f]">Total</span>
+                  <span className="text-[#e55b2b]">{formatCurrency(total)}</span>
                 </div>
               </div>
             </CardContent>
@@ -2865,21 +2947,21 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         {/* Customer Info */}
         {selectedCustomer && (
           <div className="flex items-center gap-3 px-1">
-            <div className="w-10 h-10 rounded-full bg-navy/10 flex items-center justify-center text-navy font-bold text-sm">
+            <div className="w-10 h-10 rounded-full bg-[#0a1f3f] flex items-center justify-center text-white font-bold text-sm">
               {selectedCustomer.full_name.charAt(0)}
             </div>
             <div>
-              <p className="text-sm font-medium text-navy">{selectedCustomer.full_name}</p>
-              {selectedCustomer.address && <p className="text-xs text-steel">{selectedCustomer.address}</p>}
+              <p className="text-sm font-medium text-[#0a1f3f]">{selectedCustomer.full_name}</p>
+              {selectedCustomer.address && <p className="text-xs text-[#4a6580]">{selectedCustomer.address}</p>}
             </div>
           </div>
         )}
 
         {/* Signature */}
         <div className="space-y-3">
-          <h4 className="font-medium text-navy">Customer Signature</h4>
-          <p className="text-xs text-steel">By signing below, you accept the selected service option and authorize the work to be performed.</p>
-          <div className="border-2 border-dashed border-border rounded-lg p-4 min-h-[120px] flex items-center justify-center">
+          <h4 className="font-medium text-[#0a1f3f]">Customer Signature</h4>
+          <p className="text-xs text-[#4a6580]">By signing below, you accept the selected service option and authorize the work to be performed.</p>
+          <div className="border-2 border-dashed border-[#0a1f3f]/30 rounded-xl p-4 min-h-[120px] flex items-center justify-center bg-white">
             {signatureDataUrl ? (
               <div className="relative w-full">
                 <img src={signatureDataUrl} alt="Signature" className="w-full h-auto" />
@@ -2910,18 +2992,18 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-3 pt-4 border-t">
-          <Button variant="outline" onClick={() => saveDraft()} isLoading={saving}>
+        <div className="flex flex-wrap gap-3 pt-4 border-t border-[#c8d8ea]">
+          <Button variant="outline" onClick={() => saveDraft()} isLoading={saving} className="border-[#c8d8ea] text-[#4a6580]">
             <Save className="w-4 h-4 mr-2" /> Save Draft
           </Button>
-          <Button
+          <button
+            type="button"
             onClick={() => { if (paymentAvailable) navigateToStep(8); }}
             disabled={!paymentAvailable}
-            size="lg"
-            className="flex-1"
+            className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-[#e55b2b] hover:bg-[#d14d1f] text-white font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
           >
-            <CreditCard className="w-5 h-5 mr-2" /> Proceed to Payment — {formatCurrency(total)}
-          </Button>
+            <CreditCard className="w-5 h-5" /> Proceed to Payment — {formatCurrency(total)}
+          </button>
         </div>
       </div>
     );
@@ -2935,18 +3017,29 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
     if (paymentComplete) {
       return (
         <div className="space-y-6 text-center py-12">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-            <Check className="w-8 h-8 text-green-600" />
+          <div className="relative mx-auto w-20 h-20">
+            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+              <Check className="w-10 h-10 text-green-600" />
+            </div>
+            {/* Gold confetti accents */}
+            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#f5a623] animate-ping opacity-60" />
+            <div className="absolute -bottom-1 -left-1 w-2 h-2 rounded-full bg-[#f5a623] animate-ping opacity-40" style={{ animationDelay: '0.3s' }} />
+            <div className="absolute top-0 -left-2 w-2.5 h-2.5 rounded-full bg-[#f5a623]/50 animate-ping opacity-50" style={{ animationDelay: '0.6s' }} />
           </div>
-          <h3 className="text-xl font-semibold text-navy">Payment Complete</h3>
-          <p className="text-steel">
+          <h3 className="text-2xl font-bold text-[#0a1f3f]">Payment Complete</h3>
+          <p className="text-[#4a6580]">
             {formatCurrency(totalAmount)} received via {paymentMethod === 'card' ? 'credit card' : paymentMethod}
           </p>
           <div className="flex justify-center gap-3 pt-4">
-            <Button variant="outline" onClick={onClose}>Close</Button>
-            <Button onClick={generateReport} isLoading={saving}>
-              <FileText className="w-4 h-4 mr-2" /> Generate Report
-            </Button>
+            <Button variant="outline" onClick={onClose} className="border-[#c8d8ea] text-[#4a6580]">Close</Button>
+            <button
+              type="button"
+              onClick={generateReport}
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#e55b2b] hover:bg-[#d14d1f] text-white font-semibold transition-colors disabled:opacity-50"
+            >
+              <FileText className="w-4 h-4" /> Generate Report
+            </button>
           </div>
         </div>
       );
@@ -2961,30 +3054,30 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
 
     return (
       <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-navy">Payment</h3>
+        <h3 className="text-lg font-semibold text-[#0a1f3f]">Payment</h3>
 
         {/* Total */}
-        <div className="text-center py-4 bg-ice rounded-lg">
-          <p className="text-sm text-steel">Amount Due</p>
-          <p className="text-3xl font-bold text-navy">{formatCurrency(totalAmount)}</p>
+        <div className="text-center py-5 bg-gradient-to-r from-[#0a1f3f] to-[#122e5c] rounded-xl shadow-lg">
+          <p className="text-sm text-white/60">Amount Due</p>
+          <p className="text-3xl font-bold text-white mt-1">{formatCurrency(totalAmount)}</p>
           {selectedOpt && (
-            <p className="text-sm text-steel mt-1">Option {selectedOpt.label}: {selectedOpt.name || 'Unnamed'}</p>
+            <p className="text-sm text-white/50 mt-1">Option {selectedOpt.label}: {selectedOpt.name || 'Unnamed'}</p>
           )}
         </div>
 
         {/* Payment Method Selector */}
         <div>
-          <label className="block text-sm font-medium text-navy mb-2">Payment Method</label>
+          <label className="block text-sm font-medium text-[#0a1f3f] mb-2">Payment Method</label>
           <div className="grid grid-cols-4 gap-2">
             {paymentMethods.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setPaymentMethod(key)}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-colors ${
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
                   paymentMethod === key
-                    ? 'border-accent bg-accent-light text-accent'
-                    : 'border-border text-steel hover:border-border'
+                    ? 'border-[#e55b2b] bg-[#fef0eb] text-[#e55b2b] shadow-sm'
+                    : 'border-[#c8d8ea] text-[#4a6580] hover:border-[#4a6580]'
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -2997,7 +3090,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         {/* Payment Form */}
         {paymentMethod === 'card' && (
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-navy">Card Details</label>
+            <label className="block text-sm font-medium text-[#0a1f3f]">Card Details</label>
             <div
               id="card-container"
               className="min-h-[90px] border border-border rounded-lg p-3"
@@ -3037,13 +3130,13 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
 
         {paymentMethod === 'invoice' && (
           <div>
-            <label className="block text-sm font-medium text-navy mb-1">Invoice Note</label>
+            <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Invoice Note</label>
             <textarea
               value={invoiceNote}
               onChange={(e) => setInvoiceNote(e.target.value)}
               rows={3}
               placeholder="Add any notes for the invoice..."
-              className="block w-full rounded-lg border border-border px-3 py-2 text-black placeholder-gray-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              className="block w-full rounded-lg border border-[#c8d8ea] px-3 py-2 text-black placeholder-gray-400 focus:border-[#e55b2b] focus:outline-none focus:ring-1 focus:ring-[#e55b2b]"
             />
             <p className="text-xs text-steel/60 mt-1">An invoice will be generated and sent to the customer.</p>
           </div>
@@ -3056,21 +3149,24 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         )}
 
         {/* Process Payment Button */}
-        <Button
+        <button
+          type="button"
           onClick={processPayment}
-          isLoading={processingPayment}
           disabled={
             processingPayment ||
             (paymentMethod === 'card' && !squareCard) ||
             (paymentMethod === 'cash' && Number(cashTendered) < totalAmount) ||
             (paymentMethod === 'check' && !checkNumber.trim())
           }
-          className="w-full"
-          size="lg"
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-[#e55b2b] hover:bg-[#d14d1f] text-white font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
         >
-          <CreditCard className="w-5 h-5 mr-2" />
+          {processingPayment ? (
+            <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <CreditCard className="w-5 h-5" />
+          )}
           {paymentMethod === 'invoice' ? 'Send Invoice' : `Process ${formatCurrency(totalAmount)}`}
-        </Button>
+        </button>
       </div>
     );
   };
@@ -3092,22 +3188,38 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col pt-[env(safe-area-inset-top)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-navy-light/20 bg-navy flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-navy-light/20 bg-gradient-to-r from-[#0a1f3f] to-[#122e5c] flex-shrink-0">
         <div className="flex items-center gap-3">
           <button onClick={onClose} className="p-1 text-white/70 hover:text-white">
             <X className="w-5 h-5" />
           </button>
-          <img src="/logo-transparent.png" alt="Harden HVAC" className="h-7 w-auto" />
+          <img src="/logo-transparent.png" alt="Harden HVAC" className="h-9 w-auto" />
           <span className="text-xs font-medium text-white/50 hidden sm:inline">Service Report</span>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => saveDraft()} isLoading={saving} className="text-white/80 hover:text-white hover:bg-white/10">
-          <Save className="w-4 h-4 mr-1" /> Save
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Auto-save indicator */}
+          <div className="flex items-center gap-1.5">
+            {saving ? (
+              <>
+                <span className="w-2 h-2 border border-white/60 border-t-transparent rounded-full animate-spin" />
+                <span className="text-[10px] text-white/50">Saving...</span>
+              </>
+            ) : savedReportId ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-green-400" />
+                <span className="text-[10px] text-white/50">Saved</span>
+              </>
+            ) : null}
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => saveDraft()} isLoading={saving} className="text-white/80 hover:text-white hover:bg-white/10">
+            <Save className="w-4 h-4 mr-1" /> Save
+          </Button>
+        </div>
       </div>
 
-      {/* Step Navigation Bar */}
-      <div className="px-4 py-2.5 border-b border-border bg-navy/5 flex-shrink-0 overflow-x-auto">
-        <div className="flex gap-1 min-w-max">
+      {/* Step Progress Rail */}
+      <div className="px-4 py-3 border-b border-border bg-white flex-shrink-0 overflow-x-auto">
+        <div className="flex items-start min-w-max">
           {STEPS.map((s, i) => {
             const stepNum = i + 1;
             const isActive = step === stepNum;
@@ -3115,27 +3227,51 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
             const isConfirmation = stepNum === 7;
             const isPayment = stepNum === 8;
             const canClick = isPayment ? paymentAvailable : isConfirmation ? confirmationAvailable : isAISummary ? aiSummaryAvailable : true;
+            const completed = visitedSteps.has(stepNum) && isStepComplete(stepNum) && !isActive;
+            const isLast = i === STEPS.length - 1;
             return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => canClick && navigateToStep(stepNum)}
-                disabled={!canClick}
-                className={`flex items-center gap-1 px-2 py-1.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
-                  isActive
-                    ? 'bg-ember text-white'
-                    : (!canClick)
-                    ? 'bg-gray-200 text-steel/60 cursor-not-allowed opacity-50'
-                    : visitedSteps.has(stepNum) && isStepComplete(stepNum)
-                    ? 'bg-accent-light text-accent hover:bg-accent-light/80 cursor-pointer'
-                    : visitedSteps.has(stepNum) && !isStepComplete(stepNum)
-                    ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 cursor-pointer'
-                    : 'bg-ice text-steel hover:bg-ice/80 cursor-pointer'
-                }`}
-              >
-                {visitedSteps.has(stepNum) && isStepComplete(stepNum) && !isActive && <Check className="w-3 h-3" />}
-                {s}
-              </button>
+              <div key={s} className="flex items-start">
+                <button
+                  type="button"
+                  onClick={() => canClick && navigateToStep(stepNum)}
+                  disabled={!canClick}
+                  className="flex flex-col items-center gap-1 min-w-[56px] group"
+                >
+                  {/* Circle */}
+                  <div className="relative">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                      completed
+                        ? 'bg-[#059669] text-white'
+                        : isActive
+                        ? 'bg-[#e55b2b] text-white'
+                        : !canClick
+                        ? 'border-2 border-gray-200 text-gray-300 bg-white'
+                        : 'border-2 border-gray-300 text-gray-400 bg-white group-hover:border-gray-400'
+                    }`}>
+                      {completed ? <Check className="w-4 h-4" /> : stepNum}
+                    </div>
+                    {/* Pulsing ring for active step */}
+                    {isActive && (
+                      <div className="absolute inset-0 w-8 h-8 rounded-full border-2 border-[#e55b2b] animate-ping opacity-30" />
+                    )}
+                  </div>
+                  {/* Label */}
+                  <span className={`text-[10px] font-medium leading-tight text-center max-w-[60px] ${
+                    isActive ? 'text-[#e55b2b]'
+                    : completed ? 'text-[#059669]'
+                    : !canClick ? 'text-gray-300'
+                    : 'text-[#4a6580]'
+                  }`}>
+                    {s}
+                  </span>
+                </button>
+                {/* Connecting line */}
+                {!isLast && (
+                  <div className={`h-[2px] w-6 mt-4 flex-shrink-0 ${
+                    completed ? 'bg-[#059669]' : 'bg-gray-200'
+                  }`} />
+                )}
+              </div>
             );
           })}
         </div>
@@ -3150,32 +3286,67 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
 
       {/* Footer Navigation */}
       {step <= 5 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
-          <Button variant="ghost" onClick={goBack} disabled={step === 1}>
-            <ChevronLeft className="w-4 h-4 mr-1" /> Back
-          </Button>
-          <span className="text-sm text-steel">Step {step} of 8</span>
+        <div className="flex items-center justify-between px-4 py-3 border-t border-[#c8d8ea] bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
+          <button
+            type="button"
+            onClick={goBack}
+            disabled={step === 1}
+            className="flex items-center gap-1 px-4 py-3 rounded-xl border border-[#0a1f3f]/20 text-[#0a1f3f] font-medium text-sm hover:bg-[#dceaf8] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-xs text-[#4a6580] font-medium">Step {step} of 8</span>
+            <div className="flex gap-1">
+              {Array.from({ length: 8 }, (_, i) => (
+                <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                  i + 1 === step ? 'bg-[#e55b2b]' : i + 1 < step ? 'bg-[#059669]' : 'bg-gray-200'
+                }`} />
+              ))}
+            </div>
+          </div>
           {step === 5 && !aiSummaryAvailable ? (
             <div className="text-xs text-amber-600 font-medium max-w-[140px] text-right">
               Visit all tabs to continue
             </div>
           ) : (
-            <Button onClick={goNext}>
-              {step === 5 ? (<><Sparkles className="w-4 h-4 mr-1" /> Generate Summary</>) : (<>Next <ChevronRight className="w-4 h-4 ml-1" /></>)}
-            </Button>
+            <button
+              type="button"
+              onClick={goNext}
+              className="flex items-center gap-1 px-4 py-3 rounded-xl bg-[#e55b2b] hover:bg-[#d14d1f] text-white font-medium text-sm transition-colors shadow-sm"
+            >
+              {step === 5 ? (<><Sparkles className="w-4 h-4" /> Generate Summary</>) : (<>Next <ChevronRight className="w-4 h-4" /></>)}
+            </button>
           )}
         </div>
       )}
       {step === 6 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
-          <Button variant="ghost" onClick={goBack}>
-            <ChevronLeft className="w-4 h-4 mr-1" /> Back
-          </Button>
-          <span className="text-sm text-steel">Step 6 of 8</span>
+        <div className="flex items-center justify-between px-4 py-3 border-t border-[#c8d8ea] bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
+          <button
+            type="button"
+            onClick={goBack}
+            className="flex items-center gap-1 px-4 py-3 rounded-xl border border-[#0a1f3f]/20 text-[#0a1f3f] font-medium text-sm hover:bg-[#dceaf8] transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-xs text-[#4a6580] font-medium">Step 6 of 8</span>
+            <div className="flex gap-1">
+              {Array.from({ length: 8 }, (_, i) => (
+                <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                  i + 1 === step ? 'bg-[#e55b2b]' : i + 1 < step ? 'bg-[#059669]' : 'bg-gray-200'
+                }`} />
+              ))}
+            </div>
+          </div>
           {selectedOptionIdx !== null && aiSummary ? (
-            <Button onClick={goNext}>
-              Confirm <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
+            <button
+              type="button"
+              onClick={goNext}
+              className="flex items-center gap-1 px-4 py-3 rounded-xl bg-[#e55b2b] hover:bg-[#d14d1f] text-white font-medium text-sm transition-colors shadow-sm"
+            >
+              Confirm <ChevronRight className="w-4 h-4" />
+            </button>
           ) : (
             <div className="text-xs text-amber-600 font-medium max-w-[140px] text-right">
               {!aiSummary ? 'Generating...' : 'Select an option'}
@@ -3184,20 +3355,46 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         </div>
       )}
       {step === 7 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
-          <Button variant="ghost" onClick={goBack}>
-            <ChevronLeft className="w-4 h-4 mr-1" /> Back
-          </Button>
-          <span className="text-sm text-steel">Step 7 of 8</span>
+        <div className="flex items-center justify-between px-4 py-3 border-t border-[#c8d8ea] bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
+          <button
+            type="button"
+            onClick={goBack}
+            className="flex items-center gap-1 px-4 py-3 rounded-xl border border-[#0a1f3f]/20 text-[#0a1f3f] font-medium text-sm hover:bg-[#dceaf8] transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-xs text-[#4a6580] font-medium">Step 7 of 8</span>
+            <div className="flex gap-1">
+              {Array.from({ length: 8 }, (_, i) => (
+                <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                  i + 1 === step ? 'bg-[#e55b2b]' : i + 1 < step ? 'bg-[#059669]' : 'bg-gray-200'
+                }`} />
+              ))}
+            </div>
+          </div>
           <div />
         </div>
       )}
       {step === 8 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
-          <Button variant="ghost" onClick={goBack}>
-            <ChevronLeft className="w-4 h-4 mr-1" /> Back
-          </Button>
-          <span className="text-sm text-steel">Step 8 of 8</span>
+        <div className="flex items-center justify-between px-4 py-3 border-t border-[#c8d8ea] bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
+          <button
+            type="button"
+            onClick={goBack}
+            className="flex items-center gap-1 px-4 py-3 rounded-xl border border-[#0a1f3f]/20 text-[#0a1f3f] font-medium text-sm hover:bg-[#dceaf8] transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-xs text-[#4a6580] font-medium">Step 8 of 8</span>
+            <div className="flex gap-1">
+              {Array.from({ length: 8 }, (_, i) => (
+                <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                  i + 1 === step ? 'bg-[#e55b2b]' : i + 1 < step ? 'bg-[#059669]' : 'bg-gray-200'
+                }`} />
+              ))}
+            </div>
+          </div>
           <div />
         </div>
       )}

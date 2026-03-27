@@ -4,7 +4,8 @@ import { useEffect, useState, useRef, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Script from 'next/script';
 import { useAuth } from '@/components/AuthProvider';
-import { ArrowLeft, DollarSign, CreditCard, Banknote, FileText, ChevronRight, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/useToast';
+import { ArrowLeft, DollarSign, CreditCard, Banknote, FileText, ChevronRight, Loader2, Mail } from 'lucide-react';
 
 interface WorkOrder {
   id: string;
@@ -35,6 +36,7 @@ const DEFAULT_LABOR = 95;
 export default function PaymentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { toast } = useToast();
   const [job, setJob] = useState<WorkOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -175,6 +177,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
       if (method === 'card') {
         if (!squareCardRef.current) {
           setCardError('Card form not loaded');
+          toast.error('Card form not loaded', 'Please wait for the card form to initialize.');
           setSaving(false);
           return;
         }
@@ -184,7 +187,9 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
 
         const tokenResult = await squareCardRef.current.tokenize();
         if (tokenResult.status !== 'OK') {
-          setCardError(tokenResult.errors?.[0]?.message || 'Card tokenization failed');
+          const errMsg = tokenResult.errors?.[0]?.message || 'Card tokenization failed';
+          setCardError(errMsg);
+          toast.error('Card Error', errMsg);
           setSaving(false);
           setCardProcessing(false);
           return;
@@ -206,7 +211,9 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
 
         const squareData = await squareRes.json();
         if (!squareData.success) {
-          setCardError(squareData.error || 'Payment failed');
+          const errMsg = squareData.error || 'Payment failed';
+          setCardError(errMsg);
+          toast.error('Payment Failed', errMsg);
           setSaving(false);
           setCardProcessing(false);
           return;
@@ -224,12 +231,16 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
       });
 
       if (res.ok) {
+        toast.success('Payment Collected', `$${grandTotal.toFixed(2)} via ${method}`);
         fetch(`/api/drafts?work_order_id=${id}&draft_type=payment`, { method: 'DELETE' }).catch(() => {});
         router.push(`/admin/tech/jobs/${id}/complete`);
+      } else {
+        toast.error('Payment Error', 'Failed to save payment. Please try again.');
       }
     } catch (err) {
       console.error('payment error:', err);
       setCardError('Payment processing error');
+      toast.error('Payment Error', 'An unexpected error occurred.');
     } finally {
       setSaving(false);
       setCardProcessing(false);
@@ -239,7 +250,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
   if (loading) {
     return (
       <div className="pt-12 flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-ember border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -247,8 +258,8 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
   if (!job) {
     return (
       <div className="pt-12 text-center">
-        <p className="text-gray-500">Job not found</p>
-        <button onClick={() => router.back()} className="text-blue-600 text-sm mt-2">
+        <p className="text-steel">Job not found</p>
+        <button onClick={() => router.back()} className="text-ember text-sm mt-2">
           Go Back
         </button>
       </div>
@@ -259,36 +270,38 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
     { key: 'cash', label: 'Cash', icon: Banknote, desc: 'Pay with cash' },
     { key: 'check', label: 'Check', icon: FileText, desc: 'Pay by check' },
     { key: 'card', label: 'Card', icon: CreditCard, desc: 'Process via card reader' },
-    { key: 'invoice', label: 'Invoice', icon: FileText, desc: 'Send invoice later' },
+    { key: 'invoice', label: 'Invoice', icon: Mail, desc: 'Send invoice later' },
   ];
 
   return (
     <div className="pt-4 pb-6 space-y-4">
-      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-gray-600">
+      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-steel hover:text-navy transition">
         <ArrowLeft className="w-4 h-4" />
         Back to Job
       </button>
 
       <div className="flex items-center gap-2">
-        <DollarSign className="w-5 h-5 text-green-600" />
-        <h1 className="text-lg font-semibold text-gray-900">Collect Payment</h1>
+        <DollarSign className="w-5 h-5 text-ember" />
+        <h1 className="text-lg font-semibold text-navy">Collect Payment</h1>
       </div>
 
       {/* Customer & Summary */}
-      <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-        <h2 className="font-medium text-gray-900">{job.customers?.full_name || 'Customer'}</h2>
-        <p className="text-sm text-gray-500">{job.description}</p>
+      <div className="bg-white rounded-xl border border-border overflow-hidden">
+        <div className="bg-gradient-to-r from-[#0a1f3f] to-[#122e5c] px-4 py-3">
+          <h2 className="font-semibold text-white">{job.customers?.full_name || 'Customer'}</h2>
+          <p className="text-sm text-white/70 mt-0.5">{job.description}</p>
+        </div>
 
-        <div className="border-t border-gray-100 pt-3 space-y-2">
+        <div className="p-4 space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Parts</span>
-            <span className="text-gray-900 font-medium">${partsTotal.toFixed(2)}</span>
+            <span className="text-steel">Parts</span>
+            <span className="text-navy font-medium">${partsTotal.toFixed(2)}</span>
           </div>
 
           {(job.parts_used || []).length > 0 && (
             <div className="pl-3 space-y-1">
               {job.parts_used!.map((p, i) => (
-                <div key={i} className="flex justify-between text-xs text-gray-400">
+                <div key={i} className="flex justify-between text-xs text-steel">
                   <span>{p.name} x{p.quantity}</span>
                   <span>${(p.cost * p.quantity).toFixed(2)}</span>
                 </div>
@@ -297,50 +310,50 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
           )}
 
           <div className="flex justify-between text-sm items-center">
-            <span className="text-gray-500">Labor</span>
+            <label className="text-steel">Labor</label>
             <div className="flex items-center gap-1">
-              <span className="text-gray-400 text-xs">$</span>
+              <span className="text-steel text-xs">$</span>
               <input
                 type="number"
                 value={laborAmount === 0 ? '' : laborAmount}
                 onChange={(e) => setLaborAmount(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                className="w-20 text-right text-sm font-medium text-gray-900 border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-20 text-right text-sm font-medium text-navy rounded-xl border border-border px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ember focus:border-ember"
               />
             </div>
           </div>
 
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Tax (7%)</span>
-            <span className="text-gray-900 font-medium">${tax.toFixed(2)}</span>
+            <span className="text-steel">Tax (7%)</span>
+            <span className="text-navy font-medium">${tax.toFixed(2)}</span>
           </div>
 
-          <div className="border-t border-gray-200 pt-2 flex justify-between">
-            <span className="font-semibold text-gray-900">Total</span>
-            <span className="font-bold text-lg text-gray-900">${grandTotal.toFixed(2)}</span>
+          <div className="border-t border-border pt-2 flex justify-between">
+            <span className="font-semibold text-navy">Total</span>
+            <span className="font-bold text-xl text-navy">${grandTotal.toFixed(2)}</span>
           </div>
         </div>
       </div>
 
       {/* Payment Method */}
-      <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-        <h3 className="font-medium text-gray-900 text-sm">Payment Method</h3>
+      <div className="bg-white rounded-xl border border-border p-4 space-y-3">
+        <h3 className="font-medium text-navy text-sm">Payment Method</h3>
         <div className="grid grid-cols-2 gap-2">
           {methods.map((m) => (
             <button
               key={m.key}
               onClick={() => setMethod(m.key)}
-              className={`flex items-center gap-2.5 p-3 rounded-lg border-2 transition text-left ${
+              className={`flex items-center gap-2.5 p-4 rounded-xl border-2 transition text-center ${
                 method === m.key
-                  ? 'border-accent bg-accent-light'
-                  : 'border-gray-200 bg-white'
+                  ? 'border-ember bg-ember/5'
+                  : 'border-border bg-white'
               }`}
             >
-              <m.icon className={`w-4.5 h-4.5 ${method === m.key ? 'text-accent' : 'text-gray-400'}`} />
-              <div>
-                <p className={`text-sm font-medium ${method === m.key ? 'text-accent' : 'text-gray-700'}`}>
+              <m.icon className={`w-5 h-5 ${method === m.key ? 'text-ember' : 'text-steel'}`} />
+              <div className="text-left">
+                <p className={`text-sm font-medium ${method === m.key ? 'text-ember' : 'text-navy'}`}>
                   {m.label}
                 </p>
-                <p className="text-[10px] text-gray-400">{m.desc}</p>
+                <p className="text-[10px] text-steel">{m.desc}</p>
               </div>
             </button>
           ))}
@@ -349,12 +362,12 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
 
       {/* Method-specific inputs */}
       {method === 'cash' && (
-        <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-          <h3 className="font-medium text-gray-900 text-sm">Cash Payment</h3>
+        <div className="bg-white rounded-xl border border-border p-4 space-y-3">
+          <h3 className="font-medium text-navy text-sm">Cash Payment</h3>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Amount Tendered</label>
+            <label className="text-sm font-medium text-steel mb-1 block">Amount Tendered</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-steel text-sm">$</span>
               <input
                 type="number"
                 inputMode="decimal"
@@ -362,14 +375,14 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
                 value={amountTendered}
                 onChange={(e) => setAmountTendered(e.target.value)}
                 placeholder="0.00"
-                className="w-full pl-7 pr-3 py-3 rounded-lg border border-gray-200 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-7 pr-3 py-3 rounded-xl border border-border text-lg font-medium text-navy focus:outline-none focus:ring-2 focus:ring-ember focus:border-ember"
               />
             </div>
           </div>
           {amountTendered && parseFloat(amountTendered) >= grandTotal && (
-            <div className="flex justify-between items-center bg-green-50 rounded-lg p-3">
-              <span className="text-sm text-green-700 font-medium">Change Due</span>
-              <span className="text-lg font-bold text-green-700">
+            <div className="flex justify-between items-center bg-emerald-50 text-emerald-700 rounded-xl p-3">
+              <span className="text-sm font-medium">Change Due</span>
+              <span className="text-lg font-bold">
                 ${Math.max(0, changeDue).toFixed(2)}
               </span>
             </div>
@@ -381,35 +394,35 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
       )}
 
       {method === 'check' && (
-        <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-          <h3 className="font-medium text-gray-900 text-sm">Check Payment</h3>
+        <div className="bg-white rounded-xl border border-border p-4 space-y-3">
+          <h3 className="font-medium text-navy text-sm">Check Payment</h3>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Check Number</label>
+            <label className="text-sm font-medium text-steel mb-1 block">Check Number</label>
             <input
               type="text"
               value={checkNumber}
               onChange={(e) => setCheckNumber(e.target.value)}
               placeholder="Enter check number"
-              className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-3 rounded-xl border border-border text-sm text-navy focus:outline-none focus:ring-2 focus:ring-ember focus:border-ember"
             />
           </div>
         </div>
       )}
 
       {method === 'card' && (
-        <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+        <div className="bg-white rounded-xl border border-border p-4 space-y-3">
           <Script
             src="https://web.squarecdn.com/v1/square.js"
             strategy="lazyOnload"
             onLoad={() => initSquareCard()}
           />
           <div className="flex items-center gap-2 mb-2">
-            <CreditCard className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Enter card details</span>
+            <CreditCard className="w-4 h-4 text-steel" />
+            <span className="text-sm font-medium text-navy">Enter card details</span>
           </div>
-          <div ref={cardContainerRef} className="min-h-[44px] border border-gray-200 rounded-lg p-1" />
+          <div ref={cardContainerRef} className="min-h-[44px] border border-border rounded-xl p-1" />
           {!squareReady && !cardError && (
-            <div className="flex items-center gap-2 text-gray-400 text-sm">
+            <div className="flex items-center gap-2 text-steel text-sm">
               <Loader2 className="w-4 h-4 animate-spin" />
               Loading card form...
             </div>
@@ -418,7 +431,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
             <p className="text-sm text-red-600">{cardError}</p>
           )}
           {cardProcessing && (
-            <div className="flex items-center gap-2 text-blue-600 text-sm">
+            <div className="flex items-center gap-2 text-ember text-sm">
               <Loader2 className="w-4 h-4 animate-spin" />
               Processing payment...
             </div>
@@ -427,9 +440,9 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
       )}
 
       {method === 'invoice' && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <div className="flex items-center gap-3 text-gray-500">
-            <FileText className="w-5 h-5" />
+        <div className="bg-white rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3 text-steel">
+            <Mail className="w-5 h-5" />
             <p className="text-sm">Invoice will be sent to the customer after job completion.</p>
           </div>
         </div>
@@ -439,7 +452,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
       <button
         onClick={handleCollectPayment}
         disabled={saving || !canCollect()}
-        className="w-full py-3.5 rounded-xl bg-ember text-white font-semibold hover:bg-ember-dark active:bg-ember-dark disabled:opacity-50 flex items-center justify-center gap-2"
+        className="w-full py-4 rounded-xl bg-ember hover:bg-ember/90 active:bg-ember-dark text-white text-lg font-semibold disabled:opacity-50 flex items-center justify-center gap-2 transition"
       >
         <DollarSign className="w-5 h-5" />
         {saving ? 'Processing...' : 'Collect Payment'}

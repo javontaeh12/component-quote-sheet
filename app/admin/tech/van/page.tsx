@@ -3,6 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { createClient } from '@/lib/supabase';
+import { useToast } from '@/hooks/useToast';
+import { Tabs } from '@/components/ui/Tabs';
+import { Badge } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/EmptyState';
 import {
   Truck,
   Package,
@@ -17,7 +21,7 @@ import {
   X,
 } from 'lucide-react';
 
-type Tab = 'stock' | 'mileage' | 'gas' | 'maintenance';
+type TabId = 'stock' | 'mileage' | 'gas' | 'maintenance';
 
 interface Van {
   id: string;
@@ -111,9 +115,10 @@ const MAINTENANCE_TYPES = [
 
 export default function VanPage() {
   const { profile, groupId } = useAuth();
+  const { toast } = useToast();
   const vanId = profile?.van_id;
 
-  const [activeTab, setActiveTab] = useState<Tab>('stock');
+  const [activeTab, setActiveTab] = useState<TabId>('stock');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
 
   const [van, setVan] = useState<Van | null>(null);
@@ -259,11 +264,11 @@ export default function VanPage() {
 
   const lowStockItems = inventory.filter((item) => item.quantity < item.min_quantity);
 
-  const tabs = [
-    { id: 'stock' as Tab, label: 'Stock', icon: Package },
-    { id: 'mileage' as Tab, label: 'Mileage', icon: Gauge },
-    { id: 'gas' as Tab, label: 'Gas', icon: Droplets },
-    { id: 'maintenance' as Tab, label: 'Maint.', icon: Wrench },
+  const tabItems = [
+    { value: 'stock', label: 'Stock', icon: <Package className="w-4 h-4" /> },
+    { value: 'mileage', label: 'Mileage', icon: <Gauge className="w-4 h-4" /> },
+    { value: 'gas', label: 'Gas', icon: <Droplets className="w-4 h-4" /> },
+    { value: 'maintenance', label: 'Maint.', icon: <Wrench className="w-4 h-4" /> },
   ];
 
   async function handleMileageSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -287,6 +292,7 @@ export default function VanPage() {
         throw new Error(data.error || 'Failed to save');
       }
       setShowMileageForm(false);
+      toast.success('Saved', 'Mileage entry recorded');
       fetchMileage();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save mileage');
@@ -317,6 +323,7 @@ export default function VanPage() {
         throw new Error(data.error || 'Failed to save');
       }
       setShowGasForm(false);
+      toast.success('Saved', 'Gas log recorded');
       fetchGas();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save gas log');
@@ -349,6 +356,7 @@ export default function VanPage() {
         throw new Error(data.error || 'Failed to save');
       }
       setShowMaintenanceForm(false);
+      toast.success('Saved', 'Maintenance record added');
       fetchMaintenance();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save maintenance log');
@@ -360,13 +368,11 @@ export default function VanPage() {
   if (!vanLoading && !vanId) {
     return (
       <div className="pt-6 pb-24 px-4">
-        <div className="text-center py-16">
-          <Truck className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-gray-900 mb-2">No Van Assigned</h1>
-          <p className="text-gray-500 text-sm">
-            You don&apos;t have a van assigned to your account yet. Contact your admin.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Truck className="w-8 h-8" />}
+          title="No Van Assigned"
+          description="You don't have a van assigned to your account yet. Contact your admin."
+        />
       </div>
     );
   }
@@ -375,17 +381,17 @@ export default function VanPage() {
     <div className="pt-4 pb-24 px-4 space-y-4">
       {/* Header */}
       <div>
-        <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-          <Truck className="w-6 h-6 text-orange-500" />
+        <h1 className="text-lg font-bold text-[#0a1f3f] flex items-center gap-2">
+          <Truck className="w-6 h-6 text-[#e55b2b]" />
           My Van
         </h1>
         {vanLoading ? (
           <div className="flex items-center gap-2 mt-1">
-            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-            <span className="text-gray-500 text-xs">Loading van info...</span>
+            <Loader2 className="w-4 h-4 animate-spin text-[#4a6580]" />
+            <span className="text-[#4a6580] text-xs">Loading van info...</span>
           </div>
         ) : van ? (
-          <p className="text-gray-600 text-xs mt-1">
+          <p className="text-[#4a6580] text-xs mt-1">
             Van #{van.van_number} {van.name ? `- ${van.name}` : ''}
             {van.license_plate ? ` | ${van.license_plate}` : ''}
           </p>
@@ -394,7 +400,7 @@ export default function VanPage() {
 
       {/* Error */}
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between">
           <p className="text-red-700 text-sm">{error}</p>
           <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 text-sm ml-2">
             Dismiss
@@ -402,29 +408,20 @@ export default function VanPage() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg overflow-x-auto">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors flex-1 whitespace-nowrap ${
-              activeTab === tab.id
-                ? 'bg-white text-blue-700 shadow-sm'
-                : 'text-gray-600'
-            }`}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Tabs — using boxed variant */}
+      <Tabs
+        tabs={tabItems}
+        value={activeTab}
+        onChange={(v) => setActiveTab(v as TabId)}
+        variant="boxed"
+        fullWidth
+      />
 
       {/* ========== STOCK TAB ========== */}
       {activeTab === 'stock' && (
         <div className="space-y-4">
           {lowStockItems.length > 0 && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
               <div className="flex items-center gap-2 mb-2">
                 <AlertTriangle className="w-4 h-4 text-red-500" />
                 <span className="text-red-700 text-sm font-semibold">
@@ -442,54 +439,55 @@ export default function VanPage() {
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-xs font-medium text-gray-500">Total Items</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{inventory.length}</p>
+            <div className="bg-white rounded-xl border border-[#c8d8ea] p-4">
+              <p className="text-xs font-medium text-[#4a6580]">Total Items</p>
+              <p className="text-2xl font-bold text-[#0a1f3f] mt-1">{inventory.length}</p>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-xs font-medium text-gray-500">Low Stock</p>
-              <p className={`text-2xl font-bold mt-1 ${lowStockItems.length > 0 ? 'text-red-600' : 'text-green-600'}`}>
+            <div className="bg-white rounded-xl border border-[#c8d8ea] p-4">
+              <p className="text-xs font-medium text-[#4a6580]">Low Stock</p>
+              <p className={`text-2xl font-bold mt-1 ${lowStockItems.length > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                 {lowStockItems.length}
               </p>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200">
-            <div className="px-4 py-3 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-900">Van Inventory</h3>
+          <div className="bg-white rounded-xl border border-[#c8d8ea]">
+            <div className="px-4 py-3 border-b border-[#c8d8ea]/50">
+              <h3 className="text-sm font-semibold text-[#0a1f3f]">Van Inventory</h3>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-[#c8d8ea]/30">
               {inventoryLoading ? (
                 <div className="p-4 space-y-3">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-10 bg-gray-100 rounded-lg animate-pulse" />
+                    <div key={i} className="h-10 bg-[#e8f0f8] rounded-lg animate-pulse" />
                   ))}
                 </div>
               ) : inventory.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Package className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No inventory items found</p>
-                </div>
+                <EmptyState
+                  icon={<Package className="w-8 h-8" />}
+                  title="No Inventory Items"
+                  description="No inventory items found for this van"
+                />
               ) : (
                 inventory.map((item) => {
                   const isLow = item.quantity < item.min_quantity;
                   return (
                     <div key={item.id} className="px-4 py-3 flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${isLow ? 'text-red-600' : 'text-gray-900'}`}>
+                        <p className={`text-sm font-medium truncate ${isLow ? 'text-red-600' : 'text-[#0a1f3f]'}`}>
                           {item.name}
                         </p>
-                        <p className="text-[11px] text-gray-500">Min: {item.min_quantity}</p>
+                        <p className="text-[11px] text-[#4a6580]">Min: {item.min_quantity}</p>
                       </div>
                       <div className="flex items-center gap-2 ml-3">
                         <span
                           className={`text-sm font-bold px-2.5 py-1 rounded-lg ${
-                            isLow ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                            isLow ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
                           }`}
                         >
                           {item.quantity}
                         </span>
-                        {isLow && <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />}
+                        {isLow && <Badge variant="warning" size="sm">Low</Badge>}
                       </div>
                     </div>
                   );
@@ -504,64 +502,64 @@ export default function VanPage() {
       {activeTab === 'mileage' && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Month:</label>
+            <label className="text-sm font-medium text-[#4a6580]">Month:</label>
             <input
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900"
+              className="border border-[#c8d8ea] rounded-xl px-3 py-1.5 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-xs font-medium text-gray-500">Total Miles</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{totalMilesThisMonth.toFixed(1)}</p>
+            <div className="bg-white rounded-xl border border-[#c8d8ea] p-4">
+              <p className="text-xs font-medium text-[#4a6580]">Total Miles</p>
+              <p className="text-2xl font-bold text-[#0a1f3f] mt-1">{totalMilesThisMonth.toFixed(1)}</p>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-xs font-medium text-gray-500">Avg Daily Miles</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{avgDailyMiles.toFixed(1)}</p>
+            <div className="bg-white rounded-xl border border-[#c8d8ea] p-4">
+              <p className="text-xs font-medium text-[#4a6580]">Avg Daily Miles</p>
+              <p className="text-2xl font-bold text-[#0a1f3f] mt-1">{avgDailyMiles.toFixed(1)}</p>
             </div>
           </div>
 
           {mileageLogs.length > 0 && (
-            <div className="bg-white rounded-lg border border-gray-200">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-blue-500" />
-                <h3 className="text-sm font-semibold text-gray-900">Estimated Gas Usage</h3>
-                <span className="text-[10px] text-gray-400 ml-auto">~{MPG_ESTIMATE} MPG @ {formatCurrency(GAS_PRICE_ESTIMATE)}/gal</span>
+            <div className="bg-white rounded-xl border border-[#c8d8ea]">
+              <div className="px-4 py-3 border-b border-[#c8d8ea]/50 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-[#e55b2b]" />
+                <h3 className="text-sm font-semibold text-[#0a1f3f]">Estimated Gas Usage</h3>
+                <span className="text-[10px] text-[#4a6580] ml-auto">~{MPG_ESTIMATE} MPG @ {formatCurrency(GAS_PRICE_ESTIMATE)}/gal</span>
               </div>
               <div className="p-4 grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500">Daily</p>
-                  <p className="text-sm font-bold text-gray-900">{estDailyGallons.toFixed(1)} gal</p>
-                  <p className="text-[11px] text-orange-600">{formatCurrency(estDailyGallons * GAS_PRICE_ESTIMATE)}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-[#4a6580]">Daily</p>
+                  <p className="text-sm font-bold text-[#0a1f3f]">{estDailyGallons.toFixed(1)} gal</p>
+                  <p className="text-[11px] text-[#e55b2b]">{formatCurrency(estDailyGallons * GAS_PRICE_ESTIMATE)}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500">Weekly</p>
-                  <p className="text-sm font-bold text-gray-900">{estWeeklyGallons.toFixed(1)} gal</p>
-                  <p className="text-[11px] text-orange-600">{formatCurrency(estWeeklyGallons * GAS_PRICE_ESTIMATE)}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-[#4a6580]">Weekly</p>
+                  <p className="text-sm font-bold text-[#0a1f3f]">{estWeeklyGallons.toFixed(1)} gal</p>
+                  <p className="text-[11px] text-[#e55b2b]">{formatCurrency(estWeeklyGallons * GAS_PRICE_ESTIMATE)}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500">Monthly</p>
-                  <p className="text-sm font-bold text-gray-900">{estMonthlyGallons.toFixed(1)} gal</p>
-                  <p className="text-[11px] text-orange-600">{formatCurrency(estMonthlyGallons * GAS_PRICE_ESTIMATE)}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-[#4a6580]">Monthly</p>
+                  <p className="text-sm font-bold text-[#0a1f3f]">{estMonthlyGallons.toFixed(1)} gal</p>
+                  <p className="text-[11px] text-[#e55b2b]">{formatCurrency(estMonthlyGallons * GAS_PRICE_ESTIMATE)}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500">Yearly</p>
-                  <p className="text-sm font-bold text-gray-900">{estYearlyGallons.toFixed(1)} gal</p>
-                  <p className="text-[11px] text-orange-600">{formatCurrency(estYearlyGallons * GAS_PRICE_ESTIMATE)}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-[#4a6580]">Yearly</p>
+                  <p className="text-sm font-bold text-[#0a1f3f]">{estYearlyGallons.toFixed(1)} gal</p>
+                  <p className="text-[11px] text-[#e55b2b]">{formatCurrency(estYearlyGallons * GAS_PRICE_ESTIMATE)}</p>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="bg-white rounded-lg border border-gray-200">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">Mileage Log</h3>
+          <div className="bg-white rounded-xl border border-[#c8d8ea]">
+            <div className="px-4 py-3 border-b border-[#c8d8ea]/50 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[#0a1f3f]">Mileage Log</h3>
               <button
                 onClick={() => setShowMileageForm(!showMileageForm)}
-                className="flex items-center gap-1 text-xs font-medium text-blue-600"
+                className="flex items-center gap-1 text-xs font-medium text-[#e55b2b]"
               >
                 {showMileageForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                 {showMileageForm ? 'Close' : 'Add Entry'}
@@ -569,30 +567,30 @@ export default function VanPage() {
             </div>
 
             {showMileageForm && (
-              <form onSubmit={handleMileageSubmit} className="p-4 border-b border-gray-100 bg-gray-50 space-y-3">
+              <form onSubmit={handleMileageSubmit} className="p-4 border-b border-[#c8d8ea]/50 bg-[#e8f0f8]/50 space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
-                  <input name="date" type="date" required defaultValue={todayISO()} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                  <label className="block text-xs font-medium text-[#4a6580] mb-1">Date</label>
+                  <input name="date" type="date" required defaultValue={todayISO()} className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Start Miles</label>
-                    <input name="start_miles" type="number" step="0.1" required placeholder="e.g. 45000" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                    <label className="block text-xs font-medium text-[#4a6580] mb-1">Start Miles</label>
+                    <input name="start_miles" type="number" step="0.1" required placeholder="e.g. 45000" className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">End Miles</label>
-                    <input name="end_miles" type="number" step="0.1" required placeholder="e.g. 45150" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                    <label className="block text-xs font-medium text-[#4a6580] mb-1">End Miles</label>
+                    <input name="end_miles" type="number" step="0.1" required placeholder="e.g. 45150" className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Notes (optional)</label>
-                  <input name="notes" placeholder="Route details, etc." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                  <label className="block text-xs font-medium text-[#4a6580] mb-1">Notes (optional)</label>
+                  <input name="notes" placeholder="Route details, etc." className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
-                  <button type="button" onClick={() => setShowMileageForm(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg">
+                  <button type="button" onClick={() => setShowMileageForm(false)} className="px-4 py-2 text-sm text-[#4a6580] border border-[#c8d8ea] rounded-xl hover:bg-[#e8f0f8]">
                     Cancel
                   </button>
-                  <button type="submit" disabled={submitting} className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg disabled:opacity-50 flex items-center gap-2">
+                  <button type="submit" disabled={submitting} className="px-4 py-2 text-sm font-bold text-white bg-[#e55b2b] rounded-xl hover:bg-[#d14e22] disabled:opacity-50 flex items-center gap-2">
                     {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                     Save
                   </button>
@@ -600,31 +598,32 @@ export default function VanPage() {
               </form>
             )}
 
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-[#c8d8ea]/30">
               {mileageLoading ? (
                 <div className="p-4 space-y-3">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+                    <div key={i} className="h-12 bg-[#e8f0f8] rounded animate-pulse" />
                   ))}
                 </div>
               ) : mileageLogs.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Gauge className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No mileage entries this month</p>
-                </div>
+                <EmptyState
+                  icon={<Gauge className="w-8 h-8" />}
+                  title="No Mileage Entries"
+                  description="No mileage entries this month"
+                />
               ) : (
                 mileageLogs.map((log) => (
                   <div key={log.id} className="px-4 py-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{formatDate(log.date)}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-sm font-medium text-[#0a1f3f]">{formatDate(log.date)}</p>
+                        <p className="text-xs text-[#4a6580] mt-0.5">
                           {log.start_miles.toLocaleString()} - {log.end_miles.toLocaleString()}
                         </p>
                       </div>
-                      <span className="text-sm font-bold text-blue-600">{log.total_miles?.toFixed(1)} mi</span>
+                      <span className="text-sm font-bold text-[#e55b2b]">{log.total_miles?.toFixed(1)} mi</span>
                     </div>
-                    {log.notes && <p className="text-xs text-gray-400 mt-1">{log.notes}</p>}
+                    {log.notes && <p className="text-xs text-[#4a6580] mt-1">{log.notes}</p>}
                   </div>
                 ))
               )}
@@ -637,36 +636,36 @@ export default function VanPage() {
       {activeTab === 'gas' && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Month:</label>
+            <label className="text-sm font-medium text-[#4a6580]">Month:</label>
             <input
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900"
+              className="border border-[#c8d8ea] rounded-xl px-3 py-1.5 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]"
             />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white rounded-lg border border-gray-200 p-3">
-              <p className="text-xs font-medium text-gray-500">Total Cost</p>
-              <p className="text-lg font-bold text-gray-900 mt-1">{formatCurrency(totalGasCost)}</p>
+            <div className="bg-white rounded-xl border border-[#c8d8ea] p-3">
+              <p className="text-xs font-medium text-[#4a6580]">Total Cost</p>
+              <p className="text-lg font-bold text-[#0a1f3f] mt-1">{formatCurrency(totalGasCost)}</p>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-3">
-              <p className="text-xs font-medium text-gray-500">Gallons</p>
-              <p className="text-lg font-bold text-gray-900 mt-1">{totalGallons.toFixed(1)}</p>
+            <div className="bg-white rounded-xl border border-[#c8d8ea] p-3">
+              <p className="text-xs font-medium text-[#4a6580]">Gallons</p>
+              <p className="text-lg font-bold text-[#0a1f3f] mt-1">{totalGallons.toFixed(1)}</p>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-3">
-              <p className="text-xs font-medium text-gray-500">Avg $/gal</p>
-              <p className="text-lg font-bold text-gray-900 mt-1">{formatCurrency(avgPricePerGallon)}</p>
+            <div className="bg-white rounded-xl border border-[#c8d8ea] p-3">
+              <p className="text-xs font-medium text-[#4a6580]">Avg $/gal</p>
+              <p className="text-lg font-bold text-[#0a1f3f] mt-1">{formatCurrency(avgPricePerGallon)}</p>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">Gas Log</h3>
+          <div className="bg-white rounded-xl border border-[#c8d8ea]">
+            <div className="px-4 py-3 border-b border-[#c8d8ea]/50 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[#0a1f3f]">Gas Log</h3>
               <button
                 onClick={() => setShowGasForm(!showGasForm)}
-                className="flex items-center gap-1 text-xs font-medium text-blue-600"
+                className="flex items-center gap-1 text-xs font-medium text-[#e55b2b]"
               >
                 {showGasForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                 {showGasForm ? 'Close' : 'Add Entry'}
@@ -674,36 +673,36 @@ export default function VanPage() {
             </div>
 
             {showGasForm && (
-              <form onSubmit={handleGasSubmit} className="p-4 border-b border-gray-100 bg-gray-50 space-y-3">
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-xs text-blue-700">
+              <form onSubmit={handleGasSubmit} className="p-4 border-b border-[#c8d8ea]/50 bg-[#e8f0f8]/50 space-y-3">
+                <div className="p-3 bg-[#e55b2b]/5 border border-[#e55b2b]/20 rounded-xl">
+                  <p className="text-xs text-[#e55b2b]">
                     <Calendar className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
                     Date auto-set to today: <span className="font-semibold">{formatDate(todayISO())}</span>
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Gallons</label>
-                    <input name="gallons" type="number" step="0.001" required placeholder="e.g. 15.5" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                    <label className="block text-xs font-medium text-[#4a6580] mb-1">Gallons</label>
+                    <input name="gallons" type="number" step="0.001" required placeholder="e.g. 15.5" className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Price/Gallon</label>
-                    <input name="price_per_gallon" type="number" step="0.001" required placeholder="e.g. 3.459" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                    <label className="block text-xs font-medium text-[#4a6580] mb-1">Price/Gallon</label>
+                    <input name="price_per_gallon" type="number" step="0.001" required placeholder="e.g. 3.459" className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Odometer (optional)</label>
-                  <input name="odometer" type="number" step="0.1" placeholder="e.g. 45150" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                  <label className="block text-xs font-medium text-[#4a6580] mb-1">Odometer (optional)</label>
+                  <input name="odometer" type="number" step="0.1" placeholder="e.g. 45150" className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Station (optional)</label>
-                  <input name="station" placeholder="e.g. Shell on Main St" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                  <label className="block text-xs font-medium text-[#4a6580] mb-1">Station (optional)</label>
+                  <input name="station" placeholder="e.g. Shell on Main St" className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
-                  <button type="button" onClick={() => setShowGasForm(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg">
+                  <button type="button" onClick={() => setShowGasForm(false)} className="px-4 py-2 text-sm text-[#4a6580] border border-[#c8d8ea] rounded-xl hover:bg-[#e8f0f8]">
                     Cancel
                   </button>
-                  <button type="submit" disabled={submitting} className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg disabled:opacity-50 flex items-center gap-2">
+                  <button type="submit" disabled={submitting} className="px-4 py-2 text-sm font-bold text-white bg-[#e55b2b] rounded-xl hover:bg-[#d14e22] disabled:opacity-50 flex items-center gap-2">
                     {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                     Save
                   </button>
@@ -711,33 +710,34 @@ export default function VanPage() {
               </form>
             )}
 
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-[#c8d8ea]/30">
               {gasLoading ? (
                 <div className="p-4 space-y-3">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+                    <div key={i} className="h-12 bg-[#e8f0f8] rounded animate-pulse" />
                   ))}
                 </div>
               ) : gasLogs.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Droplets className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No gas entries this month</p>
-                </div>
+                <EmptyState
+                  icon={<Droplets className="w-8 h-8" />}
+                  title="No Gas Entries"
+                  description="No gas entries this month"
+                />
               ) : (
                 gasLogs.map((log) => (
                   <div key={log.id} className="px-4 py-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{formatDate(log.date)}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-sm font-medium text-[#0a1f3f]">{formatDate(log.date)}</p>
+                        <p className="text-xs text-[#4a6580] mt-0.5">
                           {log.gallons} gal @ {formatCurrency(log.price_per_gallon)}/gal
                         </p>
                       </div>
-                      <span className="text-sm font-bold text-green-600">{formatCurrency(log.total_cost)}</span>
+                      <span className="text-sm font-bold text-emerald-600">{formatCurrency(log.total_cost)}</span>
                     </div>
-                    {log.station && <p className="text-xs text-gray-400 mt-1">{log.station}</p>}
+                    {log.station && <p className="text-xs text-[#4a6580] mt-1">{log.station}</p>}
                     {log.odometer && (
-                      <p className="text-xs text-gray-400 mt-0.5">Odometer: {log.odometer.toLocaleString()}</p>
+                      <p className="text-xs text-[#4a6580] mt-0.5">Odometer: {log.odometer.toLocaleString()}</p>
                     )}
                   </div>
                 ))
@@ -751,51 +751,62 @@ export default function VanPage() {
       {activeTab === 'maintenance' && (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white rounded-lg border border-gray-200 p-3">
-              <p className="text-xs font-medium text-gray-500">Total Cost</p>
-              <p className="text-lg font-bold text-gray-900 mt-1">{formatCurrency(totalMaintenanceCost)}</p>
+            <div className="bg-white rounded-xl border border-[#c8d8ea] p-3">
+              <p className="text-xs font-medium text-[#4a6580]">Total Cost</p>
+              <p className="text-lg font-bold text-[#0a1f3f] mt-1">{formatCurrency(totalMaintenanceCost)}</p>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-3">
-              <p className="text-xs font-medium text-gray-500">Records</p>
-              <p className="text-lg font-bold text-gray-900 mt-1">{maintenanceLogs.length}</p>
+            <div className="bg-white rounded-xl border border-[#c8d8ea] p-3">
+              <p className="text-xs font-medium text-[#4a6580]">Records</p>
+              <p className="text-lg font-bold text-[#0a1f3f] mt-1">{maintenanceLogs.length}</p>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-3">
-              <p className="text-xs font-medium text-gray-500">Upcoming</p>
-              <p className={`text-lg font-bold mt-1 ${upcomingCount > 0 ? 'text-orange-600' : 'text-gray-900'}`}>
+            <div className="bg-white rounded-xl border border-[#c8d8ea] p-3">
+              <p className="text-xs font-medium text-[#4a6580]">Upcoming</p>
+              <p className={`text-lg font-bold mt-1 ${upcomingCount > 0 ? 'text-[#e55b2b]' : 'text-[#0a1f3f]'}`}>
                 {upcomingCount}
               </p>
             </div>
           </div>
 
           {upcomingMaintenance.length > 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg">
-              <div className="px-4 py-3 border-b border-orange-100 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-orange-500" />
-                <h3 className="text-sm font-semibold text-orange-700">Upcoming Maintenance</h3>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl">
+              <div className="px-4 py-3 border-b border-amber-100 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                <h3 className="text-sm font-semibold text-amber-700">Upcoming Maintenance</h3>
               </div>
-              <div className="divide-y divide-orange-100">
-                {upcomingMaintenance.slice(0, 5).map((log) => (
-                  <div key={log.id} className="px-4 py-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{log.type}</p>
-                      <p className="text-xs text-gray-500">
-                        {log.description && `${log.description} - `}
-                        Due: {log.next_due_date ? formatDate(log.next_due_date) : `${log.next_due_miles?.toLocaleString()} miles`}
-                      </p>
+              <div className="divide-y divide-amber-100">
+                {upcomingMaintenance.slice(0, 5).map((log) => {
+                  const isDueSoon = log.next_due_date && new Date(log.next_due_date) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+                  const isOverdue = log.next_due_date && new Date(log.next_due_date) < new Date();
+                  return (
+                    <div key={log.id} className="px-4 py-3 flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-[#0a1f3f]">{log.type}</p>
+                          {isOverdue ? (
+                            <Badge variant="danger" size="sm">Overdue</Badge>
+                          ) : isDueSoon ? (
+                            <Badge variant="warning" size="sm">Due Soon</Badge>
+                          ) : null}
+                        </div>
+                        <p className="text-xs text-[#4a6580]">
+                          {log.description && `${log.description} - `}
+                          Due: {log.next_due_date ? formatDate(log.next_due_date) : `${log.next_due_miles?.toLocaleString()} miles`}
+                        </p>
+                      </div>
+                      <Calendar className="w-4 h-4 text-amber-500 flex-shrink-0" />
                     </div>
-                    <Calendar className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
 
-          <div className="bg-white rounded-lg border border-gray-200">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">Maintenance History</h3>
+          <div className="bg-white rounded-xl border border-[#c8d8ea]">
+            <div className="px-4 py-3 border-b border-[#c8d8ea]/50 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[#0a1f3f]">Maintenance History</h3>
               <button
                 onClick={() => setShowMaintenanceForm(!showMaintenanceForm)}
-                className="flex items-center gap-1 text-xs font-medium text-blue-600"
+                className="flex items-center gap-1 text-xs font-medium text-[#e55b2b]"
               >
                 {showMaintenanceForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                 {showMaintenanceForm ? 'Close' : 'Add Entry'}
@@ -803,14 +814,14 @@ export default function VanPage() {
             </div>
 
             {showMaintenanceForm && (
-              <form onSubmit={handleMaintenanceSubmit} className="p-4 border-b border-gray-100 bg-gray-50 space-y-3">
+              <form onSubmit={handleMaintenanceSubmit} className="p-4 border-b border-[#c8d8ea]/50 bg-[#e8f0f8]/50 space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
-                  <input name="date" type="date" required defaultValue={todayISO()} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                  <label className="block text-xs font-medium text-[#4a6580] mb-1">Date</label>
+                  <input name="date" type="date" required defaultValue={todayISO()} className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
-                  <select name="type" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white">
+                  <label className="block text-xs font-medium text-[#4a6580] mb-1">Type</label>
+                  <select name="type" required className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] bg-white focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]">
                     <option value="">Select type...</option>
                     {MAINTENANCE_TYPES.map((t) => (
                       <option key={t} value={t}>{t}</option>
@@ -818,34 +829,34 @@ export default function VanPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Description (optional)</label>
-                  <input name="description" placeholder="Details about the service" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                  <label className="block text-xs font-medium text-[#4a6580] mb-1">Description (optional)</label>
+                  <input name="description" placeholder="Details about the service" className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Cost (optional)</label>
-                    <input name="cost" type="number" step="0.01" placeholder="e.g. 75.00" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                    <label className="block text-xs font-medium text-[#4a6580] mb-1">Cost (optional)</label>
+                    <input name="cost" type="number" step="0.01" placeholder="e.g. 75.00" className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Vendor (optional)</label>
-                    <input name="vendor" placeholder="e.g. Jiffy Lube" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                    <label className="block text-xs font-medium text-[#4a6580] mb-1">Vendor (optional)</label>
+                    <input name="vendor" placeholder="e.g. Jiffy Lube" className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Next Due Date</label>
-                    <input name="next_due_date" type="date" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                    <label className="block text-xs font-medium text-[#4a6580] mb-1">Next Due Date</label>
+                    <input name="next_due_date" type="date" className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Next Due Miles</label>
-                    <input name="next_due_miles" type="number" step="0.1" placeholder="e.g. 50000" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+                    <label className="block text-xs font-medium text-[#4a6580] mb-1">Next Due Miles</label>
+                    <input name="next_due_miles" type="number" step="0.1" placeholder="e.g. 50000" className="w-full border border-[#c8d8ea] rounded-xl px-3 py-2 text-sm text-[#0a1f3f] focus:outline-none focus:ring-2 focus:ring-[#e55b2b]/20 focus:border-[#e55b2b]" />
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
-                  <button type="button" onClick={() => setShowMaintenanceForm(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg">
+                  <button type="button" onClick={() => setShowMaintenanceForm(false)} className="px-4 py-2 text-sm text-[#4a6580] border border-[#c8d8ea] rounded-xl hover:bg-[#e8f0f8]">
                     Cancel
                   </button>
-                  <button type="submit" disabled={submitting} className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg disabled:opacity-50 flex items-center gap-2">
+                  <button type="submit" disabled={submitting} className="px-4 py-2 text-sm font-bold text-white bg-[#e55b2b] rounded-xl hover:bg-[#d14e22] disabled:opacity-50 flex items-center gap-2">
                     {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                     Save
                   </button>
@@ -853,40 +864,39 @@ export default function VanPage() {
               </form>
             )}
 
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-[#c8d8ea]/30">
               {maintenanceLoading ? (
                 <div className="p-4 space-y-3">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+                    <div key={i} className="h-12 bg-[#e8f0f8] rounded animate-pulse" />
                   ))}
                 </div>
               ) : maintenanceLogs.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Wrench className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No maintenance records</p>
-                </div>
+                <EmptyState
+                  icon={<Wrench className="w-8 h-8" />}
+                  title="No Maintenance Records"
+                  description="No maintenance records yet"
+                />
               ) : (
                 maintenanceLogs.map((log) => (
                   <div key={log.id} className="px-4 py-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{formatDate(log.date)}</p>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 mt-1">
-                          {log.type}
-                        </span>
+                        <p className="text-sm font-medium text-[#0a1f3f]">{formatDate(log.date)}</p>
+                        <Badge variant="info" size="sm" className="mt-1">{log.type}</Badge>
                       </div>
                       {log.cost != null && (
                         <span className="text-sm font-bold text-red-600">{formatCurrency(log.cost)}</span>
                       )}
                     </div>
                     {log.description && (
-                      <p className="text-xs text-gray-500 mt-1">{log.description}</p>
+                      <p className="text-xs text-[#4a6580] mt-1">{log.description}</p>
                     )}
                     {log.vendor && (
-                      <p className="text-xs text-gray-400 mt-0.5">{log.vendor}</p>
+                      <p className="text-xs text-[#4a6580] mt-0.5">{log.vendor}</p>
                     )}
                     {(log.next_due_date || log.next_due_miles) && (
-                      <p className="text-xs text-orange-600 mt-1">
+                      <p className="text-xs text-[#e55b2b] mt-1">
                         Next due: {log.next_due_date ? formatDate(log.next_due_date) : `${log.next_due_miles?.toLocaleString()} mi`}
                       </p>
                     )}

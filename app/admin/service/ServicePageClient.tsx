@@ -2,6 +2,11 @@
 
 import { useState } from 'react';
 import { Card, CardContent, Button, Input, Modal } from '@/components/ui';
+import { Badge } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Tabs } from '@/components/ui/Tabs';
+import { useToast } from '@/hooks/useToast';
+import { WORK_ORDER_STATUS, PRIORITY_LEVELS } from '@/lib/status';
 import { formatDate } from '@/lib/utils';
 import {
   HardHat,
@@ -44,26 +49,35 @@ interface CustomerOption {
   full_name: string;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  assigned: { label: 'Assigned', color: 'text-blue-700', bg: 'bg-blue-100' },
-  en_route: { label: 'En Route', color: 'text-yellow-700', bg: 'bg-yellow-100' },
-  in_progress: { label: 'On Site', color: 'text-orange-700', bg: 'bg-orange-100' },
-  completed: { label: 'Completed', color: 'text-green-700', bg: 'bg-green-100' },
-  cancelled: { label: 'Cancelled', color: 'text-gray-700', bg: 'bg-gray-100' },
-};
-
-const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  low: { label: 'Low', color: 'text-gray-600', bg: 'bg-gray-100' },
-  normal: { label: 'Normal', color: 'text-blue-600', bg: 'bg-blue-50' },
-  high: { label: 'High', color: 'text-orange-600', bg: 'bg-orange-50' },
-  urgent: { label: 'Urgent', color: 'text-red-600', bg: 'bg-red-50' },
-};
-
 export interface ServicePageClientProps {
   initialWorkOrders: WorkOrder[];
   initialCustomers: CustomerOption[];
   initialTechs: Tech[];
   groupId: string;
+}
+
+/** Map a work-order DB status key to a Badge variant */
+function woBadgeVariant(status: string) {
+  const cfg = WORK_ORDER_STATUS[status];
+  return cfg?.variant ?? 'default';
+}
+
+/** Get display label for a WO status */
+function woLabel(status: string) {
+  const cfg = WORK_ORDER_STATUS[status];
+  return cfg?.label ?? status;
+}
+
+/** Map a priority DB key to a Badge variant */
+function priorityBadgeVariant(priority: string) {
+  const cfg = PRIORITY_LEVELS[priority];
+  return cfg?.variant ?? 'default';
+}
+
+/** Get display label for a priority */
+function priorityLabel(priority: string) {
+  const cfg = PRIORITY_LEVELS[priority];
+  return cfg?.label ?? priority;
 }
 
 export default function ServicePageClient({
@@ -72,6 +86,7 @@ export default function ServicePageClient({
   initialTechs,
   groupId,
 }: ServicePageClientProps) {
+  const { toast } = useToast();
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [techs] = useState<Tech[]>(initialTechs);
   const [customers, setCustomers] = useState<CustomerOption[]>(initialCustomers);
@@ -89,6 +104,18 @@ export default function ServicePageClient({
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickCustomer, setQuickCustomer] = useState({ full_name: '', phone: '', email: '', address: '' });
   const [updatingStatus, setUpdatingStatus] = useState<Set<string>>(new Set());
+
+  // Status filter tabs
+  const statusTabs = [
+    { value: '', label: 'All', count: workOrders.length },
+    ...Object.entries(WORK_ORDER_STATUS)
+      .filter(([key]) => ['assigned', 'en_route', 'in_progress', 'completed', 'cancelled'].includes(key))
+      .map(([key, cfg]) => ({
+        value: key,
+        label: cfg.label,
+        count: workOrders.filter((wo) => wo.status === key).length,
+      })),
+  ];
 
   const quickAddCustomer = async () => {
     if (!quickCustomer.full_name.trim()) return;
@@ -145,9 +172,11 @@ export default function ServicePageClient({
       setWorkOrders([data, ...workOrders]);
       setIsCreateOpen(false);
       setNewWO({ customer_id: '', assigned_tech_id: '', priority: 'normal', description: '', scheduled_date: '' });
+      toast.success('Work order created', 'The new work order is ready.');
     } catch (err) {
       console.error('Create WO exception:', err);
       setCreateError(err instanceof Error ? err.message : 'Unknown error occurred');
+      toast.error('Failed to create work order');
     } finally {
       setCreating(false);
     }
@@ -169,6 +198,7 @@ export default function ServicePageClient({
         const wo = await res.json() as WorkOrder;
         setWorkOrders((prev) => prev.map((w) => w.id === id ? wo : w));
         if (selectedWO?.id === id) setSelectedWO(wo);
+        toast.success('Status updated', `Work order moved to ${woLabel(status)}.`);
       }
     } finally {
       setUpdatingStatus((prev) => {
@@ -259,88 +289,98 @@ export default function ServicePageClient({
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Service / Work Orders</h1>
-          <p className="text-gray-600 mt-1">Manage field service operations</p>
+          <h1 className="text-2xl font-bold text-[#0a1f3f]">Service / Work Orders</h1>
+          <p className="text-[#4a6580] mt-1">Manage field service operations</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
+        <Button onClick={() => setIsCreateOpen(true)} className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white">
           <Plus className="w-4 h-4 mr-2" /> New Work Order
         </Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <Card>
+        <Card className="bg-white rounded-xl border border-[#c8d8ea]">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center justify-between">
-              <div><p className="text-xs font-medium text-gray-500">Active Jobs</p><p className="text-2xl font-bold text-gray-900">{statCounts.active}</p></div>
-              <div className="bg-blue-500 p-2 rounded-lg"><HardHat className="w-5 h-5 text-white" /></div>
+              <div><p className="text-xs font-medium text-[#4a6580]">Active Jobs</p><p className="text-2xl font-bold text-[#0a1f3f]">{statCounts.active}</p></div>
+              <div className="bg-[#e55b2b] p-2 rounded-lg"><HardHat className="w-5 h-5 text-white" /></div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-white rounded-xl border border-[#c8d8ea]">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center justify-between">
-              <div><p className="text-xs font-medium text-gray-500">Completed</p><p className="text-2xl font-bold text-gray-900">{statCounts.completed}</p></div>
-              <div className="bg-green-500 p-2 rounded-lg"><CheckCircle2 className="w-5 h-5 text-white" /></div>
+              <div><p className="text-xs font-medium text-[#4a6580]">Completed</p><p className="text-2xl font-bold text-[#0a1f3f]">{statCounts.completed}</p></div>
+              <div className="bg-emerald-500 p-2 rounded-lg"><CheckCircle2 className="w-5 h-5 text-white" /></div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-white rounded-xl border border-[#c8d8ea]">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center justify-between">
-              <div><p className="text-xs font-medium text-gray-500">Urgent</p><p className="text-2xl font-bold text-gray-900">{statCounts.urgent}</p></div>
+              <div><p className="text-xs font-medium text-[#4a6580]">Urgent</p><p className="text-2xl font-bold text-[#0a1f3f]">{statCounts.urgent}</p></div>
               <div className="bg-red-500 p-2 rounded-lg"><AlertTriangle className="w-5 h-5 text-white" /></div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Status filter pills */}
+      <Tabs
+        tabs={statusTabs}
+        value={statusFilter}
+        onChange={setStatusFilter}
+        variant="pills"
+      />
+
+      {/* Search */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a6580]" />
           <Input placeholder="Search work orders..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
-        </div>
-        <div className="flex gap-2">
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
-            <option value="">All Status</option>
-            {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
         </div>
       </div>
 
       {/* Work Orders List */}
       <div className="space-y-3">
         {filtered.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <HardHat className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No work orders</h3>
-              <p className="text-gray-600">Create your first work order to get started</p>
+          <Card className="bg-white rounded-xl border border-[#c8d8ea]">
+            <CardContent className="p-0">
+              <EmptyState
+                icon={<HardHat className="w-8 h-8" />}
+                title="No work orders"
+                description={search || statusFilter ? 'Try adjusting your filters' : 'Create your first work order to get started'}
+                action={
+                  !search && !statusFilter ? (
+                    <Button onClick={() => setIsCreateOpen(true)} className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white">
+                      <Plus className="w-4 h-4 mr-2" />
+                      New Work Order
+                    </Button>
+                  ) : undefined
+                }
+              />
             </CardContent>
           </Card>
         ) : (
           filtered.map((wo) => {
-            const statusConf = STATUS_CONFIG[wo.status] || STATUS_CONFIG.assigned;
-            const priorityConf = PRIORITY_CONFIG[wo.priority] || PRIORITY_CONFIG.normal;
             const nextStatus = getNextStatus(wo.status);
 
             return (
-              <Card key={wo.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedWO(wo)}>
+              <Card key={wo.id} className="hover:shadow-md transition-shadow cursor-pointer bg-white rounded-xl border border-[#c8d8ea]" onClick={() => setSelectedWO(wo)}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConf.bg} ${statusConf.color}`}>
-                          {statusConf.label}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${priorityConf.bg} ${priorityConf.color}`}>
-                          {priorityConf.label}
-                        </span>
-                        <span className="text-xs text-gray-400 font-mono">{wo.id.slice(0, 8)}</span>
+                        <Badge variant={woBadgeVariant(wo.status)}>
+                          {woLabel(wo.status)}
+                        </Badge>
+                        <Badge variant={priorityBadgeVariant(wo.priority)}>
+                          {priorityLabel(wo.priority)}
+                        </Badge>
+                        <span className="text-xs text-[#4a6580]/70 font-mono">{wo.id.slice(0, 8)}</span>
                       </div>
-                      <p className="font-medium text-gray-900 mt-1">{wo.description || 'No description'}</p>
-                      <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                      <p className="font-medium text-[#0a1f3f] mt-1">{wo.description || 'No description'}</p>
+                      <div className="flex items-center gap-4 mt-1 text-sm text-[#4a6580]">
                         {wo.customers && (
                           <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" />{wo.customers.full_name}</span>
                         )}
@@ -363,13 +403,13 @@ export default function ServicePageClient({
                           {updatingStatus.has(wo.id) ? (
                             <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                           ) : (
-                            STATUS_CONFIG[nextStatus]?.label
+                            woLabel(nextStatus)
                           )}
                         </Button>
                       )}
                       <button
                         onClick={(e) => { e.stopPropagation(); deleteWorkOrder(wo.id); }}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        className="p-1.5 rounded-lg text-[#4a6580] hover:text-red-600 hover:bg-red-50 transition-colors"
                         title="Delete work order"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -387,10 +427,10 @@ export default function ServicePageClient({
       <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="New Work Order">
         <form onSubmit={createWorkOrder} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+            <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Customer</label>
             <div className="flex gap-2">
-              <select value={newWO.customer_id} onChange={(e) => setNewWO({ ...newWO, customer_id: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm">
-                <option value="">{customers.length === 0 ? 'No customers yet — add one below' : 'Select customer...'}</option>
+              <select value={newWO.customer_id} onChange={(e) => setNewWO({ ...newWO, customer_id: e.target.value })} className="w-full border border-[#c8d8ea] rounded-lg px-3 py-2 text-sm">
+                <option value="">{customers.length === 0 ? 'No customers yet -- add one below' : 'Select customer...'}</option>
                 {customers.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
               </select>
               <Button type="button" variant="outline" onClick={() => setShowQuickAdd(!showQuickAdd)} className="shrink-0 text-xs">
@@ -398,48 +438,50 @@ export default function ServicePageClient({
               </Button>
             </div>
             {showQuickAdd && (
-              <div className="mt-2 p-3 border border-blue-200 bg-blue-50 rounded-lg space-y-2">
-                <p className="text-xs font-semibold text-blue-800">Quick Add Customer</p>
+              <div className="mt-2 p-3 border border-[#e55b2b]/30 bg-[#e55b2b]/5 rounded-lg space-y-2">
+                <p className="text-xs font-semibold text-[#0a1f3f]">Quick Add Customer</p>
                 <Input placeholder="Full name *" value={quickCustomer.full_name} onChange={(e) => setQuickCustomer({ ...quickCustomer, full_name: e.target.value })} />
                 <Input placeholder="Phone" value={quickCustomer.phone} onChange={(e) => setQuickCustomer({ ...quickCustomer, phone: e.target.value })} />
                 <Input placeholder="Email" value={quickCustomer.email} onChange={(e) => setQuickCustomer({ ...quickCustomer, email: e.target.value })} />
                 <Input placeholder="Address" value={quickCustomer.address} onChange={(e) => setQuickCustomer({ ...quickCustomer, address: e.target.value })} />
                 <div className="flex gap-2">
-                  <Button type="button" onClick={quickAddCustomer} disabled={!quickCustomer.full_name.trim()} className="text-xs">Add Customer</Button>
+                  <Button type="button" onClick={quickAddCustomer} disabled={!quickCustomer.full_name.trim()} className="text-xs bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white">Add Customer</Button>
                   <Button type="button" variant="outline" onClick={() => setShowQuickAdd(false)} className="text-xs">Cancel</Button>
                 </div>
               </div>
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Assign Tech</label>
-            <select value={newWO.assigned_tech_id} onChange={(e) => setNewWO({ ...newWO, assigned_tech_id: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm">
+            <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Assign Tech</label>
+            <select value={newWO.assigned_tech_id} onChange={(e) => setNewWO({ ...newWO, assigned_tech_id: e.target.value })} className="w-full border border-[#c8d8ea] rounded-lg px-3 py-2 text-sm">
               <option value="">Select tech...</option>
               {techs.map((t) => <option key={t.id} value={t.id}>{t.full_name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-            <select value={newWO.priority} onChange={(e) => setNewWO({ ...newWO, priority: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm">
-              {Object.entries(PRIORITY_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Priority</label>
+            <select value={newWO.priority} onChange={(e) => setNewWO({ ...newWO, priority: e.target.value })} className="w-full border border-[#c8d8ea] rounded-lg px-3 py-2 text-sm">
+              {Object.entries(PRIORITY_LEVELS)
+                .filter(([k]) => ['low', 'normal', 'high', 'urgent'].includes(k))
+                .map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date</label>
+            <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Scheduled Date</label>
             <input
               type="date"
               value={newWO.scheduled_date}
               onChange={(e) => setNewWO({ ...newWO, scheduled_date: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+              className="w-full border border-[#c8d8ea] rounded-lg px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Description</label>
             <textarea
               value={newWO.description}
               onChange={(e) => setNewWO({ ...newWO, description: e.target.value })}
               rows={3}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+              className="w-full border border-[#c8d8ea] rounded-lg px-3 py-2 text-sm placeholder-[#4a6580]/50 focus:border-[#e55b2b] focus:outline-none focus:ring-1 focus:ring-[#e55b2b]"
               placeholder="Describe the work to be done..."
             />
           </div>
@@ -448,9 +490,9 @@ export default function ServicePageClient({
               {createError}
             </div>
           )}
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#c8d8ea]">
             <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={creating}>{creating ? 'Creating...' : 'Create Work Order'}</Button>
+            <Button type="submit" disabled={creating} className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white">{creating ? 'Creating...' : 'Create Work Order'}</Button>
           </div>
         </form>
       </Modal>
@@ -461,15 +503,15 @@ export default function ServicePageClient({
           <div className="space-y-6">
             {/* Status + Priority */}
             <div className="flex items-center gap-3">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${STATUS_CONFIG[selectedWO.status]?.bg} ${STATUS_CONFIG[selectedWO.status]?.color}`}>
-                {STATUS_CONFIG[selectedWO.status]?.label}
-              </span>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${PRIORITY_CONFIG[selectedWO.priority]?.bg} ${PRIORITY_CONFIG[selectedWO.priority]?.color}`}>
-                {PRIORITY_CONFIG[selectedWO.priority]?.label}
-              </span>
+              <Badge variant={woBadgeVariant(selectedWO.status)} size="md">
+                {woLabel(selectedWO.status)}
+              </Badge>
+              <Badge variant={priorityBadgeVariant(selectedWO.priority)} size="md">
+                {priorityLabel(selectedWO.priority)}
+              </Badge>
               {getNextStatus(selectedWO.status) && (
-                <Button onClick={() => updateStatus(selectedWO.id, getNextStatus(selectedWO.status)!)} className="ml-auto">
-                  Move to {STATUS_CONFIG[getNextStatus(selectedWO.status)!]?.label}
+                <Button onClick={() => updateStatus(selectedWO.id, getNextStatus(selectedWO.status)!)} className="ml-auto bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white">
+                  Move to {woLabel(getNextStatus(selectedWO.status)!)}
                 </Button>
               )}
             </div>
@@ -477,28 +519,28 @@ export default function ServicePageClient({
             {/* Info Grid */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Customer</p>
-                <p className="font-medium text-gray-900">{selectedWO.customers?.full_name || '-'}</p>
-                {selectedWO.customers?.phone && <p className="text-sm text-gray-600 flex items-center gap-1"><Phone className="w-3 h-3" />{selectedWO.customers.phone}</p>}
+                <p className="text-sm text-[#4a6580]">Customer</p>
+                <p className="font-medium text-[#0a1f3f]">{selectedWO.customers?.full_name || '-'}</p>
+                {selectedWO.customers?.phone && <p className="text-sm text-[#4a6580] flex items-center gap-1"><Phone className="w-3 h-3" />{selectedWO.customers.phone}</p>}
               </div>
               <div>
-                <p className="text-sm text-gray-500">Technician</p>
-                <p className="font-medium text-gray-900">{selectedWO.profiles?.full_name || 'Unassigned'}</p>
+                <p className="text-sm text-[#4a6580]">Technician</p>
+                <p className="font-medium text-[#0a1f3f]">{selectedWO.profiles?.full_name || 'Unassigned'}</p>
               </div>
               {selectedWO.customers?.address && (
                 <div className="col-span-2">
-                  <p className="text-sm text-gray-500">Address</p>
-                  <p className="font-medium text-gray-900">{selectedWO.customers.address}</p>
+                  <p className="text-sm text-[#4a6580]">Address</p>
+                  <p className="font-medium text-[#0a1f3f]">{selectedWO.customers.address}</p>
                 </div>
               )}
               <div className="col-span-2">
-                <p className="text-sm text-gray-500">Description</p>
-                <p className="font-medium text-gray-900">{selectedWO.description || '-'}</p>
+                <p className="text-sm text-[#4a6580]">Description</p>
+                <p className="font-medium text-[#0a1f3f]">{selectedWO.description || '-'}</p>
               </div>
             </div>
 
             {/* Times */}
-            <div className="flex gap-4 text-sm text-gray-500">
+            <div className="flex gap-4 text-sm text-[#4a6580]">
               <span>Created: {formatDate(selectedWO.created_at)}</span>
               {selectedWO.started_at && <span>Started: {formatDate(selectedWO.started_at)}</span>}
               {selectedWO.completed_at && <span>Completed: {formatDate(selectedWO.completed_at)}</span>}
@@ -506,25 +548,25 @@ export default function ServicePageClient({
 
             {/* Notes */}
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">Notes</h4>
+              <h4 className="text-sm font-semibold text-[#0a1f3f] mb-2">Notes</h4>
               {selectedWO.notes && (
-                <div className="bg-gray-50 rounded-lg p-3 mb-3 text-sm whitespace-pre-wrap">{selectedWO.notes}</div>
+                <div className="bg-gray-50 rounded-lg p-3 mb-3 text-sm whitespace-pre-wrap text-[#0a1f3f]">{selectedWO.notes}</div>
               )}
               <div className="flex gap-2">
                 <Input placeholder="Add a note..." value={newNote} onChange={(e) => setNewNote(e.target.value)} className="flex-1" />
-                <Button onClick={addNoteToWO} disabled={!newNote.trim()}>Add</Button>
+                <Button onClick={addNoteToWO} disabled={!newNote.trim()} className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white">Add</Button>
               </div>
             </div>
 
             {/* Parts Used */}
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">Parts Used</h4>
+              <h4 className="text-sm font-semibold text-[#0a1f3f] mb-2">Parts Used</h4>
               {selectedWO.parts_used?.length > 0 && (
                 <div className="space-y-1 mb-3">
                   {selectedWO.parts_used.map((p, i) => (
                     <div key={i} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
-                      <span>{p.name} x{p.quantity}</span>
-                      <span className="text-gray-600">${(p.cost * p.quantity).toFixed(2)}</span>
+                      <span className="text-[#0a1f3f]">{p.name} x{p.quantity}</span>
+                      <span className="text-[#4a6580]">${(p.cost * p.quantity).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
@@ -534,7 +576,7 @@ export default function ServicePageClient({
                   <Input placeholder="Part name" value={newPart.name} onChange={(e) => setNewPart({ ...newPart, name: e.target.value })} className="flex-1" />
                   <Input type="number" placeholder="Qty" value={newPart.quantity} onChange={(e) => setNewPart({ ...newPart, quantity: e.target.value === '' ? 0 : parseInt(e.target.value) || 1 })} className="w-16" />
                   <Input type="number" placeholder="Cost" value={newPart.cost} onChange={(e) => setNewPart({ ...newPart, cost: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 })} className="w-20" />
-                  <Button onClick={addPartToWO} disabled={!newPart.name.trim()}>Add</Button>
+                  <Button onClick={addPartToWO} disabled={!newPart.name.trim()} className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white">Add</Button>
                 </div>
               )}
             </div>

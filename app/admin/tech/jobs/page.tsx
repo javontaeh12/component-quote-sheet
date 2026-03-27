@@ -3,7 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import JobCard from '@/components/tech/JobCard';
-import { Search, MapPin } from 'lucide-react';
+import { Tabs } from '@/components/ui/Tabs';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Search, MapPin, Briefcase } from 'lucide-react';
 
 interface WorkOrder {
   id: string;
@@ -18,14 +20,6 @@ interface WorkOrder {
   assigned_tech_id?: string | null;
   customers: { full_name: string; phone: string | null; address: string | null } | null;
 }
-
-const filters = [
-  { key: 'all', label: 'All' },
-  { key: 'assigned', label: 'Assigned' },
-  { key: 'en_route', label: 'En Route' },
-  { key: 'in_progress', label: 'On Site' },
-  { key: 'completed', label: 'Completed' },
-];
 
 export default function JobQueuePage() {
   const { profile, groupId } = useAuth();
@@ -131,53 +125,50 @@ export default function JobQueuePage() {
     return true;
   });
 
+  // Build tab items with counts
+  const filterTabs = [
+    { value: 'all', label: 'All', count: jobs.length },
+    { value: 'assigned', label: 'Assigned', count: jobs.filter(j => j.status === 'assigned').length },
+    { value: 'en_route', label: 'En Route', count: jobs.filter(j => j.status === 'en_route').length },
+    { value: 'in_progress', label: 'On Site', count: jobs.filter(j => j.status === 'in_progress').length },
+    { value: 'completed', label: 'Completed', count: jobs.filter(j => j.status === 'completed').length },
+  ];
+
   return (
     <div className="pt-6 space-y-4">
-      <h1 className="text-xl font-bold text-navy">Job Queue</h1>
+      <h1 className="text-xl font-bold text-[#0a1f3f]">Job Queue</h1>
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a6580]" />
         <input
           type="text"
           placeholder="Search jobs..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#c8d8ea] text-sm bg-white focus:outline-none focus:border-[#e55b2b] focus:ring-1 focus:ring-[#e55b2b]"
         />
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
-        {filters.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setActiveFilter(f.key)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 ${
-              activeFilter === f.key
-                ? 'bg-navy text-white'
-                : 'bg-ice text-steel hover:bg-accent-light'
-            }`}
-          >
-            {f.label}
-            {f.key !== 'all' && (
-              <span className="ml-1 opacity-70">
-                {jobs.filter((j) => j.status === f.key).length}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={filterTabs}
+        value={activeFilter}
+        onChange={setActiveFilter}
+        variant="pills"
+      />
 
       {/* Job list */}
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-[#e55b2b] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-sm">No jobs found</p>
-        </div>
+        <EmptyState
+          icon={<Briefcase className="w-7 h-7" />}
+          title="No jobs found"
+          description={search ? 'Try adjusting your search or filter to find what you are looking for.' : 'No jobs match the selected filter.'}
+        />
       ) : (
         <div className="space-y-3">
           {filtered.map((job) => (
@@ -189,19 +180,19 @@ export default function JobQueuePage() {
       {/* Available Jobs */}
       {unassigned.length > 0 && (
         <div className="space-y-3 mt-6">
-          <h2 className="text-sm font-semibold text-steel uppercase tracking-wide">
+          <h2 className="text-sm font-semibold text-[#4a6580] uppercase tracking-wide">
             Available Jobs ({unassigned.length})
           </h2>
           {unassigned.map((job) => (
-            <div key={job.id} className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-gray-300">
+            <div key={job.id} className="bg-[#dceaf8]/20 rounded-xl p-4 border border-dashed border-[#c8d8ea]">
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 truncate">
+                  <h3 className="font-semibold text-[#0a1f3f] truncate">
                     {job.customers?.full_name || 'Unknown Customer'}
                   </h3>
-                  <p className="text-sm text-gray-500 truncate">{job.description}</p>
+                  <p className="text-sm text-[#4a6580] truncate">{job.description}</p>
                   {job.customers?.address && (
-                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-1 truncate">
+                    <p className="text-xs text-[#4a6580]/70 flex items-center gap-1 mt-1 truncate">
                       <MapPin className="w-3 h-3 flex-shrink-0" />
                       {job.customers.address}
                     </p>
@@ -210,7 +201,7 @@ export default function JobQueuePage() {
               </div>
               <button
                 onClick={() => claimJob(job.id)}
-                className="mt-3 w-full py-2 rounded-lg bg-green-50 text-green-700 text-sm font-medium hover:bg-green-100 active:bg-green-200"
+                className="mt-3 w-full py-2 rounded-lg bg-[#e55b2b] text-white text-sm font-medium hover:bg-[#d14e22] active:bg-[#c04520] transition-colors"
               >
                 Claim Job
               </button>

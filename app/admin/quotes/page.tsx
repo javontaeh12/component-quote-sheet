@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import { Card, CardContent, Button, Input, Modal } from '@/components/ui';
+import { Button, Input, Modal } from '@/components/ui';
+import { Badge } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { useToast } from '@/hooks/useToast';
+import { QUOTE_STATUS, getStatusConfig } from '@/lib/status';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import {
   Receipt,
@@ -11,9 +15,6 @@ import {
   Search,
   Trash2,
   Send,
-  CheckCircle2,
-  XCircle,
-  Clock,
   FileText,
 } from 'lucide-react';
 
@@ -55,18 +56,11 @@ interface CustomerOption {
   full_name: string;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: typeof Clock }> = {
-  draft: { label: 'Draft', color: 'text-gray-700', bg: 'bg-gray-100', icon: FileText },
-  sent: { label: 'Sent', color: 'text-blue-700', bg: 'bg-blue-100', icon: Send },
-  accepted: { label: 'Accepted', color: 'text-green-700', bg: 'bg-green-100', icon: CheckCircle2 },
-  declined: { label: 'Declined', color: 'text-red-700', bg: 'bg-red-100', icon: XCircle },
-  expired: { label: 'Expired', color: 'text-yellow-700', bg: 'bg-yellow-100', icon: Clock },
-};
-
 const TAX_RATE = 0.08; // 8% tax
 
 export default function QuotesPage() {
   const { groupId, profile, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
@@ -166,44 +160,75 @@ export default function QuotesPage() {
       created_by: profile?.id,
     };
 
-    if (builderId) {
-      const { data, error } = await supabase.from('quotes').update(payload).eq('id', builderId).select('*, customers(full_name)').single();
-      if (!error && data) setQuotes((prev) => prev.map((q) => q.id === data.id ? data : q));
-    } else {
-      const { data, error } = await supabase.from('quotes').insert(payload as Record<string, unknown>).select('*, customers(full_name)').single();
-      if (!error && data) setQuotes([data, ...quotes]);
+    try {
+      if (builderId) {
+        const { data, error } = await supabase.from('quotes').update(payload).eq('id', builderId).select('*, customers(full_name)').single();
+        if (error) throw error;
+        if (data) setQuotes((prev) => prev.map((q) => q.id === data.id ? data : q));
+        toast.success(sendAfterSave ? 'Quote sent' : 'Quote updated', `Quote for ${formatCurrency(total)} has been ${sendAfterSave ? 'sent' : 'updated'}`);
+      } else {
+        const { data, error } = await supabase.from('quotes').insert(payload as Record<string, unknown>).select('*, customers(full_name)').single();
+        if (error) throw error;
+        if (data) setQuotes([data, ...quotes]);
+        toast.success(sendAfterSave ? 'Quote created & sent' : 'Quote created', `Quote for ${formatCurrency(total)} has been ${sendAfterSave ? 'created and sent' : 'saved as draft'}`);
+      }
+      setIsBuilderOpen(false);
+    } catch (err) {
+      console.error('Failed to save quote:', err);
+      toast.error('Failed to save quote', 'Please try again');
     }
-    setIsBuilderOpen(false);
   };
 
   const updateQuoteStatus = async (id: string, status: string) => {
-    const supabase = createClient();
-    const { data, error } = await supabase.from('quotes').update({ status }).eq('id', id).select('*, customers(full_name)').single();
-    if (!error && data) {
-      setQuotes((prev) => prev.map((q) => q.id === data.id ? data : q));
-      if (selectedQuote?.id === id) setSelectedQuote(data);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.from('quotes').update({ status }).eq('id', id).select('*, customers(full_name)').single();
+      if (error) throw error;
+      if (data) {
+        setQuotes((prev) => prev.map((q) => q.id === data.id ? data : q));
+        if (selectedQuote?.id === id) setSelectedQuote(data);
+        const statusConf = getStatusConfig('quote', status);
+        toast.success(`Quote ${statusConf.label.toLowerCase()}`, `Quote has been marked as ${statusConf.label.toLowerCase()}`);
+      }
+    } catch (err) {
+      console.error('Failed to update quote status:', err);
+      toast.error('Failed to update quote', 'Please try again');
     }
   };
 
   const saveAsTemplate = async () => {
     if (!groupId || !newTemplateName.trim()) return;
-    const supabase = createClient();
-    const { data, error } = await supabase.from('quote_templates').insert({
-      name: newTemplateName,
-      default_items: builderItems,
-      group_id: groupId,
-    } as Record<string, unknown>).select().single();
-    if (!error && data) {
-      setTemplates([...templates, data]);
-      setNewTemplateName('');
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.from('quote_templates').insert({
+        name: newTemplateName,
+        default_items: builderItems,
+        group_id: groupId,
+      } as Record<string, unknown>).select().single();
+      if (error) throw error;
+      if (data) {
+        setTemplates([...templates, data]);
+        setNewTemplateName('');
+        toast.success('Template saved', `"${newTemplateName}" has been saved as a template`);
+      }
+    } catch (err) {
+      console.error('Failed to save template:', err);
+      toast.error('Failed to save template', 'Please try again');
     }
   };
 
   const deleteQuote = async (id: string) => {
-    const supabase = createClient();
-    await supabase.from('quotes').delete().eq('id', id);
-    setQuotes((prev) => prev.filter((q) => q.id !== id));
-    setSelectedQuote(null);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from('quotes').delete().eq('id', id);
+      if (error) throw error;
+      setQuotes((prev) => prev.filter((q) => q.id !== id));
+      setSelectedQuote(null);
+      toast.success('Quote deleted', 'Quote has been removed');
+    } catch (err) {
+      console.error('Failed to delete quote:', err);
+      toast.error('Failed to delete quote', 'Please try again');
+    }
   };
 
   const filtered = quotes.filter((q) => {
@@ -216,19 +241,19 @@ export default function QuotesPage() {
   });
 
   if (isLoading || authLoading) {
-    return <div className="animate-pulse space-y-4"><div className="h-8 bg-gray-200 rounded w-48" /><div className="h-64 bg-gray-200 rounded-xl" /></div>;
+    return <div className="animate-pulse space-y-4"><div className="h-8 bg-[#dceaf8]/50 rounded w-48" /><div className="h-64 bg-[#dceaf8]/50 rounded-xl" /></div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Quotes</h1>
-          <p className="text-gray-600 mt-1">Create and manage service quotes</p>
+          <h1 className="text-2xl font-bold text-[#0a1f3f]">Quotes</h1>
+          <p className="text-[#4a6580] mt-1">Create and manage service quotes</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setIsTemplateOpen(true)}>Templates</Button>
-          <Button onClick={() => openBuilder()}>
+          <Button className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white" onClick={() => openBuilder()}>
             <Plus className="w-4 h-4 mr-2" /> New Quote
           </Button>
         </div>
@@ -236,66 +261,75 @@ export default function QuotesPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {Object.entries(STATUS_CONFIG).map(([key, conf]) => {
+        {Object.entries(QUOTE_STATUS).map(([key, conf]) => {
           const count = quotes.filter((q) => q.status === key).length;
           return (
-            <Card key={key} className={`cursor-pointer ${statusFilter === key ? 'ring-2 ring-blue-500' : ''}`} onClick={() => setStatusFilter(statusFilter === key ? '' : key)}>
-              <CardContent className="pt-3 pb-3">
-                <p className="text-xs font-medium text-gray-500">{conf.label}</p>
-                <p className="text-xl font-bold text-gray-900">{count}</p>
-              </CardContent>
-            </Card>
+            <div
+              key={key}
+              className={`bg-white rounded-xl border cursor-pointer p-4 ${statusFilter === key ? 'border-[#e55b2b] ring-2 ring-[#e55b2b]/20' : 'border-[#c8d8ea]'}`}
+              onClick={() => setStatusFilter(statusFilter === key ? '' : key)}
+            >
+              <p className="text-xs font-medium text-[#4a6580]">{conf.label}</p>
+              <p className="text-xl font-bold text-[#0a1f3f]">{count}</p>
+            </div>
           );
         })}
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a6580]" />
         <Input placeholder="Search quotes..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
       </div>
 
       {/* Quotes List */}
-      <Card>
-        <CardContent className="p-0">
+      <div className="bg-white rounded-xl border border-[#c8d8ea]">
+        <div className="p-0">
           {filtered.length === 0 ? (
-            <div className="p-12 text-center">
-              <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No quotes found</h3>
-              <p className="text-gray-600">Create your first quote</p>
-            </div>
+            <EmptyState
+              icon={<Receipt className="w-7 h-7" />}
+              title="No quotes found"
+              description={search || statusFilter ? 'Try adjusting your filters' : 'Create your first quote to get started'}
+              action={
+                !search && !statusFilter ? (
+                  <Button className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white" onClick={() => openBuilder()}>
+                    <Plus className="w-4 h-4 mr-2" /> New Quote
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
-            <div className="divide-y">
+            <div className="divide-y divide-[#c8d8ea]">
               {filtered.map((q) => {
-                const conf = STATUS_CONFIG[q.status] || STATUS_CONFIG.draft;
+                const conf = getStatusConfig('quote', q.status);
                 return (
-                  <div key={q.id} className="p-4 hover:bg-gray-50 cursor-pointer flex items-center justify-between" onClick={() => setSelectedQuote(q)}>
+                  <div key={q.id} className="p-4 hover:bg-[#0a1f3f]/5 cursor-pointer flex items-center justify-between" onClick={() => setSelectedQuote(q)}>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${conf.bg} ${conf.color}`}>{conf.label}</span>
-                        <span className="text-sm font-medium text-gray-900">{q.customers?.full_name || 'No customer'}</span>
+                        <Badge variant={conf.variant}>{conf.label}</Badge>
+                        <span className="text-sm font-medium text-[#0a1f3f]">{q.customers?.full_name || 'No customer'}</span>
                       </div>
-                      <p className="text-sm text-gray-500 mt-0.5">{q.line_items?.length || 0} items &middot; {formatDate(q.created_at)}</p>
+                      <p className="text-sm text-[#4a6580] mt-0.5">{q.line_items?.length || 0} items &middot; {formatDate(q.created_at)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-gray-900">{formatCurrency(q.total)}</p>
-                      {q.valid_until && <p className="text-xs text-gray-500">Valid until {formatDate(q.valid_until)}</p>}
+                      <p className="font-bold text-[#0a1f3f]">{formatCurrency(q.total)}</p>
+                      {q.valid_until && <p className="text-xs text-[#4a6580]">Valid until {formatDate(q.valid_until)}</p>}
                     </div>
                   </div>
                 );
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Quote Builder Modal */}
       <Modal isOpen={isBuilderOpen} onClose={() => setIsBuilderOpen(false)} title={builderId ? 'Edit Quote' : 'New Quote'} className="max-w-3xl">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-              <select value={builderCustomer} onChange={(e) => setBuilderCustomer(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+              <label className="block text-sm font-medium text-[#0a1f3f] mb-1">Customer</label>
+              <select value={builderCustomer} onChange={(e) => setBuilderCustomer(e.target.value)} className="w-full border border-[#c8d8ea] rounded-lg px-3 py-2 text-sm">
                 <option value="">Select customer...</option>
                 {customers.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
               </select>
@@ -306,42 +340,42 @@ export default function QuotesPage() {
           {/* Templates quick load */}
           {templates.length > 0 && (
             <div className="flex gap-2 flex-wrap">
-              <span className="text-sm text-gray-500 py-1">Templates:</span>
+              <span className="text-sm text-[#4a6580] py-1">Templates:</span>
               {templates.map((t) => (
-                <button key={t.id} onClick={() => loadTemplate(t)} className="px-3 py-1 rounded-full text-xs font-medium border hover:bg-blue-50 hover:border-blue-300">{t.name}</button>
+                <button key={t.id} onClick={() => loadTemplate(t)} className="px-3 py-1 rounded-full text-xs font-medium border border-[#c8d8ea] hover:bg-[#e55b2b]/5 hover:border-[#e55b2b]/30 text-[#0a1f3f]">{t.name}</button>
               ))}
             </div>
           )}
 
           {/* Line Items */}
           <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-2">Line Items</h4>
+            <h4 className="text-sm font-semibold text-[#0a1f3f] mb-2">Line Items</h4>
             <div className="space-y-2">
               {builderItems.map((item, i) => (
                 <div key={i} className="flex gap-2 items-end">
                   <div className="flex-1">
-                    {i === 0 && <label className="text-xs text-gray-500">Description</label>}
+                    {i === 0 && <label className="text-xs text-[#4a6580]">Description</label>}
                     <Input value={item.description} onChange={(e) => updateLineItem(i, 'description', e.target.value)} placeholder="Item description" />
                   </div>
                   <div className="w-24">
-                    {i === 0 && <label className="text-xs text-gray-500">Type</label>}
-                    <select value={item.type} onChange={(e) => updateLineItem(i, 'type', e.target.value)} className="w-full border rounded-lg px-2 py-2 text-sm">
+                    {i === 0 && <label className="text-xs text-[#4a6580]">Type</label>}
+                    <select value={item.type} onChange={(e) => updateLineItem(i, 'type', e.target.value)} className="w-full border border-[#c8d8ea] rounded-lg px-2 py-2 text-sm">
                       <option value="part">Part</option>
                       <option value="labor">Labor</option>
                       <option value="flat_fee">Flat Fee</option>
                     </select>
                   </div>
                   <div className="w-16">
-                    {i === 0 && <label className="text-xs text-gray-500">Qty</label>}
+                    {i === 0 && <label className="text-xs text-[#4a6580]">Qty</label>}
                     <Input type="number" value={item.quantity} onChange={(e) => updateLineItem(i, 'quantity', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)} />
                   </div>
                   <div className="w-24">
-                    {i === 0 && <label className="text-xs text-gray-500">Unit $</label>}
+                    {i === 0 && <label className="text-xs text-[#4a6580]">Unit $</label>}
                     <Input type="number" value={item.unit_price} onChange={(e) => updateLineItem(i, 'unit_price', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)} />
                   </div>
                   <div className="w-20 text-right">
-                    {i === 0 && <label className="text-xs text-gray-500">Total</label>}
-                    <p className="py-2 text-sm font-medium">{formatCurrency(item.quantity * item.unit_price)}</p>
+                    {i === 0 && <label className="text-xs text-[#4a6580]">Total</label>}
+                    <p className="py-2 text-sm font-medium text-[#0a1f3f]">{formatCurrency(item.quantity * item.unit_price)}</p>
                   </div>
                   <button onClick={() => removeLineItem(i)} className="p-2 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
                 </div>
@@ -351,14 +385,14 @@ export default function QuotesPage() {
           </div>
 
           {/* Totals */}
-          <div className="border-t pt-4 space-y-2">
-            <div className="flex justify-between text-sm"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-gray-500">Tax (8%)</span><span>{formatCurrency(tax)}</span></div>
+          <div className="border-t border-[#c8d8ea] pt-4 space-y-2">
+            <div className="flex justify-between text-sm"><span className="text-[#4a6580]">Subtotal</span><span className="text-[#0a1f3f]">{formatCurrency(subtotal)}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-[#4a6580]">Tax (8%)</span><span className="text-[#0a1f3f]">{formatCurrency(tax)}</span></div>
             <div className="flex justify-between text-sm items-center">
-              <span className="text-gray-500">Discount</span>
+              <span className="text-[#4a6580]">Discount</span>
               <Input type="number" value={builderDiscount} onChange={(e) => setBuilderDiscount(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)} className="w-28 text-right" />
             </div>
-            <div className="flex justify-between text-lg font-bold border-t pt-2"><span>Total</span><span>{formatCurrency(total)}</span></div>
+            <div className="flex justify-between text-lg font-bold border-t border-[#c8d8ea] pt-2"><span className="text-[#0a1f3f]">Total</span><span className="text-[#0a1f3f]">{formatCurrency(total)}</span></div>
           </div>
 
           {/* Notes */}
@@ -367,7 +401,7 @@ export default function QuotesPage() {
             onChange={(e) => setBuilderNotes(e.target.value)}
             placeholder="Additional notes..."
             rows={2}
-            className="w-full border rounded-lg px-3 py-2 text-sm"
+            className="w-full border border-[#c8d8ea] rounded-lg px-3 py-2 text-sm"
           />
 
           {/* Save as Template */}
@@ -377,10 +411,10 @@ export default function QuotesPage() {
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#c8d8ea]">
             <Button variant="outline" onClick={() => setIsBuilderOpen(false)}>Cancel</Button>
             <Button variant="outline" onClick={() => saveQuote(false)}>Save Draft</Button>
-            <Button onClick={() => saveQuote(true)}>
+            <Button className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white" onClick={() => saveQuote(true)}>
               <Send className="w-4 h-4 mr-2" /> Save & Send
             </Button>
           </div>
@@ -389,75 +423,82 @@ export default function QuotesPage() {
 
       {/* Quote Detail Modal */}
       <Modal isOpen={!!selectedQuote} onClose={() => setSelectedQuote(null)} title="Quote Details" className="max-w-2xl">
-        {selectedQuote && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${STATUS_CONFIG[selectedQuote.status]?.bg} ${STATUS_CONFIG[selectedQuote.status]?.color}`}>
-                  {STATUS_CONFIG[selectedQuote.status]?.label}
-                </span>
-                <span className="text-sm text-gray-500">{formatDate(selectedQuote.created_at)}</span>
+        {selectedQuote && (() => {
+          const detailConf = getStatusConfig('quote', selectedQuote.status);
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant={detailConf.variant} size="md">
+                    {detailConf.label}
+                  </Badge>
+                  <span className="text-sm text-[#4a6580]">{formatDate(selectedQuote.created_at)}</span>
+                </div>
+                <div className="flex gap-2">
+                  {selectedQuote.status === 'draft' && <Button variant="outline" onClick={() => updateQuoteStatus(selectedQuote.id, 'sent')}>Mark Sent</Button>}
+                  {selectedQuote.status === 'sent' && (
+                    <>
+                      <Button className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white" onClick={() => updateQuoteStatus(selectedQuote.id, 'accepted')}>Accept</Button>
+                      <Button variant="outline" onClick={() => updateQuoteStatus(selectedQuote.id, 'declined')}>Decline</Button>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="flex gap-2">
-                {selectedQuote.status === 'draft' && <Button variant="outline" onClick={() => updateQuoteStatus(selectedQuote.id, 'sent')}>Mark Sent</Button>}
-                {selectedQuote.status === 'sent' && (
-                  <>
-                    <Button onClick={() => updateQuoteStatus(selectedQuote.id, 'accepted')}>Accept</Button>
-                    <Button variant="outline" onClick={() => updateQuoteStatus(selectedQuote.id, 'declined')}>Decline</Button>
-                  </>
-                )}
+
+              <div>
+                <p className="text-sm text-[#4a6580]">Customer</p>
+                <p className="font-medium text-[#0a1f3f]">{selectedQuote.customers?.full_name || '-'}</p>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-semibold text-[#0a1f3f] mb-2">Line Items</h4>
+                <div className="border border-[#c8d8ea] rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead><tr className="bg-[#dceaf8]/50 text-[#4a6580]"><th className="px-3 py-2 text-left">Description</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">Qty</th><th className="px-3 py-2 text-right">Price</th><th className="px-3 py-2 text-right">Total</th></tr></thead>
+                    <tbody>
+                      {selectedQuote.line_items?.map((item, i) => (
+                        <tr key={i} className="border-t border-[#c8d8ea]"><td className="px-3 py-2 text-[#0a1f3f]">{item.description}</td><td className="px-3 py-2 text-center text-[#4a6580]">{item.type}</td><td className="px-3 py-2 text-center text-[#4a6580]">{item.quantity}</td><td className="px-3 py-2 text-right text-[#4a6580]">{formatCurrency(item.unit_price)}</td><td className="px-3 py-2 text-right text-[#0a1f3f] font-medium">{formatCurrency(item.quantity * item.unit_price)}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="text-right space-y-1">
+                <p className="text-sm text-[#4a6580]">Subtotal: {formatCurrency(selectedQuote.subtotal)}</p>
+                <p className="text-sm text-[#4a6580]">Tax: {formatCurrency(selectedQuote.tax)}</p>
+                {selectedQuote.discount > 0 && <p className="text-sm text-emerald-600">Discount: -{formatCurrency(selectedQuote.discount)}</p>}
+                <p className="text-lg font-bold text-[#0a1f3f]">Total: {formatCurrency(selectedQuote.total)}</p>
+              </div>
+
+              {selectedQuote.notes && <div className="bg-[#dceaf8]/30 rounded-lg p-3 text-sm"><p className="text-[#4a6580] text-xs mb-1">Notes</p><span className="text-[#0a1f3f]">{selectedQuote.notes}</span></div>}
+
+              <div className="flex justify-between pt-4 border-t border-[#c8d8ea]">
+                <Button variant="outline" onClick={() => openBuilder(selectedQuote)}>Edit Quote</Button>
+                <Button variant="outline" onClick={() => deleteQuote(selectedQuote.id)} className="text-red-600 hover:bg-red-50">
+                  <Trash2 className="w-4 h-4 mr-1" /> Delete
+                </Button>
               </div>
             </div>
-
-            <div>
-              <p className="text-sm text-gray-500">Customer</p>
-              <p className="font-medium">{selectedQuote.customers?.full_name || '-'}</p>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Line Items</h4>
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead><tr className="bg-gray-50 text-gray-500"><th className="px-3 py-2 text-left">Description</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">Qty</th><th className="px-3 py-2 text-right">Price</th><th className="px-3 py-2 text-right">Total</th></tr></thead>
-                  <tbody>
-                    {selectedQuote.line_items?.map((item, i) => (
-                      <tr key={i} className="border-t"><td className="px-3 py-2">{item.description}</td><td className="px-3 py-2 text-center">{item.type}</td><td className="px-3 py-2 text-center">{item.quantity}</td><td className="px-3 py-2 text-right">{formatCurrency(item.unit_price)}</td><td className="px-3 py-2 text-right">{formatCurrency(item.quantity * item.unit_price)}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="text-right space-y-1">
-              <p className="text-sm text-gray-500">Subtotal: {formatCurrency(selectedQuote.subtotal)}</p>
-              <p className="text-sm text-gray-500">Tax: {formatCurrency(selectedQuote.tax)}</p>
-              {selectedQuote.discount > 0 && <p className="text-sm text-green-600">Discount: -{formatCurrency(selectedQuote.discount)}</p>}
-              <p className="text-lg font-bold">Total: {formatCurrency(selectedQuote.total)}</p>
-            </div>
-
-            {selectedQuote.notes && <div className="bg-gray-50 rounded-lg p-3 text-sm"><p className="text-gray-500 text-xs mb-1">Notes</p>{selectedQuote.notes}</div>}
-
-            <div className="flex justify-between pt-4 border-t">
-              <Button variant="outline" onClick={() => openBuilder(selectedQuote)}>Edit Quote</Button>
-              <Button variant="outline" onClick={() => deleteQuote(selectedQuote.id)} className="text-red-600 hover:bg-red-50">
-                <Trash2 className="w-4 h-4 mr-1" /> Delete
-              </Button>
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </Modal>
 
       {/* Templates Modal */}
       <Modal isOpen={isTemplateOpen} onClose={() => setIsTemplateOpen(false)} title="Quote Templates">
         <div className="space-y-3">
           {templates.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-8">No templates yet. Save one from the quote builder.</p>
+            <EmptyState
+              icon={<FileText className="w-7 h-7" />}
+              title="No templates yet"
+              description="Save one from the quote builder to reuse line items across quotes"
+            />
           ) : (
             templates.map((t) => (
-              <div key={t.id} className="p-3 border rounded-lg flex items-center justify-between hover:bg-gray-50">
+              <div key={t.id} className="p-3 border border-[#c8d8ea] rounded-lg flex items-center justify-between hover:bg-[#0a1f3f]/5">
                 <div>
-                  <p className="font-medium text-gray-900">{t.name}</p>
-                  <p className="text-sm text-gray-500">{t.default_items?.length || 0} items</p>
+                  <p className="font-medium text-[#0a1f3f]">{t.name}</p>
+                  <p className="text-sm text-[#4a6580]">{t.default_items?.length || 0} items</p>
                 </div>
                 <Button variant="outline" onClick={() => { loadTemplate(t); openBuilder(); }}>Use</Button>
               </div>

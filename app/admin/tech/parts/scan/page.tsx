@@ -2,6 +2,8 @@
 
 import { useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { useToast } from '@/hooks/useToast';
+import { Badge } from '@/components/ui/Badge';
 import Link from 'next/link';
 import {
   Camera,
@@ -82,6 +84,7 @@ interface TagData {
 
 export default function ScanTagPage() {
   const pathname = usePathname();
+  const { toast } = useToast();
   const backHref = pathname.startsWith('/admin/tech') ? '/admin/tech/parts' : '/admin/parts-store';
   const lookupHref = pathname.startsWith('/admin/tech') ? '/admin/tech/parts/lookup' : '/admin/parts-store/lookup';
 
@@ -131,6 +134,7 @@ export default function ScanTagPage() {
         setError(data.error || 'Analysis failed');
       } else {
         setResult(data);
+        toast.success('Tag Read', 'Equipment data extracted successfully');
       }
     } catch {
       setError('Network error. Please try again.');
@@ -141,6 +145,7 @@ export default function ScanTagPage() {
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     setCopied(label);
+    toast.success('Copied', `${label} copied to clipboard`);
     setTimeout(() => setCopied(null), 1500);
   };
 
@@ -233,37 +238,37 @@ export default function ScanTagPage() {
     <div className="space-y-4 pb-20 w-full">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href={backHref} className="p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors">
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
+        <Link href={backHref} className="p-2 -ml-2 rounded-lg hover:bg-[#e8f0f8] transition-colors">
+          <ArrowLeft className="w-5 h-5 text-[#4a6580]" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Scan Data Tag</h1>
-          <p className="text-gray-500 text-sm mt-0.5">HVAC & refrigeration equipment nameplates</p>
+          <h1 className="text-2xl font-bold text-[#0a1f3f]">Scan Data Tag</h1>
+          <p className="text-[#4a6580] text-sm mt-0.5">HVAC & refrigeration equipment nameplates</p>
         </div>
       </div>
 
       {/* Camera / Upload */}
       {!imagePreview && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border border-[#c8d8ea] p-6">
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => cameraInputRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 transition-colors"
+              className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed border-[#e55b2b]/30 bg-[#e55b2b]/5 hover:bg-[#e55b2b]/10 hover:shadow-md transition-all"
             >
-              <Camera className="w-8 h-8 text-blue-600" />
-              <span className="text-sm font-bold text-blue-700">Take Photo</span>
+              <Camera className="w-8 h-8 text-[#e55b2b]" />
+              <span className="text-sm font-bold text-[#e55b2b]">Take Photo</span>
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors"
+              className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed border-[#c8d8ea] bg-white hover:bg-[#e8f0f8] hover:shadow-md transition-all"
             >
-              <Upload className="w-8 h-8 text-gray-500" />
-              <span className="text-sm font-bold text-gray-600">Upload Image</span>
+              <Upload className="w-8 h-8 text-[#4a6580]" />
+              <span className="text-sm font-bold text-[#4a6580]">Upload Image</span>
             </button>
           </div>
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-          <p className="text-xs text-gray-400 text-center mt-3">
+          <p className="text-xs text-[#4a6580] text-center mt-3">
             For best results, take a clear, well-lit photo of the entire data tag
           </p>
         </div>
@@ -271,9 +276,9 @@ export default function ScanTagPage() {
 
       {/* Image Preview */}
       {imagePreview && !result && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-[#c8d8ea] overflow-hidden">
           <div className="relative">
-            <img src={imagePreview} alt="Data tag" className="w-full max-h-80 object-contain bg-gray-100" />
+            <img src={imagePreview} alt="Data tag" className="w-full max-h-80 object-contain bg-[#e8f0f8]" />
             <button
               onClick={() => { setImagePreview(null); setImageFile(null); setError(''); }}
               className="absolute top-2 right-2 p-2 bg-black/50 rounded-full text-white hover:bg-black/70"
@@ -285,7 +290,7 @@ export default function ScanTagPage() {
             <button
               onClick={handleAnalyze}
               disabled={isAnalyzing}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white bg-[#e55b2b] hover:bg-[#d14e22] disabled:opacity-50 transition-colors"
             >
               {isAnalyzing ? (
                 <>
@@ -306,9 +311,9 @@ export default function ScanTagPage() {
       {/* Loading */}
       {isAnalyzing && (
         <div className="text-center py-8">
-          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-3" />
-          <p className="text-gray-600 font-medium">Reading equipment data tag...</p>
-          <p className="text-sm text-gray-400 mt-1">AI reading tag + searching web for manufacturer specs</p>
+          <Loader2 className="w-10 h-10 text-[#e55b2b] animate-spin mx-auto mb-3" />
+          <p className="text-[#0a1f3f] font-medium">Reading equipment data tag...</p>
+          <p className="text-sm text-[#4a6580] mt-1">AI reading tag + searching web for manufacturer specs</p>
         </div>
       )}
 
@@ -323,7 +328,7 @@ export default function ScanTagPage() {
         </div>
       )}
 
-      {/* Results — Editable Digital Tag */}
+      {/* Results -- Editable Digital Tag */}
       {result && (
         <>
           {/* Quick actions bar */}
@@ -331,7 +336,7 @@ export default function ScanTagPage() {
             {result.model_number && (
               <Link
                 href={`${lookupHref}?model=${encodeURIComponent(result.model_number)}&brand=${encodeURIComponent(result.manufacturer || '')}&serial=${encodeURIComponent(result.serial_number || '')}`}
-                className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white rounded-xl py-3 px-4 hover:bg-indigo-700 transition-colors text-sm font-bold"
+                className="flex-1 flex items-center justify-center gap-2 bg-[#e55b2b] text-white rounded-xl py-3 px-4 hover:bg-[#d14e22] transition-colors text-sm font-bold"
               >
                 <Search className="w-4 h-4" />
                 Look Up Parts
@@ -339,15 +344,15 @@ export default function ScanTagPage() {
             )}
             <button
               onClick={() => setEditMode(!editMode)}
-              className={`px-4 py-3 rounded-xl text-sm font-bold transition-colors ${
-                editMode ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-300'
+              className={`px-4 py-3 rounded-xl text-sm font-bold transition-colors border ${
+                editMode ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' : 'bg-[#e55b2b]/5 text-[#e55b2b] border-[#e55b2b]/20 hover:bg-[#e55b2b]/10'
               }`}
             >
               {editMode ? 'Done' : 'Edit'}
             </button>
             <button
               onClick={() => { setImagePreview(null); setImageFile(null); setResult(null); setEditMode(false); }}
-              className="px-4 py-3 rounded-xl text-sm font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+              className="px-4 py-3 rounded-xl text-sm font-bold bg-[#e8f0f8] text-[#4a6580] hover:bg-[#c8d8ea] transition-colors"
             >
               New
             </button>
@@ -355,13 +360,13 @@ export default function ScanTagPage() {
 
           {/* Image thumbnail */}
           {imagePreview && (
-            <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-3">
-              <img src={imagePreview} alt="Tag" className="w-16 h-16 rounded-lg object-cover bg-gray-100" />
+            <div className="flex items-center gap-3 bg-white rounded-xl border border-[#c8d8ea] p-3">
+              <img src={imagePreview} alt="Tag" className="w-16 h-16 rounded-lg object-cover bg-[#e8f0f8]" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-900 truncate">
+                <p className="text-sm font-bold text-[#0a1f3f] truncate">
                   {result.manufacturer || 'Unknown'} {result.unit_type || 'Unit'}
                 </p>
-                <p className="text-xs text-gray-500 font-mono truncate">{result.model_number || 'No model'}</p>
+                <p className="text-xs text-[#4a6580] font-mono truncate">{result.model_number || 'No model'}</p>
               </div>
             </div>
           )}
@@ -373,15 +378,15 @@ export default function ScanTagPage() {
               : section.items.filter(i => i.value && i.value !== 'null' && i.value !== 'N/A');
             if (items.length === 0) return null;
             return (
-              <div key={section.title} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 border-b border-gray-200">
-                  <section.icon className="w-4 h-4 text-gray-500" />
-                  <h3 className="text-sm font-bold text-gray-700">{section.title}</h3>
+              <div key={section.title} className="bg-white rounded-xl border border-[#c8d8ea] overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-[#0a1f3f] to-[#1a3a5c] border-b border-[#c8d8ea]">
+                  <section.icon className="w-4 h-4 text-white/80" />
+                  <h3 className="text-sm font-bold text-white">{section.title}</h3>
                 </div>
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-[#c8d8ea]/50">
                   {items.map((item) => (
                     <div key={item.label} className="flex items-center justify-between px-4 py-2 gap-3">
-                      <span className="text-xs font-medium text-gray-500 uppercase flex-shrink-0 w-28">{item.label}</span>
+                      <span className="text-xs font-medium text-[#4a6580] uppercase flex-shrink-0 w-28">{item.label}</span>
                       {editMode ? (
                         <input
                           type="text"
@@ -389,14 +394,14 @@ export default function ScanTagPage() {
                           onChange={(e) => {
                             if ('field' in item && item.field) updateField(item.field as keyof TagData, e.target.value);
                           }}
-                          className="flex-1 text-sm font-bold text-gray-900 text-right bg-amber-50 border border-amber-200 rounded px-2 py-1 focus:outline-none focus:border-amber-400 min-w-0"
+                          className="flex-1 text-sm font-bold text-[#0a1f3f] text-right bg-[#e55b2b]/5 border border-[#e55b2b]/20 rounded px-2 py-1 focus:outline-none focus:border-[#e55b2b] min-w-0"
                         />
                       ) : (
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-sm font-bold text-gray-900 text-right truncate">{item.value}</span>
+                          <span className="text-sm font-mono font-bold text-[#0a1f3f] text-right truncate">{item.value}</span>
                           {'copyable' in item && item.copyable && item.value && (
-                            <button onClick={() => copyToClipboard(item.value!, item.label)} className="p-1 rounded hover:bg-gray-100 flex-shrink-0">
-                              {copied === item.label ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+                            <button onClick={() => copyToClipboard(item.value!, item.label)} className="p-1 rounded hover:bg-[#e8f0f8] flex-shrink-0">
+                              {copied === item.label ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-[#4a6580]" />}
                             </button>
                           )}
                         </div>
@@ -410,16 +415,14 @@ export default function ScanTagPage() {
 
           {/* Certifications */}
           {result.certifications && result.certifications.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <h3 className="text-sm font-bold text-gray-700">Certifications</h3>
+            <div className="bg-white rounded-xl border border-[#c8d8ea] overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-[#0a1f3f] to-[#1a3a5c] border-b border-[#c8d8ea]">
+                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                <h3 className="text-sm font-bold text-white">Certifications</h3>
               </div>
               <div className="p-4 flex flex-wrap gap-2">
                 {result.certifications.map((cert, i) => (
-                  <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
-                    {cert}
-                  </span>
+                  <Badge key={i} variant="success" size="md">{cert}</Badge>
                 ))}
               </div>
             </div>
@@ -427,10 +430,10 @@ export default function ScanTagPage() {
 
           {/* Additional info */}
           {result.additional_info && result.additional_info.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <Info className="w-4 h-4 text-gray-500" />
-                <h3 className="text-sm font-bold text-gray-700">Additional Info</h3>
+            <div className="bg-white rounded-xl border border-[#c8d8ea] overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-[#0a1f3f] to-[#1a3a5c] border-b border-[#c8d8ea]">
+                <Info className="w-4 h-4 text-white/80" />
+                <h3 className="text-sm font-bold text-white">Additional Info</h3>
               </div>
               <div className="p-4 space-y-1.5">
                 {result.additional_info.map((info, i) => (
@@ -444,10 +447,10 @@ export default function ScanTagPage() {
                         updated[i] = e.target.value;
                         setResult({ ...result, additional_info: updated });
                       }}
-                      className="w-full text-sm text-gray-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 focus:outline-none focus:border-amber-400"
+                      className="w-full text-sm text-[#0a1f3f] bg-[#e55b2b]/5 border border-[#e55b2b]/20 rounded px-2 py-1 focus:outline-none focus:border-[#e55b2b]"
                     />
                   ) : (
-                    <p key={i} className="text-sm text-gray-700">• {info}</p>
+                    <p key={i} className="text-sm text-[#0a1f3f]">&bull; {info}</p>
                   )
                 ))}
               </div>
@@ -456,17 +459,17 @@ export default function ScanTagPage() {
 
           {/* Raw text */}
           {result.raw_text && (
-            <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+            <div className="bg-[#e8f0f8] rounded-xl border border-[#c8d8ea] p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-bold text-gray-500 uppercase">Raw Tag Text</h3>
+                <h3 className="text-xs font-bold text-[#4a6580] uppercase">Raw Tag Text</h3>
                 <button
                   onClick={() => copyToClipboard(result.raw_text!, 'raw')}
-                  className="text-xs text-blue-600 font-medium hover:text-blue-700"
+                  className="text-xs text-[#e55b2b] font-medium hover:text-[#d14e22]"
                 >
                   {copied === 'raw' ? 'Copied!' : 'Copy All'}
                 </button>
               </div>
-              <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono leading-relaxed break-words">
+              <pre className="text-xs text-[#4a6580] whitespace-pre-wrap font-mono leading-relaxed break-words">
                 {result.raw_text}
               </pre>
             </div>
