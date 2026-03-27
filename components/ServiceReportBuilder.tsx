@@ -99,9 +99,9 @@ const STEPS = [
   'Job Summary',
   'Equipment',
   'Uploads',
+  'AI Summary',
   'Upgrades',
   'Quote Options',
-  'AI Summary',
   'Confirmation',
   'Payment',
 ];
@@ -498,6 +498,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState('');
 
+  // AI Quote generation state
+  const [generatingQuotes, setGeneratingQuotes] = useState(false);
+  const [quotesError, setQuotesError] = useState('');
+  const [quotesGenerated, setQuotesGenerated] = useState(false);
+
   // Media state
   const [media, setMedia] = useState<ServiceReportMedia[]>([]);
   const [pendingFiles, setPendingFiles] = useState<{ file: File; caption: string; type: 'photo' | 'video' }[]>([]);
@@ -569,7 +574,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-save every 30s
+  // Auto-save every 10s
   useEffect(() => {
     if (!savedReportId) return;
     autoSaveTimerRef.current = setInterval(() => {
@@ -577,7 +582,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       if (snapshot !== lastSavedRef.current) {
         saveDraft(true);
       }
-    }, 30000);
+    }, 10000);
     return () => {
       if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
     };
@@ -1089,13 +1094,21 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
     setProcessingPayment(false);
   };
 
-  // Navigation helper
+  // Navigation helper — auto-saves on every step transition
   const navigateToStep = (stepNum: number) => {
+    // Save progress whenever leaving a step (non-blocking)
+    if (groupId && (savedReportId || customerId)) {
+      saveDraft(true);
+    }
     setStep(stepNum);
     setVisitedSteps(prev => new Set(prev).add(stepNum));
-    // Auto-generate AI summary when entering step 6 without one
-    if (stepNum === 6 && !aiSummary && !generatingSummary) {
+    // Auto-generate AI summary when entering step 4 without one
+    if (stepNum === 4 && !aiSummary && !generatingSummary) {
       setTimeout(() => generateAISummary(), 0);
+    }
+    // Auto-generate AI quote options when entering step 6 without them
+    if (stepNum === 6 && !quotesGenerated && !generatingQuotes && aiSummary) {
+      setTimeout(() => generateAIQuotes(), 0);
     }
   };
 
@@ -1105,17 +1118,18 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       case 1: return !!(customerId); // Job Summary: customer selected
       case 2: return units.some(u => !!(u.equipment_info.equipment_type && u.equipment_info.make)); // Equipment
       case 3: return media.length > 0 || pendingFiles.length > 0; // Uploads
-      case 4: return true; // Upgrades are optional
-      case 5: return quoteOptions.some(o => o.items.some(i => i.description.trim())); // Quote Options
-      case 6: return !!aiSummary && selectedOptionIdx !== null; // AI Summary + option selected
+      case 4: return !!aiSummary; // AI Summary generated
+      case 5: return true; // Upgrades are optional
+      case 6: return quoteOptions.some(o => o.items.some(i => i.description.trim())) && selectedOptionIdx !== null; // Quote Options + option selected
       default: return false;
     }
   };
 
   // Availability checks
   const hasMedia = media.length > 0 || pendingFiles.length > 0;
-  const allStepsVisited = [1, 2, 3, 4, 5].every(s => visitedSteps.has(s));
-  const aiSummaryAvailable = allStepsVisited && quoteOptions.some(o => o.items.some(i => i.description.trim()));
+  const dataStepsVisited = [1, 2, 3].every(s => visitedSteps.has(s));
+  const aiSummaryAvailable = dataStepsVisited;
+  const quoteOptionsAvailable = !!aiSummary;
   const confirmationAvailable = !!aiSummary && selectedOptionIdx !== null;
   const paymentAvailable = !!signatureDataUrl;
 
@@ -1156,19 +1170,80 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
     }
   };
 
+  // Generate AI quote options
+  const generateAIQuotes = async () => {
+    setGeneratingQuotes(true);
+    setQuotesError('');
+    try {
+      const res = await fetch('/api/service-report/ai-quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          units: units.map(u => ({
+            equipment_type: u.equipment_info.equipment_type,
+            make: u.equipment_info.make,
+            model: u.equipment_info.model,
+            condition: u.equipment_info.condition,
+            problem_found: u.problem_found,
+            secondary_problems: u.secondary_problems,
+            severity: u.problem_details.severity,
+            symptoms: u.problem_details.symptoms,
+            areas_affected: u.problem_details.areas_affected,
+            health_ratings: u.health_ratings,
+          })),
+          tech_notes: techNotes,
+          upgrades,
+          ai_summary: aiSummary ? {
+            findings_summary: aiSummary.findings_summary,
+            urgency_explanation: aiSummary.urgency_explanation,
+            recommendation: aiSummary.recommendation,
+          } : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.error || 'Failed to generate quotes');
+      if (data.options?.length) {
+        // Sanitize categories to match our type
+        const validCategories = new Set(['part', 'service', 'membership', 'upgrade']);
+        const sanitized = data.options.map((opt: QuoteOption) => ({
+          ...opt,
+          items: opt.items.map((item: QuoteOptionItem) => ({
+            ...item,
+            category: validCategories.has(item.category) ? item.category : 'service',
+          })),
+        }));
+        setQuoteOptions(sanitized);
+        setExpandedOption(0);
+        setSelectedOptionIdx(null);
+        setQuotesGenerated(true);
+      }
+    } catch (err) {
+      setQuotesError(err instanceof Error ? err.message : 'Failed to generate quotes');
+    } finally {
+      setGeneratingQuotes(false);
+    }
+  };
+
   // Step navigation
   const goNext = async () => {
-    if (step === 1 && !savedReportId) {
+    if (!savedReportId) {
       await saveDraft();
     }
     const nextStep = step + 1;
-    if (nextStep === 6 && !aiSummaryAvailable) return;
+    if (nextStep === 4 && !aiSummaryAvailable) return;
+    if (nextStep === 6 && !quoteOptionsAvailable) return;
     if (nextStep === 7 && !confirmationAvailable) return;
     if (nextStep === 8 && !paymentAvailable) return;
-    // Auto-generate AI summary when entering step 6 for the first time
-    if (nextStep === 6 && !aiSummary) {
-      navigateToStep(6);
+    // Auto-generate AI summary when entering step 4 for the first time
+    if (nextStep === 4 && !aiSummary) {
+      navigateToStep(4);
       generateAISummary();
+      return;
+    }
+    // Auto-generate AI quote options when entering step 6
+    if (nextStep === 6 && !quotesGenerated && aiSummary) {
+      navigateToStep(6);
+      generateAIQuotes();
       return;
     }
     navigateToStep(Math.min(nextStep, 8));
@@ -2526,16 +2601,54 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[#0a1f3f]">Quote Options</h3>
-        <button
-          type="button"
-          onClick={addQuoteOption}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 border-dashed border-[#c8d8ea] text-[#4a6580] text-sm font-medium hover:border-[#e55b2b] hover:text-[#e55b2b] transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Add Option
-        </button>
+        <div className="flex items-center gap-2">
+          {quotesGenerated && (
+            <button
+              type="button"
+              onClick={generateAIQuotes}
+              disabled={generatingQuotes}
+              className="text-sm text-[#e55b2b] hover:underline flex items-center gap-1"
+            >
+              <Sparkles className="w-3 h-3" /> Regenerate
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={addQuoteOption}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 border-dashed border-[#c8d8ea] text-[#4a6580] text-sm font-medium hover:border-[#e55b2b] hover:text-[#e55b2b] transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add Option
+          </button>
+        </div>
       </div>
 
-      {quoteOptions.map((opt, optIdx) => {
+      {/* AI Generating State */}
+      {generatingQuotes && (
+        <div className="bg-[#fef9ee] border-l-4 border-[#f5a623] rounded-xl p-6">
+          <div className="flex flex-col items-center justify-center py-8 gap-4">
+            <div className="w-10 h-10 border-4 border-[#f5a623]/30 border-t-[#f5a623] rounded-full animate-spin" />
+            <p className="text-sm text-[#0a1f3f] font-medium">AI is building your quote options...</p>
+            <p className="text-xs text-[#4a6580]">Analyzing findings and creating 3 tiered options</p>
+          </div>
+        </div>
+      )}
+
+      {/* AI Quote Error */}
+      {quotesError && !generatingQuotes && (
+        <Card>
+          <CardContent>
+            <div className="text-center py-4 space-y-3">
+              <p className="text-red-600 text-sm font-medium">{quotesError}</p>
+              <Button size="sm" onClick={generateAIQuotes}>
+                <Sparkles className="w-4 h-4 mr-2" /> Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quote Option Cards */}
+      {!generatingQuotes && quoteOptions.map((opt, optIdx) => {
         const isExpanded = expandedOption === optIdx;
         return (
           <div key={optIdx} className={`rounded-xl border-2 overflow-hidden transition-all shadow-sm ${
@@ -2676,37 +2789,99 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         );
       })}
 
-      {/* Customer Selection */}
-      <div className="border-t border-[#c8d8ea] pt-4">
-        <h4 className="text-sm font-semibold text-[#0a1f3f] mb-3">Which option does the customer want?</h4>
-        <div className="space-y-2">
-          {quoteOptions.map((opt, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => setSelectedOptionIdx(idx)}
-              className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                selectedOptionIdx === idx
-                  ? 'border-[#e55b2b] bg-[#fef0eb] shadow-md'
-                  : 'border-[#c8d8ea] hover:border-[#4a6580] bg-white'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
-                  selectedOptionIdx === idx ? 'bg-[#e55b2b] text-white' : 'bg-[#dceaf8] text-[#4a6580]'
-                }`}>
-                  {selectedOptionIdx === idx ? <Check className="w-4 h-4" /> : opt.label}
-                </span>
-                <span className="text-sm font-medium text-[#0a1f3f]">{opt.name || 'Unnamed Option'}</span>
-                {opt.is_recommended && (
-                  <Badge variant="premium" size="sm" icon={<Crown className="w-3 h-3" />}>Recommended</Badge>
-                )}
-              </div>
-              <span className="text-sm font-bold text-[#0a1f3f]">{formatCurrency(opt.subtotal)}</span>
-            </button>
-          ))}
+      {/* Selected Upgrades — Quick Add to Options */}
+      {upgrades.length > 0 && !generatingQuotes && (
+        <div className="border-t border-[#c8d8ea] pt-4">
+          <h4 className="text-sm font-semibold text-[#0a1f3f] mb-3 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-[#f5a623]" /> Add Upgrades to Options
+          </h4>
+          <div className="space-y-2">
+            {upgrades.map((upg, upgIdx) => {
+              const alreadyInOptions = quoteOptions.map((opt, optIdx) => ({
+                optIdx,
+                label: opt.label,
+                hasIt: opt.items.some(item => item.description === upg.name && item.category === 'upgrade'),
+              }));
+              return (
+                <div key={upgIdx} className="p-3 rounded-xl border border-[#c8d8ea] bg-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <span className="text-sm font-medium text-[#0a1f3f]">{upg.name}</span>
+                      <span className="text-sm font-bold text-[#e55b2b] ml-2">{formatCurrency(upg.price)}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {alreadyInOptions.map(({ optIdx, label, hasIt }) => (
+                      <button
+                        key={optIdx}
+                        type="button"
+                        disabled={hasIt}
+                        onClick={() => {
+                          const updated = [...quoteOptions];
+                          const newItem: QuoteOptionItem = {
+                            description: upg.name,
+                            category: 'upgrade' as const,
+                            quantity: 1,
+                            unit_price: upg.price,
+                            total: upg.price,
+                          };
+                          updated[optIdx] = {
+                            ...updated[optIdx],
+                            items: [...updated[optIdx].items, newItem],
+                            subtotal: updated[optIdx].subtotal + upg.price,
+                          };
+                          setQuoteOptions(updated);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                          hasIt
+                            ? 'bg-green-50 text-green-600 border-green-200 cursor-default'
+                            : 'bg-[#dceaf8] text-[#0a1f3f] border-[#c8d8ea] hover:bg-[#e55b2b] hover:text-white hover:border-[#e55b2b] active:bg-[#d14d1f]'
+                        }`}
+                      >
+                        {hasIt ? <><Check className="w-3 h-3 inline mr-1" />In {label}</> : `+ Add to ${label}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Customer Selection */}
+      {!generatingQuotes && (
+        <div className="border-t border-[#c8d8ea] pt-4">
+          <h4 className="text-sm font-semibold text-[#0a1f3f] mb-3">Which option does the customer want?</h4>
+          <div className="space-y-2">
+            {quoteOptions.map((opt, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setSelectedOptionIdx(idx)}
+                className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                  selectedOptionIdx === idx
+                    ? 'border-[#e55b2b] bg-[#fef0eb] shadow-md'
+                    : 'border-[#c8d8ea] hover:border-[#4a6580] bg-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                    selectedOptionIdx === idx ? 'bg-[#e55b2b] text-white' : 'bg-[#dceaf8] text-[#4a6580]'
+                  }`}>
+                    {selectedOptionIdx === idx ? <Check className="w-4 h-4" /> : opt.label}
+                  </span>
+                  <span className="text-sm font-medium text-[#0a1f3f]">{opt.name || 'Unnamed Option'}</span>
+                  {opt.is_recommended && (
+                    <Badge variant="premium" size="sm" icon={<Crown className="w-3 h-3" />}>Recommended</Badge>
+                  )}
+                </div>
+                <span className="text-sm font-bold text-[#0a1f3f]">{formatCurrency(opt.subtotal)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -2773,92 +2948,6 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
             <p className="text-sm text-[#0a1f3f]/80 leading-relaxed">{aiSummary.urgency_explanation}</p>
           </div>
 
-          {/* Options for Customer Selection */}
-          <div className="space-y-3">
-            <h4 className="font-semibold text-[#0a1f3f]">Your Options</h4>
-            <p className="text-xs text-[#4a6580]">Tap an option to select it</p>
-
-            {aiSummary.options_breakdown.map((opt, idx) => {
-              const matchingQuoteOpt = quoteOptions.find(q => q.label === opt.label);
-              const isSelected = selectedOptionIdx !== null && quoteOptions[selectedOptionIdx]?.label === opt.label;
-              const isRecommended = matchingQuoteOpt?.is_recommended;
-
-              return (
-                <button
-                  key={opt.label}
-                  type="button"
-                  onClick={() => {
-                    const qIdx = quoteOptions.findIndex(q => q.label === opt.label);
-                    if (qIdx !== -1) setSelectedOptionIdx(qIdx);
-                  }}
-                  className={`w-full text-left rounded-xl border-2 p-4 transition-all ${
-                    isSelected
-                      ? 'border-[#e55b2b] bg-[#fef0eb] shadow-md'
-                      : isRecommended
-                      ? 'border-[#f5a623] hover:shadow-md'
-                      : 'border-[#c8d8ea] hover:border-[#4a6580] hover:shadow-sm'
-                  }`}
-                >
-                  {/* Recommended banner */}
-                  {isRecommended && !isSelected && (
-                    <div className="flex items-center gap-1.5 mb-2 -mt-1">
-                      <Crown className="w-3.5 h-3.5 text-[#f5a623]" />
-                      <span className="text-[10px] font-bold text-[#f5a623] uppercase tracking-wider">Recommended</span>
-                    </div>
-                  )}
-                  {/* Option Header */}
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm ${
-                        isSelected ? 'bg-[#e55b2b] text-white' : 'bg-[#0a1f3f]/10 text-[#0a1f3f]'
-                      }`}>
-                        {isSelected ? <Check className="w-4 h-4" /> : opt.label}
-                      </span>
-                      <div>
-                        <span className="font-semibold text-[#0a1f3f]">{opt.name}</span>
-                      </div>
-                    </div>
-                    <span className="text-lg font-bold text-[#0a1f3f]">{formatCurrency(opt.total)}</span>
-                  </div>
-
-                  {/* AI Description */}
-                  <p className="text-sm text-navy/70 mb-3 leading-relaxed">{opt.summary}</p>
-
-                  {/* Line Items */}
-                  {matchingQuoteOpt && (
-                    <div className="space-y-1 mb-3">
-                      {matchingQuoteOpt.items.filter(i => i.description.trim()).map((item, ii) => (
-                        <div key={ii} className="flex justify-between text-xs">
-                          <span className="text-steel">
-                            {item.description}
-                            {item.category === 'upgrade' && (
-                              <span className="ml-1 px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-medium">Upgrade</span>
-                            )}
-                          </span>
-                          <span className="text-navy font-medium">{formatCurrency(item.total)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Upgrades included */}
-                  {opt.includes_upgrades && opt.includes_upgrades.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {opt.includes_upgrades.map(u => (
-                        <span key={u} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-600 border border-purple-200">
-                          + {u}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Value Note */}
-                  <p className="text-xs text-accent font-medium italic">{opt.value_note}</p>
-                </button>
-              );
-            })}
-          </div>
-
           {/* Recommendation */}
           <div className="bg-[#fef9ee] border-l-4 border-[#f5a623] rounded-xl p-4">
             <h4 className="font-semibold text-[#0a1f3f] mb-2 flex items-center gap-2">
@@ -2866,6 +2955,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
             </h4>
             <p className="text-sm text-[#0a1f3f]/80 leading-relaxed">{aiSummary.recommendation}</p>
           </div>
+
+          <p className="text-xs text-[#4a6580] text-center">This summary will be shown to the customer with their quote options.</p>
         </>
       )}
     </div>
@@ -3176,9 +3267,9 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       case 1: return renderJobSummary();
       case 2: return renderEquipmentStep();
       case 3: return renderStep5(); // Uploads
-      case 4: return renderUpgrades();
-      case 5: return renderStep7(); // Quote Options
-      case 6: return renderAISummary();
+      case 4: return renderAISummary();
+      case 5: return renderUpgrades();
+      case 6: return renderStep7(); // Quote Options
       case 7: return renderConfirmation();
       case 8: return renderStep9(); // Payment
       default: return null;
@@ -3223,10 +3314,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
           {STEPS.map((s, i) => {
             const stepNum = i + 1;
             const isActive = step === stepNum;
-            const isAISummary = stepNum === 6;
+            const isAISummary = stepNum === 4;
+            const isQuoteOptions = stepNum === 6;
             const isConfirmation = stepNum === 7;
             const isPayment = stepNum === 8;
-            const canClick = isPayment ? paymentAvailable : isConfirmation ? confirmationAvailable : isAISummary ? aiSummaryAvailable : true;
+            const canClick = isPayment ? paymentAvailable : isConfirmation ? confirmationAvailable : isQuoteOptions ? quoteOptionsAvailable : isAISummary ? aiSummaryAvailable : true;
             const completed = visitedSteps.has(stepNum) && isStepComplete(stepNum) && !isActive;
             const isLast = i === STEPS.length - 1;
             return (
@@ -3285,7 +3377,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       </div>
 
       {/* Footer Navigation */}
-      {step <= 5 && (
+      {(step <= 3 || step === 5) && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-[#c8d8ea] bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
           <button
             type="button"
@@ -3305,7 +3397,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
               ))}
             </div>
           </div>
-          {step === 5 && !aiSummaryAvailable ? (
+          {step === 3 && !aiSummaryAvailable ? (
             <div className="text-xs text-amber-600 font-medium max-w-[140px] text-right">
               Visit all tabs to continue
             </div>
@@ -3315,8 +3407,42 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
               onClick={goNext}
               className="flex items-center gap-1 px-4 py-3 rounded-xl bg-[#e55b2b] hover:bg-[#d14d1f] text-white font-medium text-sm transition-colors shadow-sm"
             >
-              {step === 5 ? (<><Sparkles className="w-4 h-4" /> Generate Summary</>) : (<>Next <ChevronRight className="w-4 h-4" /></>)}
+              {step === 3 ? (<><Sparkles className="w-4 h-4" /> Generate Summary</>) : (<>Next <ChevronRight className="w-4 h-4" /></>)}
             </button>
+          )}
+        </div>
+      )}
+      {step === 4 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-[#c8d8ea] bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
+          <button
+            type="button"
+            onClick={goBack}
+            className="flex items-center gap-1 px-4 py-3 rounded-xl border border-[#0a1f3f]/20 text-[#0a1f3f] font-medium text-sm hover:bg-[#dceaf8] transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-xs text-[#4a6580] font-medium">Step 4 of 8</span>
+            <div className="flex gap-1">
+              {Array.from({ length: 8 }, (_, i) => (
+                <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                  i + 1 === step ? 'bg-[#e55b2b]' : i + 1 < step ? 'bg-[#059669]' : 'bg-gray-200'
+                }`} />
+              ))}
+            </div>
+          </div>
+          {aiSummary && !generatingSummary ? (
+            <button
+              type="button"
+              onClick={goNext}
+              className="flex items-center gap-1 px-4 py-3 rounded-xl bg-[#e55b2b] hover:bg-[#d14d1f] text-white font-medium text-sm transition-colors shadow-sm"
+            >
+              Next <ChevronRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <div className="text-xs text-amber-600 font-medium max-w-[140px] text-right">
+              {generatingSummary ? 'Generating...' : 'Summary required'}
+            </div>
           )}
         </div>
       )}
@@ -3339,7 +3465,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
               ))}
             </div>
           </div>
-          {selectedOptionIdx !== null && aiSummary ? (
+          {selectedOptionIdx !== null ? (
             <button
               type="button"
               onClick={goNext}
@@ -3349,7 +3475,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
             </button>
           ) : (
             <div className="text-xs text-amber-600 font-medium max-w-[140px] text-right">
-              {!aiSummary ? 'Generating...' : 'Select an option'}
+              {generatingQuotes ? 'Generating...' : 'Select an option'}
             </div>
           )}
         </div>
