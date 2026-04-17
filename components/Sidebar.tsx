@@ -39,6 +39,7 @@ import {
   PanelLeftOpen,
   Settings,
   ScrollText,
+  ClipboardList,
   type LucideIcon,
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
@@ -74,6 +75,7 @@ const navGroups: NavGroup[] = [
     label: 'Operations',
     items: [
       { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+      { name: 'Requests', href: '/admin/requests', icon: ClipboardList },
       { name: 'Bookings', href: '/admin/bookings', icon: CalendarCheck },
       { name: 'Service Orders', href: '/admin/service', icon: HardHat },
       { name: 'Customers', href: '/admin/customers', icon: Contact },
@@ -89,6 +91,7 @@ const navGroups: NavGroup[] = [
       { name: 'Memberships', href: '/admin/memberships', icon: Crown },
       { name: 'Service Report', href: '/admin/service-report', icon: FileText },
       { name: 'Pricing', href: '/admin/pricing', icon: DollarSign },
+      { name: 'Packages', href: '/admin/packages', icon: Package },
     ],
   },
   {

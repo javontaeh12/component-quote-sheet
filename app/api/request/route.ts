@@ -26,17 +26,24 @@ function buildOwnerHtml(d: {
   service_type?: string; urgency?: string; equipment_info?: string;
   issue: string; started_when?: string; symptoms?: string[];
   file_urls?: string[]; membership_interest?: boolean;
+  requestId?: string;
 }) {
+  const adminUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://hardenhvacr.com';
+  const reviewLink = d.requestId ? `${adminUrl}/admin/requests/${d.requestId}` : `${adminUrl}/admin/requests`;
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a2e">
       <h2 style="color:#e65100;margin-bottom:4px">New Service Request</h2>
       <hr style="border:none;border-top:2px solid #e65100;margin-bottom:20px"/>
 
+      <a href="${reviewLink}" style="display:inline-block;background:#0a1f3f;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;margin-bottom:20px">
+        Review &amp; Set Quote →
+      </a>
+
       <h3 style="margin-bottom:8px">Contact</h3>
       <p style="margin:2px 0"><strong>Name:</strong> ${d.name}</p>
-      ${d.phone ? `<p style="margin:2px 0"><strong>Phone:</strong> ${d.phone}</p>` : ''}
-      ${d.email ? `<p style="margin:2px 0"><strong>Email:</strong> ${d.email}</p>` : ''}
-      ${d.address ? `<p style="margin:2px 0"><strong>Address:</strong> ${d.address}${d.city ? `, ${d.city}` : ''} ${d.zip || ''}</p>` : ''}
+      ${d.phone ? `<p style="margin:2px 0"><strong>Phone:</strong> <a href="tel:${d.phone.replace(/\D/g, '')}" style="color:#e65100">${d.phone}</a></p>` : ''}
+      ${d.email ? `<p style="margin:2px 0"><strong>Email:</strong> <a href="mailto:${d.email}" style="color:#e65100">${d.email}</a></p>` : ''}
+      ${d.address ? `<p style="margin:2px 0"><strong>Address:</strong> <a href="https://maps.google.com/?q=${encodeURIComponent([d.address, d.city, d.zip].filter(Boolean).join(', '))}" style="color:#e65100">${d.address}${d.city ? `, ${d.city}` : ''} ${d.zip || ''}</a></p>` : ''}
 
       <h3 style="margin-top:16px;margin-bottom:8px">Service Details</h3>
       ${d.service_type ? `<p style="margin:2px 0"><strong>Type:</strong> ${d.service_type}</p>` : ''}
@@ -149,6 +156,7 @@ export async function POST(request: Request) {
             service_type, urgency, equipment_info,
             issue, started_when, symptoms, file_urls,
             membership_interest: memberInterest,
+            requestId: data.id,
           }),
         }),
       ];

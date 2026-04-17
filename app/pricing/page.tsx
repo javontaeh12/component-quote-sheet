@@ -19,6 +19,7 @@ interface PricingRow {
   service_type: string;
   trade: string;
   note: string | null;
+  description: string | null;
   category: string;
   sort_order: number;
 }
@@ -31,7 +32,7 @@ async function getPricing(): Promise<PricingRow[]> {
 
   const { data, error } = await supabase
     .from('pricing')
-    .select('name, price, service_type, trade, note, category, sort_order')
+    .select('name, price, service_type, trade, note, description, category, sort_order')
     .order('sort_order')
     .order('name');
 
@@ -67,8 +68,11 @@ function PricingTable({ items, accent }: { items: PricingRow[]; accent: string }
             >
               <td className="px-4 py-3 text-[var(--navy)] font-medium">
                 {item.name}
+                {item.description && (
+                  <span className="block text-xs text-[var(--steel)] mt-0.5">{item.description}</span>
+                )}
                 {item.note && (
-                  <span className="block text-xs text-[var(--steel)] mt-0.5">{item.note}</span>
+                  <span className="block text-xs text-[var(--steel)]/70 mt-0.5 italic">{item.note}</span>
                 )}
               </td>
               <td className="px-4 py-3 text-right font-bold text-[var(--navy)] whitespace-nowrap">

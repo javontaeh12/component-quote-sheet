@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { CheckIcon, UploadIcon, XIcon } from './icons';
+import { formatCurrency } from '@/lib/utils';
 
 const SERVICE_TYPES = [
   'AC / Cooling',
@@ -77,6 +78,7 @@ interface FormData {
   city: string;
   zip: string;
   serviceType: string;
+  selectedPackageId: string;
   urgency: string;
   equipmentInfo: string;
   issues: string[];
@@ -84,6 +86,28 @@ interface FormData {
   startedWhen: string;
   symptoms: string[];
 }
+
+interface ServicePackage {
+  id: string;
+  service_type: string;
+  name: string;
+  description: string | null;
+  includes: string[];
+  price: number;
+  sort_order: number;
+}
+
+const SERVICE_ICONS: Record<string, string> = {
+  'AC / Cooling': '❄️',
+  'Heating / Furnace': '🔥',
+  'Refrigerator Repair': '🧊',
+  'Freezer Repair': '🧊',
+  'Commercial Refrigeration': '🏢',
+  'Ductless / Mini-Split': '🌀',
+  'System Tune-Up': '🔧',
+  'Full Diagnostics': '🔍',
+  'Other': '📋',
+};
 
 const STORAGE_KEY = 'harden-booking-form';
 
@@ -113,6 +137,7 @@ const DEFAULT_FORM: FormData = {
   city: '',
   zip: '',
   serviceType: '',
+  selectedPackageId: '',
   urgency: '',
   equipmentInfo: '',
   issues: [],
@@ -135,7 +160,24 @@ export default function BookingForm() {
   const addressRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
+  const [packages, setPackages] = useState<ServicePackage[]>([]);
+  const [packagesLoading, setPackagesLoading] = useState(false);
+
   const update = useCallback((fields: Partial<FormData>) => setForm(prev => ({ ...prev, ...fields })), []);
+
+  // Fetch packages when a service type is selected
+  useEffect(() => {
+    if (!form.serviceType || form.serviceType === 'Other') {
+      setPackages([]);
+      return;
+    }
+    setPackagesLoading(true);
+    fetch(`/api/packages?service_type=${encodeURIComponent(form.serviceType)}`)
+      .then(r => r.json())
+      .then((data: ServicePackage[]) => setPackages(Array.isArray(data) ? data : []))
+      .catch(() => setPackages([]))
+      .finally(() => setPackagesLoading(false));
+  }, [form.serviceType]);
 
   // Persist form state to localStorage
   useEffect(() => {
@@ -437,13 +479,80 @@ export default function BookingForm() {
             <h3 className="text-base sm:text-lg font-bold text-[var(--navy)]">Service Details</h3>
             <p className="text-sm text-[var(--steel)]">What do you need help with?</p>
 
+            {/* Service type cards */}
             <div>
-              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Service type *</label>
-              <select value={form.serviceType} onChange={e => update({ serviceType: e.target.value })} className="form-input">
-                <option value="">Select a service...</option>
-                {SERVICE_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <label className="block text-sm font-semibold text-[var(--navy)] mb-2">Select a service *</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {SERVICE_TYPES.map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => update({ serviceType: s, selectedPackageId: '' })}
+                    className={`flex flex-col items-center gap-1.5 p-3 sm:p-4 rounded-xl border text-center transition-all ${
+                      form.serviceType === s
+                        ? 'border-[var(--accent)] bg-[var(--accent)]/5 ring-1 ring-[var(--accent)]'
+                        : 'border-[var(--border)] hover:border-[var(--accent)]/50 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="text-2xl">{SERVICE_ICONS[s] || '🔧'}</span>
+                    <span className="text-xs sm:text-sm font-semibold text-[var(--navy)] leading-tight">{s}</span>
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Packages for selected service */}
+            {form.serviceType && form.serviceType !== 'Other' && (
+              <div>
+                <label className="block text-sm font-semibold text-[var(--navy)] mb-2">Choose a package (optional)</label>
+                {packagesLoading ? (
+                  <div className="flex items-center gap-2 py-4 text-sm text-[var(--steel)]">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Loading packages...
+                  </div>
+                ) : packages.length > 0 ? (
+                  <div className="space-y-2">
+                    {packages.map(pkg => (
+                      <button
+                        key={pkg.id}
+                        type="button"
+                        onClick={() => update({ selectedPackageId: form.selectedPackageId === pkg.id ? '' : pkg.id })}
+                        className={`w-full text-left p-4 rounded-xl border transition-all ${
+                          form.selectedPackageId === pkg.id
+                            ? 'border-[var(--accent)] bg-[var(--accent)]/5 ring-1 ring-[var(--accent)]'
+                            : 'border-[var(--border)] hover:border-[var(--accent)]/50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-[var(--navy)]">{pkg.name}</h4>
+                            {pkg.description && (
+                              <p className="text-xs text-[var(--steel)] mt-0.5">{pkg.description}</p>
+                            )}
+                            {Array.isArray(pkg.includes) && pkg.includes.length > 0 && (
+                              <ul className="mt-2 space-y-1">
+                                {pkg.includes.map((item, i) => (
+                                  <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--navy)]">
+                                    <CheckIcon className="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" />
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                          <span className="text-lg font-bold text-[var(--accent)] whitespace-nowrap">{formatCurrency(pkg.price)}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-[var(--steel)] py-2">No packages available — we&apos;ll provide a custom quote.</p>
+                )}
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-semibold text-[var(--navy)] mb-1.5">How urgent? *</label>
@@ -636,6 +745,12 @@ export default function BookingForm() {
 
               <ReviewBlock title="Service Details" onEdit={() => setStep(2)}>
                 <p><span className="font-medium text-[var(--navy)]">Type:</span> {form.serviceType}</p>
+                {form.selectedPackageId && packages.length > 0 && (() => {
+                  const pkg = packages.find(p => p.id === form.selectedPackageId);
+                  return pkg ? (
+                    <p><span className="font-medium text-[var(--navy)]">Package:</span> {pkg.name} — {formatCurrency(pkg.price)}</p>
+                  ) : null;
+                })()}
                 <p><span className="font-medium text-[var(--navy)]">Urgency:</span> {URGENCY_OPTIONS.find(o => o.value === form.urgency)?.label}</p>
                 {form.equipmentInfo && <p><span className="font-medium text-[var(--navy)]">Equipment:</span> {form.equipmentInfo}</p>}
               </ReviewBlock>
